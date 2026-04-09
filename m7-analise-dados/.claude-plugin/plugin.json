@@ -1,0 +1,21 @@
+{
+  "name": "m7-analise-dados",
+  "version": "2.0.0",
+  "description": "Análise de dados e geração de relatórios executivos para M7 Investimentos. Integra Bitrix24 (CRM) e ClickHouse (data warehouse) via MCP, com pipeline Plan-Extract-Analyze-Interpret-Report e separação rigorosa entre agentes de dados e comunicação executiva.",
+  "author": {
+    "name": "Bruno Chiaramonti"
+  },
+  "homepage": "https://github.com/bchiaramonti/claude-plugins",
+  "repository": "https://github.com/bchiaramonti/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "data-analysis",
+    "executive-reports",
+    "bitrix24",
+    "clickhouse",
+    "crm",
+    "data-warehouse",
+    "business-intelligence",
+    "m7"
+  ]
+}

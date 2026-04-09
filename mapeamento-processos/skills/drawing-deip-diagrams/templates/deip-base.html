@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEIP — {{PROCESS_NAME}}</title>
+<style>
+  @font-face { font-family: twkEverett; src: url("https://multi7.com.br/_next/static/media/TWKEverett_Regular-s.p.4411e19a.otf") format("opentype"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: twkEverett; src: url("https://multi7.com.br/_next/static/media/TWKEverett_Medium-s.p.784da8c1.otf") format("opentype"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: twkEverett; src: url("https://multi7.com.br/_next/static/media/TWKEverett_Bold-s.p.e7df9fc8.otf") format("opentype"); font-weight: 700; font-display: swap; }
+  @font-face { font-family: twkEverett Fallback; src: local(Arial); ascent-override: 91.9%; descent-override: 19.2%; line-gap-override: 9.1%; size-adjust: 109.91%; }
+
+  :root {
+    --verde-caqui: #424135; --verde-caqui-600: #35342a; --verde-caqui-700: #28271f;
+    --verde-caqui-400: #66655b; --verde-caqui-300: #8a8981; --verde-caqui-200: #aeada8;
+    --verde-caqui-100: #d0d0cc; --verde-caqui-50: #f6f6f5;
+    --off-white: #fffdef; --lime: #eef77c; --white: #ffffff;
+    --success: #4CAF50; --success-bg: rgba(76,175,80,0.08); --success-border: rgba(76,175,80,0.3);
+    --error: #E46962; --error-bg: rgba(228,105,98,0.08); --error-border: rgba(228,105,98,0.3);
+    --neutral: #8a8981; --neutral-bg: rgba(138,137,129,0.08);
+    --radius: 8px; --radius-sm: 4px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1); --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+    --transition: 0.15s cubic-bezier(0.4,0,0.2,1);
+    --font: "twkEverett","twkEverett Fallback",Arial,Helvetica,sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: var(--font); background: var(--off-white); color: var(--verde-caqui); padding: 4px 16px 8px; display: flex; flex-direction: column; }
+
+  /* ─── Header (light, outside container) ─── */
+  .deip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-shrink: 0; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header-left .logo img { height: 40px; width: auto; }
+  .deip-header h1 { font-size: 22px; font-weight: 400; color: var(--verde-caqui); line-height: 1.2; }
+  .deip-header .sub { font-size: 13px; color: var(--verde-caqui-400); margin-top: 2px; }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  .deip-header .meta { display: flex; gap: 14px; font-size: 11px; color: var(--verde-caqui-400); flex-wrap: wrap; }
+  .deip-header .meta span { display: flex; align-items: center; gap: 3px; }
+  .deip-header .meta .label { font-weight: 500; color: var(--verde-caqui-300); }
+  .header-actions { display: flex; gap: 6px; }
+  .header-actions button { font-family: var(--font); font-size: 10px; padding: 4px 10px; border: 1px solid var(--verde-caqui-100); border-radius: var(--radius-sm); background: transparent; color: var(--verde-caqui); cursor: pointer; transition: all var(--transition); }
+  .header-actions button:hover { background: var(--verde-caqui-50); }
+
+  /* Container: fills viewport */
+  .deip-container { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 2px solid var(--verde-caqui); border-radius: var(--radius); overflow: hidden; background: var(--white); box-shadow: var(--shadow-md); }
+
+  /* ─── Band (regulation + support) ─── */
+  .deip-band { background: var(--verde-caqui-50); padding: 10px 16px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; min-height: 64px; }
+  .deip-band.regulation { border-bottom: 1px solid var(--verde-caqui-200); }
+  .deip-band.support { border-top: 1px solid var(--verde-caqui-200); }
+  .band-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--verde-caqui); white-space: nowrap; min-width: 70px; background: var(--verde-caqui-100); padding: 4px 10px; border-radius: var(--radius-sm); }
+  .band-items { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; justify-content: space-evenly; align-items: center; }
+
+  /* Band card (vertical: provider → circle → artifact) */
+  .band-card { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 70px; max-width: 180px; flex: 1 1 0; }
+  .band-card .card-provider { font-size: 10px; font-weight: 500; color: var(--verde-caqui); line-height: 1.2; }
+  .band-card .card-type { font-size: 8px; color: var(--verde-caqui-400); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
+  .band-card .card-artifact { font-size: 9px; color: var(--verde-caqui-400); line-height: 1.2; }
+
+  /* ─── Interface circle ─── */
+  .iface { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: var(--white); flex-shrink: 0; position: relative; cursor: default; line-height: 1; }
+  .iface.conforme { background: var(--success); }
+  .iface.melhoria { background: var(--error); cursor: help; }
+  .iface.neutral { background: var(--neutral); }
+  .iface .tip { display: none; position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--verde-caqui); color: var(--off-white); padding: 6px 10px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 400; max-width: 260px; white-space: normal; z-index: 100; box-shadow: var(--shadow-md); }
+  .iface:hover .tip { display: block; }
+
+  /* ─── Central Section ─── */
+  .deip-central { flex: 1; min-height: 0; display: grid; grid-template-columns: 24px 1fr 1.4fr 1fr 24px; overflow: hidden; }
+
+  /* Vertical side labels */
+  .side-stripe { background: var(--verde-caqui); color: var(--off-white); writing-mode: vertical-lr; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 3px; }
+  .side-stripe.left { transform: rotate(180deg); }
+
+  /* Side panels (inputs / outputs) */
+  .side-panel { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--verde-caqui-100); }
+  .side-panel.right { border-right: none; border-left: 1px solid var(--verde-caqui-100); }
+  .side-panel .panel-header { display: grid; grid-template-columns: 1fr 28px 1fr; gap: 4px; padding: 6px 8px 4px; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--verde-caqui-400); border-bottom: 1px solid var(--verde-caqui-100); flex-shrink: 0; }
+  .side-panel .panel-header span:nth-child(2) { text-align: center; }
+  .side-panel.left .panel-header span:first-child { text-align: right; }
+  .side-panel.right .panel-header span:first-child { text-align: right; }
+  .side-panel.left .panel-header span:last-child { text-align: left; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 4px 0; display: flex; flex-direction: column; justify-content: space-evenly; }
+
+  /* Interface pair row */
+  .iface-row { display: grid; grid-template-columns: 1fr 28px 1fr; gap: 4px; align-items: center; padding: 3px 8px; border-bottom: 1px solid var(--white); font-size: 11px; line-height: 1.3; }
+  .iface-row:last-child { border-bottom: none; }
+  .iface-row .iface { margin: 0 auto; }
+  .iface-row .prov { font-weight: 500; }
+  .iface-row .prov-type { font-size: 8px; color: var(--verde-caqui-400); }
+  .iface-row .artif { font-weight: 400; }
+  .iface-row .artif-detail { font-size: 9px; color: var(--verde-caqui-400); }
+  .side-panel.left .iface-row .prov { text-align: right; }
+  .side-panel.left .iface-row .prov-type { text-align: right; }
+  .side-panel.left .iface-row .artif-detail { text-align: left; }
+  .side-panel.right .iface-row .artif { text-align: right; }
+  .side-panel.right .iface-row .artif-detail { text-align: right; }
+  .side-panel.right .iface-row .prov { text-align: left; }
+
+  /* ─── Center Panel (Macroflow) ─── */
+  .center-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; overflow: hidden; gap: 8px; }
+
+  /* Big chevron banner — process name */
+  .process-chevron { background: var(--verde-caqui); color: var(--off-white); padding: 10px 32px; text-align: center; width: 100%; clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%); }
+  .process-chevron .chevron-label { font-size: 8px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.6; }
+  .process-chevron .chevron-code { font-size: 10px; font-weight: 500; }
+  .process-chevron .chevron-name { font-size: 13px; font-weight: 700; }
+
+  /* Step list box */
+  .macro-box { border: 2px dashed var(--verde-caqui-200); border-radius: var(--radius); padding: 10px 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+  .macro-box .box-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--verde-caqui-400); font-weight: 500; }
+  .step-list { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+  .step-item { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 400; color: var(--verde-caqui); }
+  .step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--verde-caqui); color: var(--off-white); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; }
+
+  /* ─── Footer ─── */
+  .deip-footer { padding: 4px 16px; border-top: 1px solid var(--verde-caqui-100); display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: var(--verde-caqui-300); flex-shrink: 0; }
+  .deip-footer .legend { display: flex; gap: 12px; align-items: center; }
+  .deip-footer .legend-item { display: flex; align-items: center; gap: 3px; }
+  .deip-footer .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ─── Print ─── */
+  @media print {
+    html, body { height: auto; overflow: visible; }
+    body { padding: 0; background: white; }
+    .header-actions { display: none; }
+    .deip-container { box-shadow: none; border-radius: 0; flex: 1; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @page { size: A4 landscape; margin: 8mm; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header (light, outside container — matches G2.2/G2.3 artifacts) -->
+<div class="deip-header">
+  <div class="header-left">
+    <div class="logo"><img src="data:image/png;base64,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" alt="M7"></div>
+    <div>
+      <h1 id="processName">DEIP</h1>
+      <div class="sub">Diagrama de Escopo e Interface do Processo (DEIP)</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="meta">
+      <span><span class="label">Codigo:</span> <span id="metaCode">—</span></span>
+      <span><span class="label">Responsavel:</span> <span id="metaResponsible">—</span></span>
+      <span><span class="label">Nivel:</span> <span id="metaLevel">—</span></span>
+      <span><span class="label">Versao:</span> <span id="metaVersion">—</span></span>
+      <span><span class="label">Data:</span> <span id="metaDate">—</span></span>
+    </div>
+    <div class="header-actions">
+      <button onclick="copyJSON()" id="btnCopy">Copiar JSON</button>
+      <button onclick="window.print()">Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<div class="deip-container">
+  <!-- Regulation Band -->
+  <div class="deip-band regulation">
+    <div class="band-label">Regulacao</div>
+    <div class="band-items" id="regulationBadges"></div>
+  </div>
+
+  <!-- Central Section: 5-column grid [stripe | inputs | macroflow | outputs | stripe] -->
+  <div class="deip-central">
+    <div class="side-stripe left">Entradas</div>
+
+    <div class="side-panel left">
+      <div class="panel-header"><span>Fornecedor</span><span>#</span><span>Insumo</span></div>
+      <div class="panel-body" id="inputInterfaces"></div>
+    </div>
+
+    <div class="center-panel">
+      <div class="process-chevron">
+        <div class="chevron-label">Macrofluxo</div>
+        <div class="chevron-code" id="processScope">Processo</div>
+        <div class="chevron-name" id="processBanner">Processo</div>
+      </div>
+      <div class="macro-box">
+        <div class="box-label">Etapas do Processo</div>
+        <div class="step-list" id="stepList"></div>
+      </div>
+    </div>
+
+    <div class="side-panel right">
+      <div class="panel-header"><span>Produto</span><span>#</span><span>Cliente</span></div>
+      <div class="panel-body" id="outputInterfaces"></div>
+    </div>
+
+    <div class="side-stripe">Saidas</div>
+  </div>
+
+  <!-- Support Band -->
+  <div class="deip-band support">
+    <div class="band-label">Suporte</div>
+    <div class="band-items" id="supportItems"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="deip-footer">
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:var(--success)"></span> Interface conforme</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--error)"></span> Oportunidade de melhoria</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--neutral)"></span> Sem avaliacao</span>
+    </div>
+    <span>DEIP — Diagrama de Escopo, Interface e Processos | Metodologia BPM CBOK</span>
+  </div>
+</div>
+
+<script>
+/**
+ * DEIP Rendering Engine v2.5 — M7-2026
+ *
+ * Features:
+ * - Light header with dark M7 logo PNG (matches G2.2/G2.3 artifacts)
+ * - Single-page fit (no vertical scroll)
+ * - Macroflow: large chevron banner + numbered step list
+ * - Numbered interface circles with zone prefix (I1, O1, R1, S1)
+ * - Paired rows: Supplier→[In]→Input and Output→[On]→Customer
+ * - Regulation/Support as vertical paired cards (Provider → Circle → Artifact)
+ * - Space-evenly distribution on input/output panels
+ * - Backward compatible: auto-generates interfaces from v1 arrays
+ */
+
+// ─── DEMO DATA (replace with actual process) ──────────────────────────
+window.DEIP_DATA = window.DEIP_DATA || {
+  metadata: {
+    processName: "Captacao de Clientes PF",
+    code: "G2.3",
+    responsible: "Gerencia Comercial",
+    date: "2026-02-27",
+    level: "N2",
+    version: "1.0"
+  },
+  regulation: [
+    { name: "Politica Comercial POL-COM-001", type: "Politica", provider: "Diretoria Executiva", status: "conforme", note: "" },
+    { name: "Resolucao CVM 175", type: "Norma", provider: "CVM", status: "melhoria", note: "Formulario de suitability nao cobre todos os perfis" },
+    { name: "LGPD — Lei 13.709/2018", type: "Lei", provider: "Governo Federal", status: "conforme", note: "" }
+  ],
+  suppliers: [
+    { name: "Marketing Digital", type: "Interno", status: "conforme" },
+    { name: "Cliente prospect", type: "Externo" },
+    { name: "Parceiros (AAIs)", type: "Externo", status: "conforme" }
+  ],
+  inputs: [
+    { name: "Lead qualificado", description: "Lead com scoring >= 70", origin: "Marketing Digital", status: "conforme" },
+    { name: "Documentos pessoais", origin: "Cliente prospect" },
+    { name: "Indicacao de parceiro", origin: "Parceiros (AAIs)" }
+  ],
+  macroflow: [
+    "Receber lead",
+    "Qualificar prospect",
+    "Realizar reuniao",
+    "Enviar proposta",
+    "Formalizar cadastro"
+  ],
+  outputs: [
+    { name: "Cliente cadastrado", destination: "Gestao de Carteira", status: "conforme" },
+    { name: "Ficha cadastral completa", destination: "Compliance" },
+    { name: "Contrato assinado", destination: "Juridico", status: "conforme" }
+  ],
+  customers: [
+    { name: "Gestao de Carteira", type: "Interno", status: "conforme" },
+    { name: "Compliance", type: "Interno" },
+    { name: "Juridico", type: "Interno" },
+    { name: "Cliente PF", type: "Externo", status: "conforme" }
+  ],
+  support: [
+    { name: "Equipe Comercial (8 assessores)", type: "Pessoas", provider: "RH / Ger. Comercial" },
+    { name: "CRM Salesforce", type: "Sistemas", provider: "TI" },
+    { name: "Plataforma XP/BTG", type: "Sistemas", provider: "Parceiro Externo" },
+    { name: "Sala de reunioes", type: "Infraestrutura", provider: "Facilities" }
+  ]
+};
+
+// ─── NORMALIZE: v1 → v2 (auto-generate interfaces if absent) ──────────
+function normalizeData(raw) {
+  if (raw.interfaces && raw.interfaces.length > 0) return raw;
+
+  const ifaces = [];
+
+  // Input interfaces: pair each input with its origin supplier
+  (raw.inputs || []).forEach((inp, i) => {
+    const sup = (raw.suppliers || []).find(s => s.name === inp.origin);
+    ifaces.push({
+      id: `I${i + 1}`,
+      zone: 'input',
+      provider: sup ? sup.name : (inp.origin || '—'),
+      providerType: sup ? (sup.type || '') : '',
+      artifact: inp.name,
+      artifactDetail: inp.description || '',
+      status: inp.status || (sup && sup.status) || 'neutral',
+      note: inp.note || ''
+    });
+  });
+
+  // Output interfaces: pair each output with its destination customer
+  (raw.outputs || []).forEach((out, i) => {
+    const cust = (raw.customers || []).find(c => c.name === out.destination);
+    ifaces.push({
+      id: `O${i + 1}`,
+      zone: 'output',
+      artifact: out.name,
+      artifactDetail: out.description || '',
+      receiver: cust ? cust.name : (out.destination || '—'),
+      receiverType: cust ? (cust.type || '') : '',
+      status: out.status || (cust && cust.status) || 'neutral',
+      note: out.note || ''
+    });
+  });
+
+  // Regulation interfaces (provider = who enforces/creates)
+  (raw.regulation || []).forEach((reg, i) => {
+    ifaces.push({
+      id: `R${i + 1}`,
+      zone: 'regulation',
+      provider: reg.provider || '',
+      artifact: reg.name,
+      artifactType: reg.type || '',
+      status: reg.status || 'conforme',
+      note: reg.note || ''
+    });
+  });
+
+  // Support interfaces (provider = who/what provides the resource)
+  (raw.support || []).forEach((sup, i) => {
+    ifaces.push({
+      id: `S${i + 1}`,
+      zone: 'support',
+      provider: sup.provider || '',
+      artifact: sup.name,
+      artifactType: sup.type || '',
+      status: sup.status || 'neutral',
+      note: sup.note || ''
+    });
+  });
+
+  raw.interfaces = ifaces;
+  return raw;
+}
+
+// ─── RENDER ─────────────────────────────────────────────────────────────
+const data = normalizeData(window.DEIP_DATA);
+const byZone = zone => data.interfaces.filter(i => i.zone === zone);
+
+// Helper: create interface circle HTML
+function circleHTML(iface) {
+  const cls = iface.status === 'melhoria' ? 'melhoria' : iface.status === 'conforme' ? 'conforme' : 'neutral';
+  const tip = (iface.note && iface.status === 'melhoria') ? `<span class="tip">${iface.note}</span>` : '';
+  return `<span class="iface ${cls}">${iface.id}${tip}</span>`;
+}
+
+// Header
+document.getElementById('processName').textContent = data.metadata?.processName || 'DEIP';
+document.getElementById('metaCode').textContent = data.metadata?.code || '—';
+document.getElementById('metaResponsible').textContent = data.metadata?.responsible || '—';
+document.getElementById('metaLevel').textContent = data.metadata?.level || '—';
+document.getElementById('metaVersion').textContent = `v${data.metadata?.version || '1.0'}`;
+document.getElementById('metaDate').textContent = data.metadata?.date || '—';
+document.title = `DEIP — ${data.metadata?.processName || 'Processo'}`;
+
+// Process chevron banner
+document.getElementById('processBanner').textContent = data.metadata?.processName || 'Processo';
+document.getElementById('processScope').textContent = data.metadata?.code || '';
+
+// Regulation cards (vertical: provider → circle → artifact)
+const regEl = document.getElementById('regulationBadges');
+byZone('regulation').forEach(r => {
+  const providerLabel = r.provider || r.artifactType || '';
+  const typeLabel = r.artifactType ? `<div class="card-type">${r.artifactType}</div>` : '';
+  regEl.innerHTML += `<div class="band-card">
+    <div class="card-provider">${providerLabel}</div>
+    ${circleHTML(r)}
+    <div class="card-artifact">${r.artifact}</div>
+    ${typeLabel}
+  </div>`;
+});
+
+// Input interfaces (left panel)
+const inpEl = document.getElementById('inputInterfaces');
+byZone('input').forEach(iface => {
+  inpEl.innerHTML += `<div class="iface-row">
+    <div><div class="prov">${iface.provider}</div><div class="prov-type">${iface.providerType}</div></div>
+    ${circleHTML(iface)}
+    <div><div class="artif">${iface.artifact}</div>${iface.artifactDetail ? `<div class="artif-detail">${iface.artifactDetail}</div>` : ''}</div>
+  </div>`;
+});
+
+// Output interfaces (right panel)
+const outEl = document.getElementById('outputInterfaces');
+byZone('output').forEach(iface => {
+  outEl.innerHTML += `<div class="iface-row">
+    <div style="text-align:right"><div class="artif">${iface.artifact}</div>${iface.artifactDetail ? `<div class="artif-detail">${iface.artifactDetail}</div>` : ''}</div>
+    ${circleHTML(iface)}
+    <div><div class="prov">${iface.receiver}</div><div class="prov-type">${iface.receiverType}</div></div>
+  </div>`;
+});
+
+// Step list (numbered macroflow)
+const stepEl = document.getElementById('stepList');
+(data.macroflow || []).forEach((step, i) => {
+  stepEl.innerHTML += `<div class="step-item"><span class="step-num">${i + 1}</span><span>${step}</span></div>`;
+});
+
+// Support cards (vertical: resource → circle → provider)
+const supEl = document.getElementById('supportItems');
+byZone('support').forEach(s => {
+  const typeLabel = s.artifactType ? `<div class="card-type">${s.artifactType}</div>` : '';
+  const providerLabel = s.provider ? `<div class="card-artifact">${s.provider}</div>` : '';
+  supEl.innerHTML += `<div class="band-card">
+    <div class="card-provider">${s.artifact}</div>
+    ${typeLabel}
+    ${circleHTML(s)}
+    ${providerLabel}
+  </div>`;
+});
+
+// Copy JSON (exports normalized v2 data)
+function copyJSON() {
+  navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+    .then(() => { const btn = document.getElementById('btnCopy'); btn.textContent = 'Copiado!'; setTimeout(() => btn.textContent = 'Copiar JSON', 1500); });
+}
+</script>
+</body>
+</html>

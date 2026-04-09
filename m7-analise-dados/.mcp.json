@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "clickhouse-m7bronze": {
+      "type": "http",
+      "url": "https://clickhouse.mcp-tunnels-01-4f6d8a.com/mcp",
+      "headers": {
+        "Authorization": "Bearer 6a3e214cee4fff442264cc91df3115a08f16edd028e9156e95765f7f5d1420ab"
+      }
+    },
+    "bitrix24": {
+      "type": "http",
+      "url": "https://bitrix24.mcp-tunnels-01-4f6d8a.com/mcp",
+      "headers": {
+        "Authorization": "Bearer 6a3e214cee4fff442264cc91df3115a08f16edd028e9156e95765f7f5d1420ab"
+      }
+    }
+  }
+}

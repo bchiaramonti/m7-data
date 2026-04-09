@@ -1,0 +1,22 @@
+{
+  "name": "mapeamento-processos",
+  "version": "1.3.2",
+  "description": "Mapeamento e construção de processos BPM. Conduz entrevistas estruturadas para mapear interfaces (DEIP/SIPOC), gera fluxogramas BPMN 2.0 como arquivos XML (.bpmn) compatíveis com Camunda Modeler/bpmn.io/Bizagi, Diagramas DEIP como HTML autocontido e Tabelas de Desconexões em Excel. Segue a metodologia BPM CBOK com notação padronizada.",
+  "author": {
+    "name": "Bruno Chiaramonti"
+  },
+  "homepage": "https://github.com/bchiaramonti/claude-plugins",
+  "repository": "https://github.com/bchiaramonti/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "bpm",
+    "bpmn",
+    "deip",
+    "processos",
+    "flowchart",
+    "mapeamento",
+    "gestao-processos",
+    "xml",
+    "camunda"
+  ]
+}

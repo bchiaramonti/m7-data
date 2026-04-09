@@ -1,0 +1,55 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "m7-data",
+  "owner": {
+    "name": "Bruno Chiaramonti"
+  },
+  "metadata": {
+    "description": "Claude Code marketplace for M7 data: analysis, executive reports, and business process mapping."
+  },
+  "plugins": [
+    {
+      "name": "m7-analise-dados",
+      "description": "Análise de dados e geração de relatórios executivos para M7 Investimentos. Integra Bitrix24 (CRM) e ClickHouse (data warehouse) via MCP, com pipeline Plan-Extract-Analyze-Interpret-Report e separação rigorosa entre agentes de dados e comunicação executiva. Adapta relatórios a 4 audiências (Diretoria, Gerentes, Técnico, Comercial) com framework de 6 dimensões de calibração.",
+      "version": "2.0.0",
+      "author": {
+        "name": "Bruno Chiaramonti"
+      },
+      "source": "./m7-analise-dados",
+      "category": "data-analysis",
+      "homepage": "https://github.com/bchiaramonti/claude-plugins",
+      "keywords": [
+        "data-analysis",
+        "executive-reports",
+        "bitrix24",
+        "clickhouse",
+        "crm",
+        "data-warehouse",
+        "business-intelligence",
+        "m7"
+      ]
+    },
+    {
+      "name": "mapeamento-processos",
+      "description": "Mapeamento e construção de processos BPM. Conduz entrevistas estruturadas para mapear fluxos (BPMN) e interfaces (DEIP/SIPOC) com avaliação de desconexões, gera fluxogramas BPMN 2.0 como arquivos XML (.bpmn) compatíveis com Camunda Modeler/bpmn.io/Bizagi, Diagramas DEIP como HTML autocontido com interfaces codificadas (I/O/R/S), chevrons e layout single-page, e Tabelas de Desconexões em Excel (M7-2026). Segue a metodologia BPM CBOK com notação padronizada.",
+      "version": "1.3.2",
+      "author": {
+        "name": "Bruno Chiaramonti"
+      },
+      "source": "./mapeamento-processos",
+      "category": "productivity",
+      "homepage": "https://github.com/bchiaramonti/claude-plugins",
+      "keywords": [
+        "bpm",
+        "bpmn",
+        "deip",
+        "processos",
+        "flowchart",
+        "mapeamento",
+        "gestao-processos",
+        "xml",
+        "camunda"
+      ]
+    }
+  ]
+}
