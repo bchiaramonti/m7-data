@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Interdependência — {{NOME_DA_EMPRESA}}</title>
+
+<!--
+  ====================================================================
+  TEMPLATE: MAPA DE INTERDEPENDÊNCIA (N3) — neural graph
+  ====================================================================
+  Leitura: rede neural feedforward + irregularidades.
+  - Nós são círculos pequenos com o código (G1, P3, A1...). Label
+    aparece em chip flutuante no hover.
+  - Camadas só por COR do nó (Gerencial / Front / Núcleo / Back / Apoio).
+    Sem faixas de fundo.
+  - Densidade média: só relações fortes/significativas.
+  - Espessura da aresta = quanto cliente passa por ali.
+  - Fricções: halo pulsante vermelho ao redor do nó.
+  Tudo posicionado em coordenadas % dentro de um SVG-like overlay.
+-->
+
+<link rel="icon" type="image/png" href="assets/m7-logo-favicon.png">
+<link rel="stylesheet" href="m7-tokens.css">
+<link rel="stylesheet" href="m7-header-dark.css">
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--off-white);
+    color: var(--vc-500);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 32px;
+    display: flex; flex-direction: column;
+  }
+
+  .m7-header-dark .h-e .tab.active { color: rgba(255,253,239,0.5); border-bottom-color: transparent; font-weight: 400; }
+  .m7-header-dark .h-e .tab.active .num { background: rgba(255,253,239,0.08); color: rgba(255,253,239,0.5); }
+  .m7-header-dark .h-e .tab[data-active="true"] { color: var(--lime); border-bottom-color: var(--lime); font-weight: 500; }
+
+  .map-shell {
+    max-width: 1280px; width: 100%; margin: 0 auto;
+    flex: 1; display: flex; flex-direction: column; min-height: 0;
+  }
+
+  .map-controls {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 16px; gap: 16px; flex-shrink: 0;
+  }
+  .map-controls .left { display: flex; flex-direction: column; gap: 2px; }
+  .map-controls .eyebrow {
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--verde-claro);
+  }
+  .map-controls h2 {
+    font-size: 22px; font-weight: 400; letter-spacing: -0.4px;
+    color: var(--vc-700); margin: 0;
+  }
+  .map-controls .helper {
+    font-size: 11px; color: var(--verde-claro);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .map-controls .helper svg { width: 14px; height: 14px; }
+
+  /* ===== CANVAS ===== */
+  .neural {
+    background: var(--white);
+    border: 1px solid var(--vc-100);
+    border-radius: var(--radius);
+    flex: 1; min-height: 660px;
+    position: relative;
+    overflow: hidden;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(212,255,79,0.04), transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(122,144,107,0.04), transparent 50%);
+  }
+
+  /* fundo sutil de pontos (textura de "espaço neural") */
+  .neural::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, var(--vc-100) 0.8px, transparent 0.9px);
+    background-size: 22px 22px;
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  /* Rótulo de coluna (subtítulo discreto, em cima) */
+  .col-label {
+    position: absolute;
+    top: 18px;
+    font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--vc-300);
+    transform: translateX(-50%);
+    white-space: nowrap;
+    z-index: 1;
+  }
+  .col-label::after {
+    content: ''; display: block;
+    width: 1px; height: 14px;
+    background: var(--vc-100);
+    margin: 6px auto 0;
+  }
+
+  /* ===== ARESTAS (SVG fullscreen) ===== */
+  .edges {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .edges path { fill: none; stroke-linecap: round; }
+  /* Espessura encoda fluxo de cliente */
+  .e-cliente-strong { stroke: #d4ff4f; stroke-width: 3; opacity: 0.9; }
+  .e-cliente-mid    { stroke: #d4ff4f; stroke-width: 1.8; opacity: 0.7; }
+  .e-cliente-soft   { stroke: #d4ff4f; stroke-width: 1.1; opacity: 0.5; }
+  .e-info           { stroke: #c8c4ad; stroke-width: 0.8; opacity: 0.55; }
+  .e-decisao        { stroke: #9a9683; stroke-width: 0.9; stroke-dasharray: 3 3; opacity: 0.6; }
+
+  /* ===== NÓS ===== */
+  .node {
+    position: absolute;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 1.5px solid var(--vc-300);
+    color: var(--vc-700);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    transform: translate(-50%, -50%);
+    cursor: default;
+    transition: transform 0.18s, box-shadow 0.18s;
+    z-index: 3;
+  }
+  .node:hover {
+    transform: translate(-50%, -50%) scale(1.18);
+    z-index: 10;
+  }
+
+  /* Camadas por COR */
+  .node[data-layer="G"] { background: var(--vc-700); color: var(--off-white); border-color: var(--vc-700); }
+  .node[data-layer="P-front"] { background: var(--off-white); border-color: var(--lime); border-width: 2px; }
+  .node[data-layer="P-core"]  { background: var(--lime); border-color: var(--vc-700); color: var(--vc-700); }
+  .node[data-layer="P-back"]  { background: var(--off-white); border-color: var(--lime); border-width: 2px; }
+  .node[data-layer="A"] { background: var(--white); border-color: var(--verde-claro); border-style: dashed; }
+
+  /* Núcleo um pouco maior, ele é o coração */
+  .node[data-layer="P-core"] { width: 38px; height: 38px; font-size: 11px; }
+  .node[data-layer="G"] { width: 30px; height: 30px; font-size: 9.5px; }
+
+  /* Halo de fricção — pulsante vermelho */
+  .node[data-friction="true"] {
+    box-shadow:
+      0 0 0 2px rgba(200, 75, 60, 0.35),
+      0 0 0 6px rgba(200, 75, 60, 0.18),
+      0 0 18px rgba(200, 75, 60, 0.45);
+    animation: friction-pulse 2.6s ease-in-out infinite;
+  }
+  @keyframes friction-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 2px rgba(200, 75, 60, 0.35),
+        0 0 0 6px rgba(200, 75, 60, 0.15),
+        0 0 14px rgba(200, 75, 60, 0.4);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px rgba(200, 75, 60, 0.55),
+        0 0 0 12px rgba(200, 75, 60, 0.05),
+        0 0 26px rgba(200, 75, 60, 0.65);
+    }
+  }
+
+  /* Tooltip — chip flutuante com label completo + tooltip de fricção */
+  .node::after {
+    content: attr(data-name);
+    position: absolute;
+    bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%);
+    background: var(--vc-700);
+    color: var(--off-white);
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-family: 'TWK Everett', system-ui, sans-serif;
+    font-size: 11px; font-weight: 400;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    box-shadow: 0 4px 14px rgba(66,65,53,0.25);
+  }
+  .node::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 4px); left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 6px; height: 6px;
+    background: var(--vc-700);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .node:hover::after,
+  .node:hover::before { opacity: 1; }
+
+  /* Tooltip estendido (descrição + fricção) na coluna lateral */
+  .info-panel {
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 256px;
+    background: var(--white);
+    border: 1px solid var(--vc-100);
+    border-radius: 8px;
+    padding: 14px 16px;
+    z-index: 4;
+    box-shadow: 0 6px 18px rgba(66,65,53,0.06);
+    font-size: 11px; line-height: 1.5;
+    color: var(--vc-500);
+    max-height: calc(100% - 28px);
+    overflow-y: auto;
+  }
+  .info-panel .ip-eyebrow {
+    font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--verde-claro);
+    margin-bottom: 6px;
+  }
+  .info-panel .ip-title {
+    font-size: 13px; color: var(--vc-700); margin-bottom: 8px;
+    font-family: 'TWK Everett', system-ui, sans-serif;
+  }
+  .info-panel .ip-desc { margin-bottom: 12px; }
+  .info-panel .ip-section {
+    border-top: 1px solid var(--vc-100);
+    padding-top: 10px; margin-top: 10px;
+  }
+  .info-panel .ip-section-title {
+    font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--verde-claro);
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .info-panel .ip-section-title .arrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--vc-300); font-size: 11px;
+  }
+  .info-panel .ip-rel-list {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .info-panel .ip-rel-list li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 10.5px;
+  }
+  .info-panel .ip-rel-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px; font-weight: 600;
+    color: var(--vc-700);
+    background: var(--vc-50);
+    border-radius: 3px;
+    padding: 1px 5px;
+    min-width: 26px; text-align: center;
+  }
+  .info-panel .ip-rel-kind {
+    color: var(--vc-300); font-size: 9.5px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-left: 4px;
+  }
+  .info-panel .ip-rel-list li[data-kind="cliente"] .ip-rel-code { background: var(--lime); }
+  .info-panel .ip-rel-list li[data-kind="info"] .ip-rel-code { background: var(--vc-50); }
+  .info-panel .ip-rel-list li[data-kind="decisao"] .ip-rel-code { background: var(--vc-100); }
+  .info-panel .ip-section.empty-rel { display: none; }
+  .info-panel .ip-friction {
+    border-top: 1px solid #c84b3c30;
+    padding-top: 10px; margin-top: 10px;
+    color: #c84b3c;
+    font-size: 10.5px;
+    display: none;
+    line-height: 1.45;
+  }
+  .info-panel .ip-friction strong { font-weight: 600; display: block; margin-bottom: 3px; letter-spacing: 0.04em; }
+  .info-panel.has-friction .ip-friction { display: block; }
+  .info-panel.empty .ip-desc::before {
+    content: 'Passe o mouse sobre um nó para ver descrição, relações e fricções.';
+    color: var(--vc-300); font-style: italic;
+  }
+  .info-panel.empty .ip-section,
+  .info-panel.empty .ip-friction { display: none; }
+  .info-panel.empty .ip-title,
+  .info-panel.empty .ip-eyebrow { opacity: 0.4; }
+
+  /* ===== LEGENDA ===== */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 14px 24px;
+    margin-top: 14px; padding: 12px 16px;
+    background: var(--white);
+    border: 1px solid var(--vc-100);
+    border-radius: 8px; flex-shrink: 0;
+  }
+  .legend-group {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--vc-500);
+  }
+  .legend-group .sep {
+    width: 1px; height: 16px; background: var(--vc-100); margin: 0 6px;
+  }
+
+  .ldot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .ldot.ger { background: var(--vc-700); }
+  .ldot.front { background: var(--off-white); border: 2px solid var(--lime); }
+  .ldot.core { background: var(--lime); border: 1.5px solid var(--vc-700); }
+  .ldot.apoio { background: var(--white); border: 1.5px dashed var(--verde-claro); }
+  .ldot.friction {
+    background: var(--white); border: 1.5px solid var(--vc-300);
+    box-shadow: 0 0 0 2px rgba(200,75,60,0.35), 0 0 8px rgba(200,75,60,0.5);
+  }
+
+  .lline { width: 26px; height: 2px; border-radius: 2px; flex-shrink: 0; }
+  .lline.cliente-strong { background: #d4ff4f; height: 3px; }
+  .lline.cliente-soft { background: #d4ff4f; opacity: 0.55; }
+  .lline.info { background: #c8c4ad; height: 1px; }
+  .lline.decisao { background: transparent; border-top: 1.5px dashed #9a9683; }
+
+  .map-footer {
+    max-width: 1280px; width: 100%;
+    margin: 16px auto 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--vc-100);
+    display: flex; justify-content: space-between; gap: 16px;
+    font-size: 11px; color: var(--verde-claro);
+    flex-wrap: wrap; flex-shrink: 0;
+  }
+
+  @media print {
+    body { padding: 16px; }
+    .neural { break-inside: avoid; }
+    .node[data-friction="true"] { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER · E · Documento com abas (dark) — tab Mapa ativa -->
+<div class="m7-header-dark">
+  <div class="doc-meta">
+    <img src="assets/m7-logo-offwhite.png" alt="{{NOME_DA_EMPRESA}}">
+    <div class="meta">
+      <span>{{AREA_DOCUMENTO}}</span><span class="dot"></span>
+      <span>Documento N1</span><span class="dot"></span>
+      <span>{{DATA_REFERENCIA}}</span>
+    </div>
+  </div>
+  <div class="h-e">
+    <div class="body">
+      <div>
+        <h1>Mapa <span class="accent">de interdependência</span></h1>
+        <p class="lede">Blueprint da arquitetura de negócio: como os 18 processos se conectam, onde passa o cliente e onde existem fricções. Passe o mouse sobre um nó para ver detalhes.</p>
+      </div>
+      <div class="strip">
+        <div class="cell"><div class="v">{{TOTAL_RELACOES}}</div><div class="l">Relações</div></div>
+        <div class="cell"><div class="v">{{TOTAL_FRICCOES}}</div><div class="l">Fricções</div></div>
+        <div class="cell"><div class="v">{{VERSAO_CURTA}}</div><div class="l">Versão</div></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <a class="tab" href="exemplo-m7-preenchido.html">Visão geral <span class="num">N1</span></a>
+      <a class="tab" href="template-missao-do-processo.html">Missão do processo</a>
+      <div class="tab" data-active="true">Mapa de interdependência</div>
+    </div>
+  </div>
+</div>
+
+<main class="map-shell">
+
+  <div class="map-controls">
+    <div class="left">
+      <div class="eyebrow">Blueprint da arquitetura de negócio · grafo de processos</div>
+      <h2>Como os processos se conectam</h2>
+    </div>
+    <div class="helper">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+      Passe o mouse sobre um nó para ver descrição e fricções
+    </div>
+  </div>
+
+  <div class="neural" id="neural">
+
+    <!-- Rótulos de coluna no topo -->
+    <div class="col-label" style="left: 8%;">Gerencial</div>
+    <div class="col-label" style="left: 26%;">Front-end</div>
+    <div class="col-label" style="left: 50%;">Núcleo · verticais</div>
+    <div class="col-label" style="left: 74%;">Back-end</div>
+    <div class="col-label" style="left: 92%;">— ↓ —</div>
+
+    <!-- =========================
+         ARESTAS (SVG por cima)
+         viewBox 1000x600 — escala com canvas
+         Posições % dos nós:
+           G1 8% / 18%   G2 8% / 32%   G3 8% / 46%   G4 8% / 60%
+           P1 26% / 34%  P2 26% / 56%
+           P3 44% / 22%  P4 44% / 42%  P5 44% / 62%  P6 56% / 30%
+           P7 56% / 50%  P8 56% / 70%
+           P9 74% / 50%
+           A1 18% / 86%  A2 36% / 90%  A3 54% / 90%  A4 72% / 90%  A5 90% / 86%
+         ========================= -->
+    <svg class="edges" viewBox="0 0 1000 600" preserveAspectRatio="none">
+      <!-- ESPINHA DORSAL (cliente forte): P1 → P2 → P3 → P9 -->
+      <path class="e-cliente-strong" d="M 260 204 C 260 280, 260 280, 260 336"/>
+      <path class="e-cliente-strong" d="M 260 336 C 320 280, 380 200, 440 132"/>
+      <path class="e-cliente-strong" d="M 440 132 C 540 200, 660 280, 740 300"/>
+
+      <!-- Cliente médio: P2 → P4, P3 → P5, P5 → P9, P6/P7/P8 → P9 -->
+      <path class="e-cliente-mid" d="M 260 336 C 320 360, 380 380, 440 252"/>
+      <path class="e-cliente-mid" d="M 440 132 C 470 240, 470 280, 440 372"/>
+      <path class="e-cliente-mid" d="M 440 372 C 540 400, 660 380, 740 300"/>
+      <path class="e-cliente-mid" d="M 560 180 C 620 220, 700 260, 740 300"/>
+      <path class="e-cliente-mid" d="M 560 300 C 620 300, 700 300, 740 300"/>
+      <path class="e-cliente-mid" d="M 560 420 C 620 380, 700 340, 740 300"/>
+
+      <!-- Cliente fraco / cross-sell entre verticais (apenas alguns) -->
+      <path class="e-cliente-soft" d="M 440 132 C 480 110, 540 140, 560 180"/>
+      <path class="e-cliente-soft" d="M 440 252 C 480 240, 540 280, 560 300"/>
+      <path class="e-cliente-soft" d="M 440 372 C 480 400, 540 440, 560 420"/>
+
+      <!-- Loop de retenção P9 → P3 (tracejado lime) -->
+      <path class="e-cliente-soft" d="M 740 300 C 700 200, 540 100, 440 132" stroke-dasharray="4 4"/>
+
+      <!-- INFORMAÇÃO (gerencial → primários e apoio → núcleo) -->
+      <path class="e-info" d="M 80 108 C 200 130, 300 150, 440 132"/>
+      <path class="e-info" d="M 80 192 C 200 250, 300 300, 440 252"/>
+      <path class="e-info" d="M 80 276 C 200 340, 320 360, 440 372"/>
+      <path class="e-info" d="M 80 360 C 200 400, 400 430, 740 300"/>
+
+      <path class="e-info" d="M 80 192 C 180 240, 230 320, 260 336"/>
+      <path class="e-info" d="M 80 108 C 160 180, 220 250, 260 204"/>
+
+      <!-- Apoio → núcleo (info fina e longa) -->
+      <path class="e-info" d="M 180 516 C 260 460, 380 380, 440 372"/>
+      <path class="e-info" d="M 360 540 C 400 480, 440 420, 440 252"/>
+      <path class="e-info" d="M 540 540 C 540 480, 560 380, 560 300"/>
+      <path class="e-info" d="M 720 540 C 700 460, 720 360, 740 300"/>
+      <path class="e-info" d="M 900 516 C 820 460, 760 380, 740 300"/>
+      <!-- A1 (Tech & Dados) puxa para múltiplos -->
+      <path class="e-info" d="M 180 516 C 280 420, 380 280, 440 132"/>
+      <path class="e-info" d="M 180 516 C 320 420, 460 320, 560 180"/>
+
+      <!-- DECISÃO (Compliance G3 → verticais) -->
+      <path class="e-decisao" d="M 80 276 C 200 240, 380 200, 440 132"/>
+      <path class="e-decisao" d="M 80 276 C 220 280, 350 290, 440 252"/>
+      <path class="e-decisao" d="M 80 276 C 260 300, 380 320, 440 372"/>
+      <!-- G2 Performance → P9 -->
+      <path class="e-decisao" d="M 80 192 C 300 220, 600 280, 740 300"/>
+    </svg>
+
+    <!-- =========================
+         NÓS — círculos absolutos
+         ========================= -->
+
+    <!-- Gerenciais (esquerda, coluna) -->
+    <div class="node" data-layer="G" data-name="G1 · Planejamento Estratégico"
+         data-desc="Define plano 5 anos, OKRs corporativos e prioridades para todas as outras camadas."
+         style="left: 8%; top: 18%;">G1</div>
+    <div class="node" data-layer="G" data-name="G2 · Gestão de Performance"
+         data-desc="Acompanha execução: KRs, ritmo dos primários e riscos. Frequência mensal."
+         style="left: 8%; top: 32%;">G2</div>
+    <div class="node" data-layer="G" data-name="G3 · Compliance & Risco"
+         data-desc="Aderência regulatória + mitigação de riscos operacionais e de imagem."
+         style="left: 8%; top: 46%;">G3</div>
+    <div class="node" data-layer="G" data-name="G4 · Gestão Orçamentária"
+         data-desc="Aloca capital às BUs e fecha o ciclo orçamentário anual + revisões trimestrais."
+         style="left: 8%; top: 60%;">G4</div>
+
+    <!-- Front-end -->
+    <div class="node" data-layer="P-front" data-name="P1 · Geração de Demanda"
+         data-desc="Marketing + ABM + eventos. Gera leads qualificados para a operação comercial."
+         style="left: 26%; top: 34%;">P1</div>
+    <div class="node" data-layer="P-front" data-name="P2 · Aquisição & Onboarding"
+         data-desc="Conversão de lead em cliente: KYC, suitability e abertura."
+         data-friction="true"
+         data-friction-text="Handoff manual P1→P2 perde ~20% dos leads. Sem CRM unificado, o lead esfria entre marketing e comercial."
+         style="left: 26%; top: 56%;">P2</div>
+
+    <!-- Núcleo (verticais) -->
+    <div class="node" data-layer="P-core" data-name="P3 · Investimentos"
+         data-desc="Gestão patrimonial e alocação de carteiras. Ponto de entrada mais comum do cliente PF."
+         style="left: 44%; top: 22%;">P3</div>
+    <div class="node" data-layer="P-core" data-name="P4 · Crédito"
+         data-desc="Crédito PJ (capital de giro, antecipação) e crédito PF colateralizado."
+         style="left: 44%; top: 42%;">P4</div>
+    <div class="node" data-layer="P-core" data-name="P5 · Seguros"
+         data-desc="Vida, residencial, empresarial. Cross-sell forte com Investimentos e Crédito."
+         style="left: 44%; top: 62%;">P5</div>
+    <div class="node" data-layer="P-core" data-name="P6 · Consórcio"
+         data-desc="Consórcios imobiliários e de veículos."
+         style="left: 56%; top: 30%;">P6</div>
+    <div class="node" data-layer="P-core" data-name="P7 · Câmbio & Internacional"
+         data-desc="Câmbio comercial e turismo, contas internacionais para clientes alta renda."
+         style="left: 56%; top: 50%;">P7</div>
+    <div class="node" data-layer="P-core" data-name="P8 · Previdência"
+         data-desc="Planos PGBL/VGBL e previdência corporativa."
+         style="left: 56%; top: 70%;">P8</div>
+
+    <!-- Back-end -->
+    <div class="node" data-layer="P-back" data-name="P9 · Customer Success"
+         data-desc="Pós-venda, NPS, retenção e expansão."
+         data-friction="true"
+         data-friction-text="CS não devolve sinal estruturado para as verticais — loop de aprendizado quebrado."
+         style="left: 74%; top: 50%;">P9</div>
+
+    <!-- Apoio (linha de baixo) -->
+    <div class="node" data-layer="A" data-name="A1 · Tecnologia & Dados"
+         data-desc="CRM, data lake, BI, integrações."
+         data-friction="true"
+         data-friction-text="Dados fragmentados entre verticais — visão única do cliente incompleta. Cada vertical tem sua própria fonte de verdade."
+         style="left: 18%; top: 86%;">A1</div>
+    <div class="node" data-layer="A" data-name="A2 · Pessoas & Cultura"
+         data-desc="Recrutamento, formação, performance e cultura organizacional."
+         style="left: 36%; top: 90%;">A2</div>
+    <div class="node" data-layer="A" data-name="A3 · Financeiro & Contábil"
+         data-desc="Contabilidade, fiscal, conciliação e tesouraria."
+         style="left: 54%; top: 90%;">A3</div>
+    <div class="node" data-layer="A" data-name="A4 · Jurídico"
+         data-desc="Contratos, regulatório, contencioso."
+         style="left: 72%; top: 90%;">A4</div>
+    <div class="node" data-layer="A" data-name="A5 · Marketing & Marca"
+         data-desc="Marca, conteúdo, branding institucional. Suporta P1 e marca-empregadora de A2."
+         style="left: 90%; top: 86%;">A5</div>
+
+    <!-- Painel de info (preenchido em hover) -->
+    <div class="info-panel empty" id="info-panel">
+      <div class="ip-eyebrow">Processo</div>
+      <div class="ip-title">—</div>
+      <div class="ip-desc"></div>
+
+      <div class="ip-section ip-in">
+        <div class="ip-section-title"><span class="arrow">→</span> Recebe de</div>
+        <ul class="ip-rel-list"></ul>
+      </div>
+
+      <div class="ip-section ip-out">
+        <div class="ip-section-title"><span class="arrow">→</span> Entrega para</div>
+        <ul class="ip-rel-list"></ul>
+      </div>
+
+      <div class="ip-friction"><strong>⚠ FRICÇÃO</strong><span class="ip-friction-text"></span></div>
+    </div>
+
+  </div>
+
+  <!-- LEGENDA -->
+  <div class="legend">
+    <div class="legend-group"><span class="ldot ger"></span> Gerencial</div>
+    <div class="legend-group"><span class="ldot front"></span> Primário · Front/Back</div>
+    <div class="legend-group"><span class="ldot core"></span> Primário · Núcleo</div>
+    <div class="legend-group"><span class="ldot apoio"></span> Apoio</div>
+    <div class="legend-group"><span class="ldot friction"></span> Ponto de fricção</div>
+    <span class="sep"></span>
+    <div class="legend-group"><span class="lline cliente-strong"></span> Fluxo de cliente forte</div>
+    <div class="legend-group"><span class="lline cliente-soft"></span> Fluxo de cliente fraco</div>
+    <div class="legend-group"><span class="lline info"></span> Informação / dados</div>
+    <div class="legend-group"><span class="lline decisao"></span> Governança / decisão</div>
+  </div>
+
+</main>
+
+<footer class="map-footer">
+  <div>{{NOME_DA_EMPRESA}} · Cadeia de valor · Mapa de interdependência (N3)</div>
+  <div>Última revisão: {{DATA_REVISAO}} · Owner do diagrama: {{OWNER_DIAGRAMA}}</div>
+</footer>
+
+<script>
+  // Painel de info segue hover dos nós
+  (function () {
+    // ===== Tabela de relações do mapa =====
+    // Cada par: { from, to, kind: 'cliente'|'info'|'decisao', label }
+    // Kind reflete o tipo da aresta no SVG. Label = o que flui.
+    const RELATIONS = [
+      // Espinha dorsal de cliente
+      { from: 'P1', to: 'P2', kind: 'cliente', label: 'Lead qualificado' },
+      { from: 'P2', to: 'P3', kind: 'cliente', label: 'Cliente onboarded' },
+      { from: 'P3', to: 'P9', kind: 'cliente', label: 'Cliente ativo' },
+      // Cliente médio
+      { from: 'P2', to: 'P4', kind: 'cliente', label: 'Lead com necessidade de crédito' },
+      { from: 'P3', to: 'P5', kind: 'cliente', label: 'Cross-sell de seguro' },
+      { from: 'P5', to: 'P9', kind: 'cliente', label: 'Cliente com seguro ativo' },
+      { from: 'P6', to: 'P9', kind: 'cliente', label: 'Cliente com consórcio' },
+      { from: 'P7', to: 'P9', kind: 'cliente', label: 'Cliente câmbio recorrente' },
+      { from: 'P8', to: 'P9', kind: 'cliente', label: 'Cliente previdência' },
+      // Cross-sell entre verticais (fraco)
+      { from: 'P3', to: 'P6', kind: 'cliente', label: 'Cross-sell consórcio' },
+      { from: 'P4', to: 'P7', kind: 'cliente', label: 'Cross-sell câmbio PJ' },
+      { from: 'P5', to: 'P8', kind: 'cliente', label: 'Cross-sell previdência' },
+      // Loop de retenção
+      { from: 'P9', to: 'P3', kind: 'cliente', label: 'Expansão / nova alocação' },
+      // Gerencial → primários (info)
+      { from: 'G1', to: 'P3', kind: 'info', label: 'Metas e prioridades estratégicas' },
+      { from: 'G2', to: 'P4', kind: 'info', label: 'KRs e ritmo de performance' },
+      { from: 'G3', to: 'P5', kind: 'decisao', label: 'Aderência regulatória' },
+      { from: 'G4', to: 'P9', kind: 'info', label: 'Orçamento e capital alocado' },
+      { from: 'G2', to: 'P1', kind: 'info', label: 'Funil e KPIs comerciais' },
+      { from: 'G1', to: 'P1', kind: 'info', label: 'Posicionamento estratégico' },
+      // Apoio → núcleo (info)
+      { from: 'A1', to: 'P3', kind: 'info', label: 'Dados de cliente e BI' },
+      { from: 'A1', to: 'P5', kind: 'info', label: 'Dados de cliente e BI' },
+      { from: 'A1', to: 'P9', kind: 'info', label: 'Dados de cliente e BI' },
+      { from: 'A1', to: 'P2', kind: 'info', label: 'CRM e integrações' },
+      { from: 'A1', to: 'P6', kind: 'info', label: 'Plataforma de operação' },
+      { from: 'A2', to: 'P4', kind: 'info', label: 'Talento treinado' },
+      { from: 'A3', to: 'P5', kind: 'info', label: 'Conciliação e fiscal' },
+      { from: 'A4', to: 'P7', kind: 'info', label: 'Contratos e regulatório' },
+      { from: 'A5', to: 'P1', kind: 'info', label: 'Marca e conteúdo' },
+      // Compliance → verticais (decisão)
+      { from: 'G3', to: 'P3', kind: 'decisao', label: 'Compliance suitability' },
+      { from: 'G3', to: 'P4', kind: 'decisao', label: 'Compliance crédito' },
+      { from: 'G2', to: 'P9', kind: 'decisao', label: 'Auditoria de NPS / KRs' }
+    ];
+
+    // Index: p/ cada nó, lista de in/out
+    const nodes = document.querySelectorAll('.node');
+    const byCode = {};
+    nodes.forEach(function (n) {
+      const code = n.textContent.trim();
+      byCode[code] = { name: n.dataset.name, layer: n.dataset.layer };
+    });
+
+    function relsFor(code) {
+      const incoming = RELATIONS.filter(r => r.to === code);
+      const outgoing = RELATIONS.filter(r => r.from === code);
+      return { incoming, outgoing };
+    }
+
+    function renderRels(ul, rels, dir) {
+      ul.innerHTML = '';
+      if (!rels.length) {
+        const li = document.createElement('li');
+        li.style.color = 'var(--vc-300)';
+        li.style.fontStyle = 'italic';
+        li.style.fontSize = '10px';
+        li.textContent = '—';
+        li.style.gridTemplateColumns = '1fr';
+        ul.appendChild(li);
+        return;
+      }
+      rels.forEach(function (r) {
+        const li = document.createElement('li');
+        li.dataset.kind = r.kind;
+        const otherCode = dir === 'in' ? r.from : r.to;
+        li.innerHTML = '<span class="ip-rel-code">' + otherCode + '</span>'
+          + '<span><span class="ip-rel-kind">' + r.kind + '</span> ' + r.label + '</span>';
+        ul.appendChild(li);
+      });
+    }
+
+    const panel = document.getElementById('info-panel');
+    const title = panel.querySelector('.ip-title');
+    const desc = panel.querySelector('.ip-desc');
+    const fr = panel.querySelector('.ip-friction-text');
+    const inUl = panel.querySelector('.ip-in .ip-rel-list');
+    const outUl = panel.querySelector('.ip-out .ip-rel-list');
+
+    nodes.forEach(function (n) {
+      n.addEventListener('mouseenter', function () {
+        panel.classList.remove('empty');
+        const code = n.textContent.trim();
+        title.textContent = n.dataset.name || '—';
+        desc.textContent = n.dataset.desc || '';
+        const rels = relsFor(code);
+        renderRels(inUl, rels.incoming, 'in');
+        renderRels(outUl, rels.outgoing, 'out');
+        if (n.dataset.friction === 'true') {
+          panel.classList.add('has-friction');
+          fr.textContent = n.dataset.frictionText || '';
+        } else {
+          panel.classList.remove('has-friction');
+          fr.textContent = '';
+        }
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>

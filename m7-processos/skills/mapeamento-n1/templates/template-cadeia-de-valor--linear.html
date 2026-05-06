@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadeia de Valor — {{NOME_DA_EMPRESA}}</title>
+
+<!--
+  ====================================================================
+  TEMPLATE: CADEIA DE VALOR — VARIANTE LINEAR (M7 Design System · 2026)
+  ====================================================================
+  Mesmo template do master, mas com Primários em uma única linha.
+  Use quando a empresa NÃO tem o padrão Front-end → Núcleo → Back-end.
+  Os processos primários ficam todos no mesmo nível, da esquerda
+  (entrada) para a direita (saída/cliente).
+
+  Substitua todos os {{...}} antes de entregar.
+  ====================================================================
+-->
+
+<link rel="icon" href="assets/m7-logo-favicon.png">
+<link rel="stylesheet" href="m7-tokens.css">
+<link rel="stylesheet" href="m7-header-dark.css">
+
+<style>
+  :root {
+    --lime-soft: rgba(238, 247, 124, 0.15);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  body { background: var(--off-white); color: var(--vc-500); line-height: 1.5; min-height: 100vh; padding: 32px; }
+
+  .header { max-width: 1280px; margin: 0 auto 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo-mark { height: 40px; width: auto; }
+  .header h1 { font-size: 24px; font-weight: 400; color: var(--vc-500); letter-spacing: -0.5px; line-height: 1.2; }
+  .header .subtitle { font-size: 14px; color: var(--verde-claro); }
+  .badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 24px; font-size: 12px; font-weight: 500; background: var(--lime-soft); color: var(--verde-medio); white-space: nowrap; }
+  .badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); }
+
+  .chain-container { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+
+  .layer { display: grid; grid-template-columns: 160px 1fr; gap: 0; min-height: 80px; transition: var(--transition); }
+  .lane-label { background: var(--vc-500); border-radius: var(--radius) 0 0 var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px 12px; position: relative; overflow: hidden; }
+  .lane-label::after { content: ''; position: absolute; right: 0; top: 20%; height: 60%; width: 3px; border-radius: 3px; background: var(--lime); }
+  .lane-label h3 { font-size: 11px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; color: var(--off-white); text-align: center; }
+  .lane-label .count { font-size: 11px; color: var(--lime); font-weight: 400; margin-top: 4px; }
+
+  .lane-content { background: var(--white); border-radius: 0 var(--radius) var(--radius) 0; padding: 16px 24px; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-sm); border: 1px solid var(--vc-100); border-left: none; }
+
+  .process-box { flex: 1; min-width: 0; padding: 16px; border-radius: var(--radius-sm); border: 1.5px solid var(--vc-100); background: var(--white); transition: var(--transition); position: relative; }
+  .process-box:hover { border-color: var(--lime); box-shadow: 0 0 0 3px var(--lime-soft), var(--shadow-sm); transform: translateY(-2px); z-index: 2; }
+  .process-box .code { font-size: 14px; font-weight: 700; color: var(--vc-500); margin-bottom: 4px; }
+  .process-box .name { font-size: 12px; color: var(--verde-claro); line-height: 1.5; }
+  .process-box.highlight { background: var(--lime-soft); border-color: var(--lime); }
+  .process-box.highlight .code { color: var(--verde-medio); }
+  .process-box.blue-accent { background: rgba(0,102,255,0.08); border-color: var(--info); }
+  .process-box.blue-accent .code { color: var(--info); }
+
+  .process-box .tooltip { display: none; position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); background: var(--vc-500); color: var(--off-white); padding: 12px 16px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; white-space: nowrap; z-index: 100; box-shadow: var(--shadow-lg); pointer-events: none; }
+  .process-box .tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--vc-500); }
+  .process-box:hover .tooltip { display: block; }
+
+  .footer-note { max-width: 1280px; margin: 32px auto 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-top: 1px solid var(--vc-100); flex-wrap: wrap; }
+  .footer-note p { font-size: 12px; color: var(--verde-claro); }
+  .legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--verde-claro); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 4px; border: 1px solid var(--vc-100); }
+  .legend-dot.lime { background: var(--lime-soft); border-color: var(--lime); }
+  .legend-dot.blue { background: rgba(0,102,255,0.08); border-color: var(--info); }
+  .legend-dot.plain { background: var(--white); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER · E · Documento com abas (dark)
+     ============================================================ -->
+<div class="m7-header-dark">
+  <div class="doc-meta">
+    <img src="assets/m7-logo-offwhite.png" alt="{{NOME_DA_EMPRESA}}">
+    <div class="meta">
+      <span>{{AREA_DOCUMENTO}}</span><span class="dot"></span>
+      <span>Documento N1</span><span class="dot"></span>
+      <span>{{DATA_REFERENCIA}}</span>
+    </div>
+  </div>
+  <div class="h-e">
+    <div class="body">
+      <div>
+        <h1>Cadeia <span class="accent">de valor</span></h1>
+        <p class="lede">{{LEDE_DOCUMENTO}}</p>
+      </div>
+      <div class="strip">
+        <div class="cell"><div class="v">{{TOTAL_PROCESSOS}}</div><div class="l">Processos</div></div>
+        <div class="cell"><div class="v">3</div><div class="l">Camadas</div></div>
+        <div class="cell"><div class="v">{{N_VERTICAIS}}</div><div class="l">Verticais</div></div>
+        <div class="cell"><div class="v">{{VERSAO_CURTA}}</div><div class="l">Versão</div></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active">Visão geral <span class="num">N1</span></div>
+      <a class="tab" href="template-missao-do-processo.html">Missão do processo</a>
+      <div class="tab">Mapa de interdependência</div>
+    </div>
+  </div>
+</div>
+
+<div class="chain-container">
+
+  <!-- GERENCIAIS — repita a estrutura para N processos -->
+  <div class="layer">
+    <div class="lane-label"><h3>Gerenciais</h3><span class="count">{{N_GERENCIAIS}} macro</span></div>
+    <div class="lane-content">
+      <div class="process-box"><div class="code">G1</div><div class="name">{{NOME_G1}}</div><div class="tooltip">{{TOOLTIP_G1}}</div></div>
+      <div class="process-box"><div class="code">G2</div><div class="name">{{NOME_G2}}</div><div class="tooltip">{{TOOLTIP_G2}}</div></div>
+      <div class="process-box"><div class="code">G3</div><div class="name">{{NOME_G3}}</div><div class="tooltip">{{TOOLTIP_G3}}</div></div>
+      <div class="process-box"><div class="code">G4</div><div class="name">{{NOME_G4}}</div><div class="tooltip">{{TOOLTIP_G4}}</div></div>
+    </div>
+  </div>
+
+  <!-- PRIMÁRIOS — LINEAR (todos no mesmo nível, esquerda → direita = entrada → cliente) -->
+  <div class="layer">
+    <div class="lane-label"><h3>Primários</h3><span class="count">{{N_PRIMARIOS}} macro</span></div>
+    <div class="lane-content">
+      <div class="process-box"><div class="code">P1</div><div class="name">{{NOME_P1}}</div><div class="tooltip">{{TOOLTIP_P1}}</div></div>
+      <div class="process-box"><div class="code">P2</div><div class="name">{{NOME_P2}}</div><div class="tooltip">{{TOOLTIP_P2}}</div></div>
+      <div class="process-box highlight"><div class="code">P3</div><div class="name">{{NOME_P3}}</div><div class="tooltip">{{TOOLTIP_P3}}</div></div>
+      <div class="process-box"><div class="code">P4</div><div class="name">{{NOME_P4}}</div><div class="tooltip">{{TOOLTIP_P4}}</div></div>
+      <div class="process-box highlight"><div class="code">P5</div><div class="name">{{NOME_P5}}</div><div class="tooltip">{{TOOLTIP_P5}}</div></div>
+      <div class="process-box"><div class="code">P6</div><div class="name">{{NOME_P6}}</div><div class="tooltip">{{TOOLTIP_P6}}</div></div>
+    </div>
+  </div>
+
+  <!-- APOIO -->
+  <div class="layer">
+    <div class="lane-label"><h3>Apoio</h3><span class="count">{{N_APOIO}} macro</span></div>
+    <div class="lane-content">
+      <div class="process-box"><div class="code">A1</div><div class="name">{{NOME_A1}}</div><div class="tooltip">{{TOOLTIP_A1}}</div></div>
+      <div class="process-box"><div class="code">A2</div><div class="name">{{NOME_A2}}</div><div class="tooltip">{{TOOLTIP_A2}}</div></div>
+      <div class="process-box"><div class="code">A3</div><div class="name">{{NOME_A3}}</div><div class="tooltip">{{TOOLTIP_A3}}</div></div>
+      <div class="process-box"><div class="code">A4</div><div class="name">{{NOME_A4}}</div><div class="tooltip">{{TOOLTIP_A4}}</div></div>
+      <div class="process-box"><div class="code">A5</div><div class="name">{{NOME_A5}}</div><div class="tooltip">{{TOOLTIP_A5}}</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-note">
+  <p>{{NOME_DA_EMPRESA}} &middot; {{DATA_REFERENCIA}}</p>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot plain"></span> Padrão</div>
+    <div class="legend-item"><span class="legend-dot lime"></span> Foco estratégico</div>
+    <div class="legend-item"><span class="legend-dot blue"></span> Cross-sell / Tech</div>
+  </div>
+</div>
+
+</body>
+</html>

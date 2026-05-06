@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadeia de Valor — M7 Investimentos</title>
+<link rel="icon" href="assets/m7-logo-favicon.png">
+<link rel="stylesheet" href="m7-tokens.css">
+<link rel="stylesheet" href="m7-header-dark.css">
+<style>
+  :root {
+    --lime-soft: rgba(238, 247, 124, 0.15);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  body { background: var(--off-white); color: var(--vc-500); line-height: 1.5; min-height: 100vh; padding: 32px; }
+  .header { max-width: 1280px; margin: 0 auto 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo-mark { height: 40px; width: auto; }
+  .header h1 { font-size: 24px; font-weight: 400; color: var(--vc-500); letter-spacing: -0.5px; line-height: 1.2; }
+  .header .subtitle { font-size: 14px; color: var(--verde-claro); }
+  .badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 24px; font-size: 12px; font-weight: 500; background: var(--lime-soft); color: var(--verde-medio); white-space: nowrap; }
+  .badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); }
+  .chain-container { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .layer { display: grid; grid-template-columns: 160px 1fr; min-height: 80px; }
+  .lane-label { background: var(--vc-500); border-radius: var(--radius) 0 0 var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px 12px; position: relative; overflow: hidden; }
+  .lane-label::after { content: ''; position: absolute; right: 0; top: 20%; height: 60%; width: 3px; border-radius: 3px; background: var(--lime); }
+  .lane-label h3 { font-size: 11px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; color: var(--off-white); text-align: center; }
+  .lane-label .count { font-size: 11px; color: var(--lime); margin-top: 4px; }
+  .lane-content { background: var(--white); border-radius: 0 var(--radius) var(--radius) 0; padding: 16px 24px; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-sm); border: 1px solid var(--vc-100); border-left: none; }
+  .process-box { flex: 1; min-width: 0; padding: 16px; border-radius: var(--radius-sm); border: 1.5px solid var(--vc-100); background: var(--white); transition: var(--transition); position: relative; }
+  .process-box:hover { border-color: var(--lime); box-shadow: 0 0 0 3px var(--lime-soft), var(--shadow-sm); transform: translateY(-2px); z-index: 2; }
+  .process-box .code { font-size: 14px; font-weight: 700; color: var(--vc-500); margin-bottom: 4px; }
+  .process-box .name { font-size: 12px; color: var(--verde-claro); line-height: 1.5; }
+  .process-box.highlight { background: var(--lime-soft); border-color: var(--lime); }
+  .process-box.highlight .code { color: var(--verde-medio); }
+  .process-box.blue-accent { background: rgba(0,102,255,0.08); border-color: var(--info); }
+  .process-box.blue-accent .code { color: var(--info); }
+  .primarios-content { display: grid; grid-template-columns: 140px auto 1fr auto 140px; align-items: center; width: 100%; }
+  .front-end, .back-end { display: flex; flex-direction: column; gap: 8px; }
+  .front-end .process-box, .back-end .process-box { flex: none; }
+  .verticais-container { border: 2px solid var(--lime); border-radius: var(--radius); padding: 16px; background: rgba(238,247,124,0.04); position: relative; }
+  .verticais-label { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--lime); color: var(--vc-500); font-size: 11px; font-weight: 500; letter-spacing: 1px; padding: 2px 16px; border-radius: 12px; text-transform: uppercase; }
+  .verticais-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .flow-arrow { display: flex; align-items: center; justify-content: center; width: 40px; }
+  .flow-arrow svg { width: 24px; height: 24px; opacity: 0.35; }
+  .flow-arrow svg path { stroke: var(--vc-500); stroke-width: 2; fill: none; }
+  .process-box .tooltip { display: none; position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); background: var(--vc-500); color: var(--off-white); padding: 12px 16px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; white-space: nowrap; z-index: 100; box-shadow: var(--shadow-lg); pointer-events: none; }
+  .process-box .tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--vc-500); }
+  .process-box:hover .tooltip { display: block; }
+  .footer-note { max-width: 1280px; margin: 32px auto 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-top: 1px solid var(--vc-100); flex-wrap: wrap; }
+  .footer-note p { font-size: 12px; color: var(--verde-claro); }
+  .legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--verde-claro); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 4px; border: 1px solid var(--vc-100); }
+  .legend-dot.lime { background: var(--lime-soft); border-color: var(--lime); }
+  .legend-dot.plain { background: var(--white); }
+</style>
+</head>
+<body>
+
+<!-- HEADER · E · Documento com abas (dark) -->
+<div class="m7-header-dark">
+  <div class="doc-meta">
+    <img src="assets/m7-logo-offwhite.png" alt="M7 Investimentos">
+    <div class="meta">
+      <span>Estratégia</span><span class="dot"></span>
+      <span>Documento N1</span><span class="dot"></span>
+      <span>Fev / 2026</span>
+    </div>
+  </div>
+  <div class="h-e">
+    <div class="body">
+      <div>
+        <h1>Cadeia <span class="accent">de valor</span></h1>
+        <p class="lede">Visão consolidada dos 18 processos macro da holding M7 Investimentos. Navegue pelas abas para aprofundar cada camada.</p>
+      </div>
+      <div class="strip">
+        <div class="cell"><div class="v">18</div><div class="l">Processos</div></div>
+        <div class="cell"><div class="v">3</div><div class="l">Camadas</div></div>
+        <div class="cell"><div class="v">6</div><div class="l">Verticais</div></div>
+        <div class="cell"><div class="v">02/26</div><div class="l">Versão</div></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active">Visão geral <span class="num">N1</span></div>
+      <a class="tab" href="template-missao-do-processo.html">Missão do processo</a>
+      <a class="tab" href="template-mapa-de-interdependencia.html">Mapa de interdependência</a>
+    </div>
+  </div>
+</div>
+
+<div class="chain-container">
+
+  <div class="layer">
+    <div class="lane-label"><h3>Gerenciais</h3><span class="count">4 macro</span></div>
+    <div class="lane-content">
+      <div class="process-box"><div class="code">G1</div><div class="name">Planejamento Estratégico</div><div class="tooltip">Missão, visão, metas de longo prazo<br>Portfólio e revisão estratégica<br>Freq: Anual + revisões semestrais</div></div>
+      <div class="process-box"><div class="code">G2</div><div class="name">Gestão de Performance</div><div class="tooltip">Desdobramento de metas por vertical<br>Rituais N1/N2/N3 com cadência fixa<br>Freq: Semanal / Mensal</div></div>
+      <div class="process-box"><div class="code">G3</div><div class="name">Compliance &amp; Risco</div><div class="tooltip">Monitoramento CVM, SUSEP, BACEN<br>Gestão de riscos operacionais<br>Freq: Contínua + auditorias</div></div>
+      <div class="process-box"><div class="code">G4</div><div class="name">Gestão Orçamentária</div><div class="tooltip">Planejamento e controle orçamentário<br>DRE por vertical e centro de custo<br>Freq: Mensal</div></div>
+    </div>
+  </div>
+
+  <div class="layer" style="min-height: 240px;">
+    <div class="lane-label"><h3>Primários</h3><span class="count">9 macro</span></div>
+    <div class="lane-content" style="padding: 16px;">
+      <div class="primarios-content">
+        <div class="front-end">
+          <div class="process-box"><div class="code">P1</div><div class="name">Geração de Demanda</div><div class="tooltip">Inside Sales, Marketing Digital<br>Campanhas, eventos, indicações<br>Funil: topo + meio</div></div>
+          <div class="process-box"><div class="code">P2</div><div class="name">Prospecção &amp; Qualificação</div><div class="tooltip">Prospecção ativa, SDR/BDR<br>Qualificação BANT/SPIN<br>Transferência para verticais</div></div>
+        </div>
+        <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+        <div class="verticais-container">
+          <div class="verticais-label">Verticais de Produto</div>
+          <div class="verticais-grid">
+            <div class="process-box highlight"><div class="code">P3</div><div class="name">Investimentos</div><div class="tooltip">XP, Fundos, Renda Fixa/Variável<br>Meta: R$ 9,7 MM<br>Funil CRM principal</div></div>
+            <div class="process-box"><div class="code">P4</div><div class="name">Wealth</div><div class="tooltip">Gestão patrimonial, Advisory<br>Meta: R$ 2,4 MM<br>Clientes alta renda</div></div>
+            <div class="process-box highlight"><div class="code">P5</div><div class="name">Crédito</div><div class="tooltip">FIDC Crédito + Serviços, Consignado<br>Meta: R$ 22,6 MM<br>Maior vertical em receita</div></div>
+            <div class="process-box"><div class="code">P6</div><div class="name">Universo</div><div class="tooltip">Produtos PF, Consórcios PF<br>Meta: R$ 2,2 MM<br>Base 100k CPFs</div></div>
+            <div class="process-box"><div class="code">P7</div><div class="name">Seg/Cons</div><div class="tooltip">Seguros PF e PJ, Consórcios<br>Meta: R$ 7,35 MM<br>Cross-sell natural</div></div>
+            <div class="process-box"><div class="code">P8</div><div class="name">IB</div><div class="tooltip">M&amp;A, Estruturações<br>Meta: R$ 5,5 MM<br>Operações de maior ticket</div></div>
+          </div>
+        </div>
+        <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+        <div class="back-end">
+          <div class="process-box"><div class="code">P9</div><div class="name">Relacionamento &amp; Retenção</div><div class="tooltip">Pós-venda, NPS, reativação<br>Cross-sell entre verticais<br>Retroalimenta P1 com leads</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layer">
+    <div class="lane-label"><h3>Apoio</h3><span class="count">5 macro</span></div>
+    <div class="lane-content">
+      <div class="process-box blue-accent"><div class="code">A1</div><div class="name">Tecnologia &amp; Dados</div><div class="tooltip">CRM, BI, integrações<br>Pilar integrador entre verticais<br>Viabiliza visão 360° para cross-sell</div></div>
+      <div class="process-box"><div class="code">A2</div><div class="name">Jurídico</div><div class="tooltip">Contratos, regulatório<br>Suporte às operações de IB e Crédito</div></div>
+      <div class="process-box"><div class="code">A3</div><div class="name">Financeiro</div><div class="tooltip">Contas a pagar/receber, tesouraria<br>Conciliação, relatórios gerenciais</div></div>
+      <div class="process-box"><div class="code">A4</div><div class="name">Gestão de Pessoas</div><div class="tooltip">Recrutamento, T&amp;D, clima<br>Avaliação de desempenho, PDI</div></div>
+      <div class="process-box"><div class="code">A5</div><div class="name">Backoffice</div><div class="tooltip">Operações administrativas<br>Cadastro, processamento, compliance ops</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-note">
+  <p>M7 Investimentos &middot; Fev/2026 &middot; Passe o mouse nos processos para detalhes</p>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot plain"></span> Padrão</div>
+    <div class="legend-item"><span class="legend-dot lime"></span> Foco estratégico</div>
+  </div>
+</div>
+
+</body>
+</html>

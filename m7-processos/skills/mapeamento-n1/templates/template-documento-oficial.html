@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadeia de Valor — {{NOME_DA_EMPRESA}}</title>
+
+<!--
+  ====================================================================
+  TEMPLATE: DOCUMENTO OFICIAL (N4) — M7 Design System 2026
+  ====================================================================
+
+  Documento PDF-ready paginado A4 que apresenta a cadeia de valor como
+  artefato oficial. Estrutura:
+
+     P1     CAPA (fullbleed verde-caqui, sem footer)
+     P2     SUMÁRIO (sem page numbers no MVP)
+     P3     INTRODUÇÃO (objetivo, escopo, metodologia)
+     P4-5   N1 CADEIA DE VALOR (retrato, diagrama embedado)
+     P6     ABERTURA "Missões dos processos"
+     P7..N  UMA POR PROCESSO (N2 SIPOC, retrato)
+     P N+1  ABERTURA "Mapa de interdependência" (retrato)
+     P N+2  N3 MAPA NEURAL (LANDSCAPE)
+     P N+3  TABELA DE RELAÇÕES + FRICÇÕES (LANDSCAPE)
+     P M+1  ENCERRAMENTO (retrato)
+
+  Render via scripts/render_pdf.py (Playwright primário, WeasyPrint fallback).
+
+  Placeholders Jinja2 (`{{...}}`) para a skill substituir.
+  Includes (`{% include %}`) para embedar fragmentos dos templates N1/N2/N3.
+  ====================================================================
+-->
+
+<link rel="stylesheet" href="m7-tokens.css">
+<link rel="stylesheet" href="m7-header-dark.css">
+<link rel="stylesheet" href="m7-print.css">
+
+<style>
+  /* Variavel de footer setada dinamicamente para todas as @page nao-cover */
+  :root { --doc-footer: "{{NOME_DA_EMPRESA}} · {{DATA_REFERENCIA}}"; }
+
+  /* Local: estilos so usados aqui */
+  .intro-section .intro-grid {
+    display: grid;
+    grid-template-columns: 8mm 1fr;
+    gap: 6mm 8mm;
+    margin-top: 8mm;
+  }
+  .intro-section .intro-num {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11pt;
+    color: var(--vc-300);
+    padding-top: 2pt;
+  }
+  .intro-section .intro-title {
+    font-size: 13pt;
+    font-weight: 500;
+    color: var(--vc-700);
+    margin-bottom: 3mm;
+  }
+  .intro-section .intro-text {
+    font-size: 11pt;
+    line-height: 1.55;
+    color: var(--vc-500);
+  }
+
+  /* N1 embed: a cadeia ocupa altura adequada na metade inferior */
+  .n1-embed-container {
+    margin-top: 12mm;
+    border-top: 0.3pt solid var(--vc-100);
+    padding-top: 8mm;
+  }
+
+  /* Aberturas de seção (N2, N3) - meia página com tipografia grande */
+  .section-cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: calc(297mm - 2 * 18mm);
+  }
+  .section-cover .sc-num {
+    font-size: 64pt;
+    font-weight: 200;
+    color: var(--lime);
+    line-height: 1;
+    letter-spacing: -2pt;
+  }
+  .section-cover .sc-title {
+    font-size: 36pt;
+    font-weight: 300;
+    color: var(--vc-700);
+    margin-top: 4mm;
+    letter-spacing: -0.5pt;
+  }
+  .section-cover .sc-lead {
+    font-size: 13pt;
+    line-height: 1.55;
+    color: var(--vc-500);
+    max-width: 140mm;
+    margin-top: 8mm;
+  }
+
+  /* Encerramento */
+  .closing h2 {
+    font-size: 22pt;
+    font-weight: 300;
+    color: var(--vc-700);
+    margin-bottom: 6mm;
+  }
+  .closing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8mm;
+    margin-top: 6mm;
+  }
+  .closing-grid .col {
+    border-top: 0.5pt solid var(--vc-100);
+    padding-top: 4mm;
+  }
+  .closing-grid .col h3 {
+    font-size: 11pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--vc-400);
+    margin-bottom: 4mm;
+  }
+  .closing-grid .col ul {
+    list-style: none;
+    padding: 0;
+  }
+  .closing-grid .col li {
+    padding: 2mm 0;
+    font-size: 10.5pt;
+    color: var(--vc-500);
+    border-bottom: 0.3pt solid var(--vc-100);
+  }
+  .closing-grid .col li:last-child { border-bottom: 0; }
+
+  /* Header simples para páginas de conteúdo (não-capa, não-mapa) */
+  .pg-runner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 0.3pt solid var(--vc-100);
+    padding-bottom: 3mm;
+    margin-bottom: 8mm;
+  }
+  .pg-runner-header .runner-l {
+    font-size: 9pt;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--vc-400);
+  }
+  .pg-runner-header .runner-r {
+    font-size: 9pt;
+    color: var(--vc-300);
+  }
+</style>
+</head>
+<body data-source="n4">
+
+<!-- ====================================================================
+     P1 — CAPA (fullbleed verde-caqui)
+     ==================================================================== -->
+<section class="page page--cover">
+  <img class="cover-logo" src="assets/m7-logo-offwhite.png" alt="{{NOME_DA_EMPRESA}}">
+
+  <div>
+    <div class="cover-eyebrow">{{AREA_DOCUMENTO}} · Documento Oficial</div>
+    <h1 class="cover-title">Cadeia <span class="accent">de valor</span></h1>
+    <p class="cover-subtitle">{{LEDE_DOCUMENTO}}</p>
+  </div>
+
+  <div class="cover-meta">
+    <div class="meta-block">
+      <div class="l">Empresa</div>
+      <div class="v">{{NOME_DA_EMPRESA}}</div>
+    </div>
+    <div class="meta-block">
+      <div class="l">Período</div>
+      <div class="v">{{DATA_REFERENCIA}}</div>
+    </div>
+    <div class="meta-block">
+      <div class="l">Versão</div>
+      <div class="v">{{VERSAO_CURTA}}</div>
+    </div>
+    <div class="meta-block">
+      <div class="l">Processos</div>
+      <div class="v">{{TOTAL_PROCESSOS}}</div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================
+     P2 — SUMÁRIO (sem page numbers no MVP)
+     ==================================================================== -->
+<section class="page page--toc">
+  <h1>Sumário</h1>
+
+  <ol class="toc-list">
+    <li>
+      <span class="num">01</span>
+      <span class="title">Introdução</span>
+      <ul class="toc-sublist">
+        <li>Objetivo do diagrama</li>
+        <li>Contexto da empresa</li>
+        <li>Metodologia</li>
+      </ul>
+    </li>
+    <li>
+      <span class="num">02</span>
+      <span class="title">Cadeia de Valor (N1)</span>
+      <ul class="toc-sublist">
+        <li>Visão consolidada das 3 camadas</li>
+        <li>Processos gerenciais · primários · apoio</li>
+      </ul>
+    </li>
+    <li>
+      <span class="num">03</span>
+      <span class="title">Missão dos Processos (N2)</span>
+      <ul class="toc-sublist">
+        <li>Gerenciais ({{N_GERENCIAIS}})</li>
+        <li>Primários ({{N_PRIMARIOS}})</li>
+        <li>Apoio ({{N_APOIO}})</li>
+      </ul>
+    </li>
+    <li>
+      <span class="num">04</span>
+      <span class="title">Mapa de Interdependência (N3)</span>
+      <ul class="toc-sublist">
+        <li>Blueprint da arquitetura de negócio</li>
+        <li>Tabela de relações</li>
+        <li>Pontos de fricção</li>
+      </ul>
+    </li>
+    <li>
+      <span class="num">05</span>
+      <span class="title">Encerramento</span>
+      <ul class="toc-sublist">
+        <li>Próximos passos</li>
+        <li>Notas de iteração</li>
+      </ul>
+    </li>
+  </ol>
+</section>
+
+<!-- ====================================================================
+     P3 — INTRODUÇÃO (objetivo, contexto, metodologia)
+     ==================================================================== -->
+<section class="page intro-section">
+  <div class="pg-runner-header">
+    <span class="runner-l">01 · Introdução</span>
+    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
+  </div>
+
+  <div class="section-eyebrow-print">Documento Oficial · Mapeamento N1</div>
+  <h1 class="section-title-print">Cadeia de Valor <span class="accent">{{NOME_DA_EMPRESA}}</span></h1>
+  <p class="section-lead-print">{{LEDE_DOCUMENTO}}</p>
+
+  <div class="intro-grid">
+    <div class="intro-num">01</div>
+    <div>
+      <div class="intro-title">Objetivo do diagrama</div>
+      <div class="intro-text">{{OBJETIVO_DOCUMENTO}}</div>
+    </div>
+
+    <div class="intro-num">02</div>
+    <div>
+      <div class="intro-title">Contexto da empresa</div>
+      <div class="intro-text">{{CONTEXTO_EMPRESA}}</div>
+    </div>
+
+    <div class="intro-num">03</div>
+    <div>
+      <div class="intro-title">Metodologia</div>
+      <div class="intro-text">
+        Mapeamento conduzido em pipeline de 3 fases (entrevista crítica, BRIEFING.md
+        como single source of truth, produção dos artefatos), seguindo o framework
+        Porter de 3 camadas (Gerenciais · Primários · Apoio) e o design system
+        M7-2026 (TWK Everett, verde-caqui + lime + off-white). Análise crítica
+        aplicada em até 3 ciclos de iteração; bloqueadores aceitos documentados
+        em rationale auditável.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================
+     P4-5 — N1 CADEIA DE VALOR (retrato)
+     ==================================================================== -->
+<section class="page">
+  <div class="pg-runner-header">
+    <span class="runner-l">02 · Cadeia de Valor (N1)</span>
+    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
+  </div>
+
+  <div class="section-eyebrow-print">N1 · Visão consolidada</div>
+  <h1 class="section-title-print">Cadeia de Valor</h1>
+  <p class="section-lead-print">
+    {{TOTAL_PROCESSOS}} processos macro distribuídos em 3 camadas
+    (Gerenciais · Primários · Apoio). {{N_VERTICAIS}} verticais no núcleo
+    produtivo. Processos com foco estratégico marcados em lime.
+  </p>
+
+  <!-- DIAGRAMA N1 EMBEDADO (preenchido em Slice 6 — embed via Jinja include
+       ou cópia do bloco .chain-container do template N1) -->
+  <div class="n1-embed-container">
+    {{N1_DIAGRAMA_EMBEDADO}}
+  </div>
+</section>
+
+<!-- ====================================================================
+     P6 — ABERTURA "Missões dos processos"
+     ==================================================================== -->
+<section class="page">
+  <div class="section-cover">
+    <div class="sc-num">03</div>
+    <h1 class="sc-title">Missão dos processos</h1>
+    <p class="sc-lead">
+      Detalhamento de cada processo no formato SIPOC simplificado:
+      <strong>Inputs → Missão → Outputs</strong>, com Owner declarado.
+      Uma página por processo, agrupados em Gerenciais, Primários e Apoio.
+    </p>
+  </div>
+</section>
+
+<!-- ====================================================================
+     P7..N — UMA POR PROCESSO (N2 SIPOC)
+
+     Estrutura repetida para cada processo. A skill itera processos[] do
+     BRIEFING e gera um <article class="page process-page"> por processo.
+
+     Aqui apenas exemplo estrutural — Slice 6 substitui pela iteração real.
+     ==================================================================== -->
+
+<!-- INICIO BLOCO REPETIDO POR PROCESSO -->
+<article class="page process-page">
+  <div class="pg-runner-header">
+    <span class="runner-l">03 · Missão · {{CAMADA_LABEL}}</span>
+    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
+  </div>
+
+  <div class="pp-headline">
+    <span class="pp-code-prefix">{{CODIGO}}</span>
+    <span class="pp-name">{{NOME_PROCESSO}}</span>
+    <span class="pp-camada-tag">{{CAMADA}}</span>
+  </div>
+
+  <div class="pp-owner">
+    OWNER · <span class="v">{{OWNER}}</span>
+  </div>
+
+  <div class="sipoc-bloc">
+    <div class="sipoc-col sipoc-col-side">
+      <div class="sipoc-label">Inputs</div>
+      <div class="mp-chips">
+        {{CHIPS_INPUTS}}
+      </div>
+    </div>
+    <div></div>
+    <div class="sipoc-col sipoc-col-mission">
+      <div class="sipoc-label">Missão</div>
+      <p class="mp-mission-text">
+        <span class="verb">{{VERBO}}</span>
+        {{OBJETO}}
+        <em>para {{FINALIDADE}}</em>.
+      </p>
+    </div>
+    <div></div>
+    <div class="sipoc-col sipoc-col-side">
+      <div class="sipoc-label">Outputs</div>
+      <div class="mp-chips">
+        {{CHIPS_OUTPUTS}}
+      </div>
+    </div>
+  </div>
+</article>
+<!-- FIM BLOCO REPETIDO -->
+
+<!-- ====================================================================
+     P (N+1) — ABERTURA "Mapa de interdependência" (retrato)
+     ==================================================================== -->
+<section class="page">
+  <div class="section-cover">
+    <div class="sc-num">04</div>
+    <h1 class="sc-title">Mapa de <span class="accent" style="color: var(--lime);">interdependência</span></h1>
+    <p class="sc-lead">
+      Blueprint da arquitetura de negócio: como os {{TOTAL_PROCESSOS}} processos se
+      conectam, onde passa o cliente, onde existem fricções estruturais.
+      A página seguinte está em <strong>orientação landscape</strong>.
+    </p>
+  </div>
+</section>
+
+<!-- ====================================================================
+     P (N+2) — N3 MAPA NEURAL (LANDSCAPE)
+     ==================================================================== -->
+<section class="page page--landscape">
+  <div class="pg-runner-header">
+    <span class="runner-l">04 · Mapa de interdependência</span>
+    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
+  </div>
+
+  <div class="section-eyebrow-print">Blueprint da arquitetura · grafo de processos</div>
+  <h1 class="section-title-print" style="font-size: 18pt; margin-bottom: 4mm;">
+    Como os processos se conectam
+  </h1>
+
+  <!-- DIAGRAMA N3 EMBEDADO (preenchido em Slice 6) -->
+  <div class="neural-embed">
+    {{N3_DIAGRAMA_EMBEDADO}}
+  </div>
+</section>
+
+<!-- ====================================================================
+     P (N+3) — TABELA DE RELAÇÕES + LISTA DE FRICÇÕES (LANDSCAPE)
+     ==================================================================== -->
+<section class="page page--landscape">
+  <div class="pg-runner-header">
+    <span class="runner-l">04 · Mapa · Relações e fricções</span>
+    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
+  </div>
+
+  <div class="section-eyebrow-print">{{TOTAL_RELACOES}} relações · {{TOTAL_FRICCOES}} fricções</div>
+  <h1 class="section-title-print" style="font-size: 18pt; margin-bottom: 6mm;">
+    Tabela de relações
+  </h1>
+
+  <table class="relations-table">
+    <thead>
+      <tr>
+        <th style="width: 14mm;">De</th>
+        <th style="width: 14mm;">Para</th>
+        <th style="width: 22mm;">Tipo</th>
+        <th style="width: 18mm;">Força</th>
+        <th>O que flui</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{LINHAS_RELACOES}}
+    </tbody>
+  </table>
+
+  <div class="frictions-list">
+    <h2>Pontos de fricção</h2>
+    {{LISTA_FRICCOES}}
+  </div>
+</section>
+
+<!-- ====================================================================
+     P final — ENCERRAMENTO (retrato)
+     ==================================================================== -->
+<section class="page closing">
+  <div class="pg-runner-header">
+    <span class="runner-l">05 · Encerramento</span>
+    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
+  </div>
+
+  <div class="section-eyebrow-print">Próximos passos · Notas de iteração</div>
+  <h2>Para onde vamos a partir daqui</h2>
+  <p class="section-lead-print">
+    Este documento N1 fixa o entendimento macro da operação de {{NOME_DA_EMPRESA}}
+    em {{DATA_REFERENCIA}}. Para detalhar processos específicos, considere
+    aprofundar em N3 (subprocessos), N4 (atividades) e N5 (procedimentos),
+    seguindo a metodologia BPM CBOK.
+  </p>
+
+  <div class="closing-grid">
+    <div class="col">
+      <h3>Próximos passos sugeridos</h3>
+      <ul>
+        <li>Aprofundar N3 dos processos do núcleo produtivo</li>
+        <li>Resolver as fricções listadas (P2, P9, A1 — caso M7)</li>
+        <li>Mapear subprocessos críticos identificados</li>
+        <li>Revisar este documento ao fim de cada ciclo estratégico</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Notas de iteração</h3>
+      <ul>
+        {{LISTA_NOTAS_ITERACAO}}
+      </ul>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "m7-processos",
+  "version": "1.0.0",
+  "description": "Plugin M7 para mapeamento e gestão de processos no nível macro (N1). Conduz pipeline de 3 fases (entrevista crítica → BRIEFING.md → produção) com análise iterativa de até 3 ciclos, e gera 4 artefatos com design system M7-2026: Cadeia de Valor (N1, Porter 3 camadas), Missão SIPOC (N2), Mapa de Interdependência (N3, grafo neural) e Documento Oficial PDF paginado (N4) renderizado via Playwright.",
+  "author": {
+    "name": "Bruno Chiaramonti"
+  },
+  "homepage": "https://github.com/bchiaramonti/claude-plugins",
+  "repository": "https://github.com/bchiaramonti/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "m7",
+    "processos",
+    "gestao-processos",
+    "cadeia-de-valor",
+    "value-chain",
+    "sipoc",
+    "porter",
+    "mapeamento-n1",
+    "documento-oficial",
+    "pdf-paginado"
+  ]
+}

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Missão do Processo — {{NOME_DA_EMPRESA}}</title>
+
+<!--
+  ====================================================================
+  TEMPLATE: MISSÃO DO PROCESSO (SIPOC) — M7 Design System · 2026
+  ====================================================================
+  Página complementar à Cadeia de Valor (N1).
+  Para cada processo macro, apresenta de forma estática:
+      Inputs (chips)  →  Missão do processo  →  Outputs (chips)
+      + Owner / responsável
+
+  Estrutura:
+  - Header dark (mesmo do master, com tab "Missão do processo" ativa)
+  - Sidebar com lista de processos agrupados por camada
+  - Painel de detalhe à direita: SIPOC com Inputs · Missão · Outputs
+
+  Como usar:
+  1. Substitua placeholders {{...}} pelo conteúdo de cada processo.
+  2. Para fazer o seletor funcionar, mantenha:
+       - data-process-id em cada item da sidebar
+       - id correspondente em cada .sipoc-detail
+  3. Missão = "Verbo + objeto + finalidade".
+       Ex.: "Definir direcionamento de longo prazo para alinhar
+       investimentos a oportunidades estratégicas."
+  4. Inputs/Outputs = 3 a 6 chips curtos (1-3 palavras cada).
+  5. Owner = papel/cargo ou pessoa específica.
+  6. Esta versão de exemplo traz 3 processos preenchidos (G1, P3, A1)
+     e os demais como placeholder para você completar.
+  ====================================================================
+-->
+
+<link rel="icon" href="assets/m7-logo-favicon.png">
+<link rel="stylesheet" href="m7-tokens.css">
+<link rel="stylesheet" href="m7-header-dark.css">
+
+<style>
+  :root {
+    --lime-soft: rgba(238, 247, 124, 0.15);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    background: var(--off-white);
+    color: var(--vc-500);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 32px;
+    /* O shell ocupa toda a tela menos header/footer/padding */
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Sobrescreve a tab ativa do header — agora "Missão do processo" */
+  .m7-header-dark .h-e .tab.active { color: rgba(255,253,239,0.5); border-bottom-color: transparent; font-weight: 400; }
+  .m7-header-dark .h-e .tab.active .num { background: rgba(255,253,239,0.08); color: rgba(255,253,239,0.5); }
+  .m7-header-dark .h-e .tab[data-active="true"] {
+    color: var(--lime); border-bottom-color: var(--lime); font-weight: 500;
+  }
+  .m7-header-dark .h-e .tab[data-active="true"] .num { background: var(--lime); color: var(--vc-700); }
+
+  /* === LAYOUT DE 2 COLUNAS === */
+  .mp-shell {
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 20px;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* === SIDEBAR === */
+  .mp-sidebar {
+    background: var(--white);
+    border: 1px solid var(--vc-100);
+    border-radius: var(--radius);
+    padding: 6px;
+    align-self: stretch;
+    overflow-y: auto;
+  }
+
+  .mp-group { margin-bottom: 2px; }
+  .mp-group:last-child { margin-bottom: 0; }
+
+  .mp-group-label {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--vc-400);
+    padding: 8px 10px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .mp-group-label .count {
+    font-size: 9px; color: var(--vc-300); font-weight: 400; letter-spacing: 0.05em;
+  }
+
+  .mp-item {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    color: var(--vc-500);
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    font-size: 11.5px;
+    line-height: 1.3;
+  }
+  .mp-item:hover { background: var(--vc-50); }
+  .mp-item.active {
+    background: var(--vc-500);
+    color: var(--off-white);
+  }
+  .mp-item .code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--vc-400);
+    text-align: center;
+    padding: 2px 0;
+    border-radius: 3px;
+    background: var(--vc-50);
+  }
+  .mp-item.active .code { background: var(--lime); color: var(--vc-700); }
+
+  /* === PANEL DE DETALHE === */
+  .mp-detail-wrap { min-width: 0; display: flex; flex-direction: column; }
+  .mp-detail { display: none; animation: mp-fade 0.2s ease; flex-direction: column; flex: 1; min-height: 0; }
+  .mp-detail.active { display: flex; }
+  @keyframes mp-fade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === BREADCRUMB / HEADLINE DO PROCESSO === */
+  .mp-headline {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 24px; margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+  .mp-headline .left { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .mp-process-name {
+    font-size: 28px; font-weight: 400; letter-spacing: -0.5px;
+    color: var(--vc-700); line-height: 1.15;
+  }
+  .mp-process-name .code {
+    color: var(--vc-300); font-weight: 400; margin-right: 12px;
+    font-feature-settings: "tnum";
+  }
+  .mp-layer-tag {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--verde-claro);
+  }
+
+  /* === OWNER === minimalista, inline com o título */
+  .mp-owner {
+    display: inline-flex; align-items: baseline; gap: 10px;
+    white-space: nowrap;
+  }
+  .mp-owner .label {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--vc-400);
+  }
+  .mp-owner .name {
+    font-size: 14px; color: var(--vc-700); font-weight: 500;
+  }
+
+  /* === SIPOC GRID — 3 COLUNAS === */
+  .sipoc {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 32px minmax(280px, 2.4fr) 32px minmax(0, 1fr);
+    gap: 0;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .sipoc-col {
+    background: var(--white);
+    border: 1px solid var(--vc-100);
+    border-radius: var(--radius);
+    padding: 24px;
+    min-width: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  .sipoc-col.mission {
+    background: var(--vc-700);
+    color: var(--off-white);
+    border-color: var(--vc-700);
+    position: relative;
+    overflow: hidden;
+  }
+  .sipoc-col.mission::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 3px; background: var(--lime);
+  }
+
+  .sipoc-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--vc-400);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sipoc-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--vc-100);
+  }
+  .sipoc-col.mission .sipoc-label { color: rgba(255,253,239,0.5); }
+  .sipoc-col.mission .sipoc-label::after { background: rgba(255,253,239,0.15); }
+
+  /* === MISSION TEXT === */
+  .mp-mission {
+    font-size: 22px;
+    font-weight: 300;
+    line-height: 1.45;
+    letter-spacing: -0.3px;
+    color: var(--off-white);
+    text-align: left;
+    text-wrap: pretty;
+    align-self: center;          /* centraliza verticalmente o texto da missão */
+  }
+  .mp-mission .verb { color: var(--lime); font-weight: 500; }
+  .mp-mission em { font-style: normal; color: rgba(255,253,239,0.85); }
+
+  /* === CHIPS (Inputs / Outputs) === */
+  .mp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: center;        /* centraliza chips verticalmente */
+    justify-content: flex-start;
+    min-width: 0;
+  }
+  .mp-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--vc-700);
+    background: var(--vc-50);
+    border: 1px solid var(--vc-100);
+    border-radius: 999px;
+    line-height: 1.3;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .mp-chip::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--vc-300);
+  }
+  .sipoc-col:first-child .mp-chip::before { background: var(--verde-claro); }
+  .sipoc-col:last-child .mp-chip::before { background: var(--lime); }
+
+  /* === ARROWS ENTRE COLUNAS === */
+  .sipoc-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+  }
+  .sipoc-arrow svg { width: 22px; height: 22px; opacity: 0.4; }
+  .sipoc-arrow svg path { stroke: var(--vc-500); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* === NOTA / EMPTY === */
+  .mp-empty {
+    background: var(--white);
+    border: 1px dashed var(--vc-200);
+    border-radius: var(--radius);
+    padding: 48px;
+    text-align: center;
+    color: var(--vc-400);
+  }
+  .mp-empty .ic { font-size: 22px; color: var(--vc-300); margin-bottom: 8px; font-family: ui-monospace, monospace; }
+
+  /* === FOOTER === */
+  .mp-footer {
+    max-width: 1280px;
+    width: 100%;
+    margin: 16px auto 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--vc-100);
+    display: flex; justify-content: space-between; gap: 16px;
+    font-size: 11px; color: var(--verde-claro);
+    flex-wrap: wrap;
+  }
+
+  @media print {
+    .mp-shell { grid-template-columns: 1fr; }
+    .mp-sidebar { display: none; }
+    .mp-detail { display: block !important; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER · E · Documento com abas (dark)  — tab Missão ativa
+     ============================================================ -->
+<div class="m7-header-dark">
+  <div class="doc-meta">
+    <img src="assets/m7-logo-offwhite.png" alt="{{NOME_DA_EMPRESA}}">
+    <div class="meta">
+      <span>{{AREA_DOCUMENTO}}</span><span class="dot"></span>
+      <span>Documento N1</span><span class="dot"></span>
+      <span>{{DATA_REFERENCIA}}</span>
+    </div>
+  </div>
+  <div class="h-e">
+    <div class="body">
+      <div>
+        <h1>Missão <span class="accent">do processo</span></h1>
+        <p class="lede">SIPOC macro de cada processo da cadeia de valor: o que entra, qual a missão, o que sai. Selecione um processo na lista ao lado.</p>
+      </div>
+      <div class="strip">
+        <div class="cell"><div class="v">{{TOTAL_PROCESSOS}}</div><div class="l">Processos</div></div>
+        <div class="cell"><div class="v">3</div><div class="l">Camadas</div></div>
+        <div class="cell"><div class="v">SIPOC</div><div class="l">Modelo</div></div>
+        <div class="cell"><div class="v">{{VERSAO_CURTA}}</div><div class="l">Versão</div></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <a class="tab" href="exemplo-m7-preenchido.html">Visão geral <span class="num">N1</span></a>
+      <div class="tab" data-active="true">Missão do processo</div>
+      <a class="tab" href="template-mapa-de-interdependencia.html">Mapa de interdependência</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SHELL · sidebar + detalhe
+     ============================================================ -->
+<div class="mp-shell">
+
+  <!-- ─── SIDEBAR ─── -->
+  <aside class="mp-sidebar" aria-label="Lista de processos">
+
+    <div class="mp-group">
+      <div class="mp-group-label">Gerenciais <span class="count">4</span></div>
+      <button class="mp-item active" data-process-id="G1"><span class="code">G1</span><span>Planejamento Estratégico</span></button>
+      <button class="mp-item" data-process-id="G2"><span class="code">G2</span><span>Gestão de Performance</span></button>
+      <button class="mp-item" data-process-id="G3"><span class="code">G3</span><span>Compliance &amp; Risco</span></button>
+      <button class="mp-item" data-process-id="G4"><span class="code">G4</span><span>Gestão Orçamentária</span></button>
+    </div>
+
+    <div class="mp-group">
+      <div class="mp-group-label">Primários <span class="count">9</span></div>
+      <button class="mp-item" data-process-id="P1"><span class="code">P1</span><span>Geração de Demanda</span></button>
+      <button class="mp-item" data-process-id="P2"><span class="code">P2</span><span>Aquisição &amp; Onboarding</span></button>
+      <button class="mp-item" data-process-id="P3"><span class="code">P3</span><span>Investimentos</span></button>
+      <button class="mp-item" data-process-id="P4"><span class="code">P4</span><span>Crédito</span></button>
+      <button class="mp-item" data-process-id="P5"><span class="code">P5</span><span>Seguros</span></button>
+      <button class="mp-item" data-process-id="P6"><span class="code">P6</span><span>Consórcio</span></button>
+      <button class="mp-item" data-process-id="P7"><span class="code">P7</span><span>Câmbio &amp; Internacional</span></button>
+      <button class="mp-item" data-process-id="P8"><span class="code">P8</span><span>Previdência</span></button>
+      <button class="mp-item" data-process-id="P9"><span class="code">P9</span><span>Customer Success</span></button>
+    </div>
+
+    <div class="mp-group">
+      <div class="mp-group-label">Apoio <span class="count">5</span></div>
+      <button class="mp-item" data-process-id="A1"><span class="code">A1</span><span>Tecnologia &amp; Dados</span></button>
+      <button class="mp-item" data-process-id="A2"><span class="code">A2</span><span>Pessoas &amp; Cultura</span></button>
+      <button class="mp-item" data-process-id="A3"><span class="code">A3</span><span>Financeiro &amp; Contábil</span></button>
+      <button class="mp-item" data-process-id="A4"><span class="code">A4</span><span>Jurídico</span></button>
+      <button class="mp-item" data-process-id="A5"><span class="code">A5</span><span>Marketing &amp; Marca</span></button>
+    </div>
+  </aside>
+
+  <!-- ─── DETALHE ─── -->
+  <main class="mp-detail-wrap">
+
+    <!-- ============================================================
+         G1 · Planejamento Estratégico (AMOSTRA PREENCHIDA)
+         ============================================================ -->
+    <article class="mp-detail active" id="detail-G1">
+      <div class="mp-headline">
+        <div class="left">
+          <div class="mp-layer-tag">Camada gerencial</div>
+          <h2 class="mp-process-name"><span class="code">G1</span>Planejamento Estratégico</h2>
+        </div>
+        <div class="mp-owner">
+          <span class="label">Owner</span>
+          <span class="name">CEO &middot; Comitê Estratégico</span>
+        </div>
+      </div>
+
+      <div class="sipoc">
+        <div class="sipoc-col">
+          <div class="sipoc-label">Inputs</div>
+          <div class="mp-chips">
+            <span class="mp-chip">Cenário macro</span>
+            <span class="mp-chip">Análise SWOT</span>
+            <span class="mp-chip">Resultados consolidados</span>
+            <span class="mp-chip">Voz do cliente</span>
+            <span class="mp-chip">Benchmark setorial</span>
+            <span class="mp-chip">Metas dos sócios</span>
+          </div>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+
+        <div class="sipoc-col mission">
+          <div class="sipoc-label">Missão</div>
+          <p class="mp-mission"><span class="verb">Definir</span> o direcionamento estratégico de longo prazo para <em>alinhar investimentos, estrutura e cultura às oportunidades de mercado.</em></p>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+
+        <div class="sipoc-col">
+          <div class="sipoc-label">Outputs</div>
+          <div class="mp-chips">
+            <span class="mp-chip">Plano estratégico 5 anos</span>
+            <span class="mp-chip">Portfólio de iniciativas</span>
+            <span class="mp-chip">OKRs corporativos</span>
+            <span class="mp-chip">Metas por vertical</span>
+            <span class="mp-chip">Tese de M&amp;A</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ============================================================
+         G2 · Gestão de Performance (placeholder)
+         ============================================================ -->
+    <article class="mp-detail" id="detail-G2">
+      <div class="mp-headline">
+        <div class="left">
+          <div class="mp-layer-tag">Camada gerencial</div>
+          <h2 class="mp-process-name"><span class="code">G2</span>Gestão de Performance</h2>
+        </div>
+        <div class="mp-owner"><span class="label">Owner</span><span class="name">{{OWNER_G2}}</span></div>
+      </div>
+      <div class="sipoc">
+        <div class="sipoc-col">
+          <div class="sipoc-label">Inputs</div>
+          <div class="mp-chips">
+            <span class="mp-chip">{{INPUT_G2_1}}</span>
+            <span class="mp-chip">{{INPUT_G2_2}}</span>
+            <span class="mp-chip">{{INPUT_G2_3}}</span>
+          </div>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+        <div class="sipoc-col mission">
+          <div class="sipoc-label">Missão</div>
+          <p class="mp-mission"><span class="verb">{{VERBO_G2}}</span> {{OBJETO_G2}} <em>{{FINALIDADE_G2}}</em></p>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+        <div class="sipoc-col">
+          <div class="sipoc-label">Outputs</div>
+          <div class="mp-chips">
+            <span class="mp-chip">{{OUTPUT_G2_1}}</span>
+            <span class="mp-chip">{{OUTPUT_G2_2}}</span>
+            <span class="mp-chip">{{OUTPUT_G2_3}}</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ============================================================
+         P3 · Investimentos (AMOSTRA PREENCHIDA)
+         ============================================================ -->
+    <article class="mp-detail" id="detail-P3">
+      <div class="mp-headline">
+        <div class="left">
+          <div class="mp-layer-tag">Camada primária &middot; Vertical</div>
+          <h2 class="mp-process-name"><span class="code">P3</span>Investimentos</h2>
+        </div>
+        <div class="mp-owner"><span class="label">Owner</span><span class="name">Head de Investimentos</span></div>
+      </div>
+      <div class="sipoc">
+        <div class="sipoc-col">
+          <div class="sipoc-label">Inputs</div>
+          <div class="mp-chips">
+            <span class="mp-chip">Cliente onboarded</span>
+            <span class="mp-chip">Suitability</span>
+            <span class="mp-chip">Carteira atual</span>
+            <span class="mp-chip">Recomendações de research</span>
+            <span class="mp-chip">Cenário macro</span>
+          </div>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+        <div class="sipoc-col mission">
+          <div class="sipoc-label">Missão</div>
+          <p class="mp-mission"><span class="verb">Construir e gerir</span> carteiras de investimento personalizadas <em>para fazer o patrimônio do cliente crescer dentro do seu perfil de risco.</em></p>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+        <div class="sipoc-col">
+          <div class="sipoc-label">Outputs</div>
+          <div class="mp-chips">
+            <span class="mp-chip">Carteira recomendada</span>
+            <span class="mp-chip">Ordens executadas</span>
+            <span class="mp-chip">Rebalanceamento</span>
+            <span class="mp-chip">Relatório de performance</span>
+            <span class="mp-chip">Receita de assessoria</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ============================================================
+         A1 · Tecnologia & Dados (AMOSTRA PREENCHIDA)
+         ============================================================ -->
+    <article class="mp-detail" id="detail-A1">
+      <div class="mp-headline">
+        <div class="left">
+          <div class="mp-layer-tag">Camada de apoio</div>
+          <h2 class="mp-process-name"><span class="code">A1</span>Tecnologia &amp; Dados</h2>
+        </div>
+        <div class="mp-owner"><span class="label">Owner</span><span class="name">CTO</span></div>
+      </div>
+      <div class="sipoc">
+        <div class="sipoc-col">
+          <div class="sipoc-label">Inputs</div>
+          <div class="mp-chips">
+            <span class="mp-chip">Demanda das verticais</span>
+            <span class="mp-chip">Roadmap de produto</span>
+            <span class="mp-chip">SLAs operacionais</span>
+            <span class="mp-chip">Eventos de segurança</span>
+          </div>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+        <div class="sipoc-col mission">
+          <div class="sipoc-label">Missão</div>
+          <p class="mp-mission"><span class="verb">Operar e evoluir</span> a plataforma tecnológica e de dados <em>para que toda a operação rode com confiabilidade, segurança e velocidade de decisão.</em></p>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></div>
+        <div class="sipoc-col">
+          <div class="sipoc-label">Outputs</div>
+          <div class="mp-chips">
+            <span class="mp-chip">Sistemas no ar</span>
+            <span class="mp-chip">Dashboards de gestão</span>
+            <span class="mp-chip">Integrações ativas</span>
+            <span class="mp-chip">Backup &amp; recuperação</span>
+            <span class="mp-chip">Postura de segurança</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ============================================================
+         Outros processos — placeholder genérico
+         ============================================================ -->
+    <article class="mp-detail" id="detail-G3"><div class="mp-empty"><div class="ic">G3</div><div>Compliance &amp; Risco · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-G4"><div class="mp-empty"><div class="ic">G4</div><div>Gestão Orçamentária · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-P1"><div class="mp-empty"><div class="ic">P1</div><div>Geração de Demanda · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-P2"><div class="mp-empty"><div class="ic">P2</div><div>Aquisição &amp; Onboarding · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-P4"><div class="mp-empty"><div class="ic">P4</div><div>Crédito · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-P5"><div class="mp-empty"><div class="ic">P5</div><div>Seguros · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-P6"><div class="mp-empty"><div class="ic">P6</div><div>Consórcio · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-P7"><div class="mp-empty"><div class="ic">P7</div><div>Câmbio &amp; Internacional · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-P8"><div class="mp-empty"><div class="ic">P8</div><div>Previdência · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-P9"><div class="mp-empty"><div class="ic">P9</div><div>Customer Success · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-A2"><div class="mp-empty"><div class="ic">A2</div><div>Pessoas &amp; Cultura · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-A3"><div class="mp-empty"><div class="ic">A3</div><div>Financeiro &amp; Contábil · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-A4"><div class="mp-empty"><div class="ic">A4</div><div>Jurídico · A preencher.</div></div></article>
+    <article class="mp-detail" id="detail-A5"><div class="mp-empty"><div class="ic">A5</div><div>Marketing &amp; Marca · A preencher.</div></div></article>
+
+  </main>
+</div>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<div class="mp-footer">
+  <p>{{NOME_DA_EMPRESA}} &middot; {{DATA_REFERENCIA}} &middot; SIPOC macro por processo</p>
+  <p>Inputs &rarr; Missão &rarr; Outputs · Owner = papel responsável</p>
+</div>
+
+<!-- ============================================================
+     SCRIPT — seletor de processo
+     ============================================================ -->
+<script>
+(function () {
+  const items = document.querySelectorAll('.mp-item');
+  const details = document.querySelectorAll('.mp-detail');
+
+  function activate(id) {
+    items.forEach(it => it.classList.toggle('active', it.dataset.processId === id));
+    details.forEach(d => d.classList.toggle('active', d.id === 'detail-' + id));
+    // Persist seleção (URL hash) para refresh manter o processo
+    if (history.replaceState) history.replaceState(null, '', '#' + id);
+  }
+
+  items.forEach(it => {
+    it.addEventListener('click', () => activate(it.dataset.processId));
+  });
+
+  // Suporte a deep-link via hash
+  const fromHash = (location.hash || '').replace('#', '');
+  if (fromHash && document.getElementById('detail-' + fromHash)) {
+    activate(fromHash);
+  }
+})();
+</script>
+
+</body>
+</html>

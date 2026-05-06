@@ -1,0 +1,718 @@
+#!/usr/bin/env python3
+"""mapeamento-n1 · gera N1, N2, N3 e N4 a partir do BRIEFING.md.
+
+Le BRIEFING.md, valida com check_briefing.py, e gera os artefatos solicitados
+em `artefatos_a_gerar`. Para N4, invoca build_n4.py + render_pdf.py.
+
+Uso:
+    python3 build_artifacts.py <briefing.md> <output_dir>
+    python3 build_artifacts.py <briefing.md> <output_dir> --skip-pdf
+    python3 build_artifacts.py <briefing.md> <output_dir> --skill-dir <path>
+
+Pipeline:
+    BRIEFING.md
+      ├─ N1 → cadeia-de-valor-{slug}.html
+      ├─ N2 → missao-do-processo-{slug}.html       (se em artefatos)
+      ├─ N3 → mapa-de-interdependencia-{slug}.html (se em artefatos)
+      └─ N4 → documento-oficial-{slug}.html
+              └─ render_pdf.py → documento-oficial-{slug}.pdf
+
+Exit codes:
+    0 = ok
+    1 = erro de geracao
+    2 = erro de uso
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:
+    sys.stderr.write("ERRO: PyYAML nao instalado.\n")
+    sys.exit(2)
+
+
+# ============================================================================
+# Constantes
+# ============================================================================
+
+# data-layer no N3 = derivado de processos[].camada + n3.coluna
+LAYER_MAP = {
+    "gerencial": "G",
+    "front": "P-front",
+    "nucleo-l": "P-core",
+    "nucleo-r": "P-core",
+    "back": "P-back",
+    "apoio": "A",
+}
+
+EDGE_CLASS_MAP = {
+    ("cliente", "strong"): "e-cliente-strong",
+    ("cliente", "mid"):    "e-cliente-mid",
+    ("cliente", "soft"):   "e-cliente-soft",
+    ("info", None):        "e-info",
+    ("decisao", None):     "e-decisao",
+}
+
+
+# ============================================================================
+# Helpers
+# ============================================================================
+
+
+def parse_briefing(path: Path) -> tuple[dict, str]:
+    text = path.read_text(encoding="utf-8")
+    m = re.match(r"^---\n(.*?)\n---\n(.*)", text, re.DOTALL)
+    if not m:
+        raise ValueError("Frontmatter YAML nao encontrado.")
+    return yaml.safe_load(m.group(1)) or {}, m.group(2)
+
+
+def escape_html(s) -> str:
+    if not isinstance(s, str):
+        s = str(s)
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;")
+             .replace('"', "&quot;"))
+
+
+def extract_section(body: str, heading: str) -> str:
+    pattern = rf"##\s+{re.escape(heading)}\s*\n(.*?)(?=\n##\s|$)"
+    m = re.search(pattern, body, re.DOTALL)
+    if not m:
+        return ""
+    content = m.group(1).strip()
+    content = re.sub(r"<!--.*?-->", "", content, flags=re.DOTALL).strip()
+    return content
+
+
+def copy_assets(skill_dir: Path, output_dir: Path) -> None:
+    templates_dir = skill_dir / "templates"
+    for css in ["m7-tokens.css", "m7-header-dark.css", "m7-print.css"]:
+        src = templates_dir / css
+        if src.is_file():
+            shutil.copy2(src, output_dir / css)
+    for sub in ["fonts", "assets"]:
+        src = templates_dir / sub
+        dst = output_dir / sub
+        if src.is_dir() and not dst.exists():
+            shutil.copytree(src, dst)
+
+
+def percent_to_svg(left_pct: float, top_pct: float,
+                   svg_w: int = 1000, svg_h: int = 600) -> tuple[float, float]:
+    """Converte % do canvas neural para coordenadas no viewBox SVG."""
+    return (left_pct / 100.0 * svg_w, top_pct / 100.0 * svg_h)
+
+
+def bezier_path(x1: float, y1: float, x2: float, y2: float) -> str:
+    """Curva Bezier suave entre dois pontos."""
+    cx1 = x1 + (x2 - x1) * 0.4
+    cy1 = y1
+    cx2 = x2 - (x2 - x1) * 0.4
+    cy2 = y2
+    return f"M {x1:.0f} {y1:.0f} C {cx1:.0f} {cy1:.0f}, {cx2:.0f} {cy2:.0f}, {x2:.0f} {y2:.0f}"
+
+
+def validate_briefing(briefing_path: Path, skill_dir: Path) -> bool:
+    """Roda check_briefing.py. Devolve True se ok=true."""
+    check_script = skill_dir / "scripts" / "check_briefing.py"
+    if not check_script.is_file():
+        sys.stderr.write(f"WARN: check_briefing.py nao encontrado em {check_script}\n")
+        return True
+
+    result = subprocess.run(
+        [sys.executable, str(check_script), str(briefing_path), "--json"],
+        capture_output=True, text=True,
+    )
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        sys.stderr.write(f"WARN: check_briefing.py output nao parseado:\n{result.stdout[:200]}\n")
+        return True
+    if not data.get("ok"):
+        sys.stderr.write("BLOQUEADORES detectados:\n")
+        for b in data.get("bloqueadores", []):
+            sys.stderr.write(f"  [{b['rule_id']}] {b['where']}: {b['message']}\n")
+        return False
+    avisos = data.get("avisos", [])
+    if avisos:
+        sys.stderr.write(f"AVISOS ({len(avisos)}, geracao prossegue):\n")
+        for a in avisos[:5]:
+            sys.stderr.write(f"  [{a['rule_id']}] {a['where']}\n")
+        if len(avisos) > 5:
+            sys.stderr.write(f"  ... mais {len(avisos)-5} aviso(s)\n")
+    return True
+
+
+# ============================================================================
+# Build N1
+# ============================================================================
+
+
+def build_n1(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path) -> Path:
+    """Gera cadeia-de-valor-{slug}.html a partir do BRIEFING."""
+    empresa = briefing_fm.get("empresa", {})
+    slug = empresa.get("slug", "empresa")
+    n1 = briefing_fm.get("n1", {})
+    variante = n1.get("variante", "A")
+    contagens = n1.get("contagens", {})
+    processos = briefing_fm.get("processos") or []
+
+    # Selecionar template
+    template_name = (
+        "template-cadeia-de-valor.html" if variante == "A"
+        else "template-cadeia-de-valor--linear.html"
+    )
+    template = (skill_dir / "templates" / template_name).read_text(encoding="utf-8")
+
+    # Substituicoes globais
+    artefatos = set(briefing_fm.get("artefatos_a_gerar") or [])
+    n2_link = (f'<a class="tab" href="missao-do-processo-{slug}.html">Missao do processo</a>'
+               if "n2" in artefatos else
+               '<div class="tab">Missao do processo</div>')
+    n3_link = (f'<a class="tab" href="mapa-de-interdependencia-{slug}.html">Mapa de interdependencia</a>'
+               if "n3" in artefatos else
+               '<div class="tab">Mapa de interdependencia</div>')
+
+    # Total de verticais (variante A: subcamada=nucleo, variante B: total primarios)
+    if variante == "A":
+        n_verticais = sum(1 for p in processos
+                          if p.get("camada") == "primario" and p.get("subcamada") == "nucleo")
+    else:
+        n_verticais = contagens.get("primarios", 0)
+
+    replacements = {
+        "{{NOME_DA_EMPRESA}}": escape_html(empresa.get("nome", "")),
+        "{{AREA_DOCUMENTO}}": escape_html(briefing_fm.get("area_documento", "")),
+        "{{DATA_REFERENCIA}}": escape_html(briefing_fm.get("data_referencia", "")),
+        "{{LEDE_DOCUMENTO}}": escape_html(extract_section(body_md, "Lede do documento")),
+        "{{TOTAL_PROCESSOS}}": str(n1.get("total_processos", len(processos))),
+        "{{N_VERTICAIS}}": str(n_verticais),
+        "{{VERSAO_CURTA}}": escape_html(briefing_fm.get("versao", "")),
+        "{{N_GERENCIAIS}}": str(contagens.get("gerenciais", 0)),
+        "{{N_PRIMARIOS}}": str(contagens.get("primarios", 0)),
+        "{{N_APOIO}}": str(contagens.get("apoio", 0)),
+    }
+
+    # Variante A: rotulo do nucleo
+    if variante == "A":
+        replacements["{{ROTULO_NUCLEO}}"] = escape_html(n1.get("rotulo_nucleo", "Verticais"))
+
+    # Substituir tabs (template ja tem <a class="tab" href="..."> ou <div class="tab">)
+    template = re.sub(
+        r'<a class="tab" href="template-missao-do-processo\.html">Missão do processo</a>',
+        n2_link, template,
+    )
+    template = re.sub(
+        r'<a class="tab" href="template-mapa-de-interdependencia\.html">Mapa de interdependência</a>',
+        n3_link, template,
+    )
+    # Variante linear tem div ao inves de a
+    template = re.sub(
+        r'<div class="tab">Missão do processo</div>',
+        n2_link if "n2" in artefatos else '<div class="tab">Missão do processo</div>',
+        template,
+    )
+    template = re.sub(
+        r'<div class="tab">Mapa de interdependência</div>',
+        n3_link if "n3" in artefatos else '<div class="tab">Mapa de interdependência</div>',
+        template,
+    )
+
+    # Por processo: substitui placeholders por codigo
+    for p in processos:
+        codigo = p.get("codigo", "")
+        nome = p.get("nome", "")
+        tooltip = p.get("tooltip") or []
+        # Tooltip linhas (até 3)
+        linhas = (tooltip + ["", "", ""])[:3]
+        replacements[f"{{{{NOME_PROCESSO_{codigo}}}}}"] = escape_html(nome)
+        replacements[f"{{{{NOME_{codigo}}}}}"] = escape_html(nome)  # variante linear
+        replacements[f"{{{{LINHA_1_{codigo}}}}}"] = escape_html(linhas[0])
+        replacements[f"{{{{LINHA_2_{codigo}}}}}"] = escape_html(linhas[1])
+        replacements[f"{{{{LINHA_3_{codigo}}}}}"] = escape_html(linhas[2])
+        if p.get("camada") == "gerencial":
+            replacements[f"{{{{FREQUENCIA_{codigo}}}}}"] = escape_html(p.get("frequencia", ""))
+        # Variante linear: tooltip completa em uma linha
+        tooltip_full = "<br>".join(escape_html(l) for l in tooltip)
+        replacements[f"{{{{TOOLTIP_{codigo}}}}}"] = tooltip_full
+
+    for k, v in replacements.items():
+        template = template.replace(k, v)
+
+    # Aplicar classes CSS extra (highlight / blue-accent) — substituicao por regex
+    for p in processos:
+        codigo = p.get("codigo", "")
+        if not codigo:
+            continue
+        # Procurar `<div class="process-box">\n        <div class="code">{codigo}</div>` e ajustar classe
+        if p.get("highlight"):
+            template = re.sub(
+                rf'<div class="process-box">(\s*<div class="code">{re.escape(codigo)}</div>)',
+                rf'<div class="process-box highlight">\1',
+                template, count=1,
+            )
+        elif p.get("blue_accent"):
+            template = re.sub(
+                rf'<div class="process-box">(\s*<div class="code">{re.escape(codigo)}</div>)',
+                rf'<div class="process-box blue-accent">\1',
+                template, count=1,
+            )
+
+    # Salvar
+    output_path = output_dir / f"cadeia-de-valor-{slug}.html"
+    output_path.write_text(template, encoding="utf-8")
+    return output_path
+
+
+# ============================================================================
+# Build N2 (sidebar + paineis SIPOC)
+# ============================================================================
+
+
+def build_n2(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path) -> Path:
+    empresa = briefing_fm.get("empresa", {})
+    slug = empresa.get("slug", "empresa")
+    n1 = briefing_fm.get("n1", {})
+    contagens = n1.get("contagens", {})
+    processos = briefing_fm.get("processos") or []
+    artefatos = set(briefing_fm.get("artefatos_a_gerar") or [])
+
+    template = (skill_dir / "templates" / "template-missao-do-processo.html").read_text(encoding="utf-8")
+
+    # Header global
+    n_verticais = sum(1 for p in processos
+                      if p.get("camada") == "primario" and p.get("subcamada") == "nucleo")
+    if n1.get("variante") == "B":
+        n_verticais = contagens.get("primarios", 0)
+
+    n1_link = f'<a class="tab" href="cadeia-de-valor-{slug}.html">Visao geral</a>'
+    n3_link = (f'<a class="tab" href="mapa-de-interdependencia-{slug}.html">Mapa de interdependencia</a>'
+               if "n3" in artefatos else
+               '<div class="tab">Mapa de interdependencia</div>')
+
+    # Replacements globais (chama mesmos placeholders)
+    template = template.replace("{{NOME_DA_EMPRESA}}", escape_html(empresa.get("nome", "")))
+    template = template.replace("{{AREA_DOCUMENTO}}", escape_html(briefing_fm.get("area_documento", "")))
+    template = template.replace("{{DATA_REFERENCIA}}", escape_html(briefing_fm.get("data_referencia", "")))
+    template = template.replace("{{TOTAL_PROCESSOS}}", str(n1.get("total_processos", len(processos))))
+    template = template.replace("{{N_VERTICAIS}}", str(n_verticais))
+    template = template.replace("{{VERSAO_CURTA}}", escape_html(briefing_fm.get("versao", "")))
+    template = template.replace("{{LEDE_DOCUMENTO}}", escape_html(extract_section(body_md, "Lede do documento")))
+
+    # Sidebar items + Painel SIPOC: vamos parsear o template para identificar onde injetar
+    # Heuristica: no template, ha sidebar com lista de processos e painel de detalhes.
+    # Para nao reescrever o template, fazemos uma estrategia simples: o template sera entregue
+    # com todos os processos do BRIEFING substituidos diretamente nos placeholders existentes.
+
+    # Estrategia robusta: gerar HTML completo via reescrita das duas areas chave (sidebar + painel)
+    # usando BeautifulSoup
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(template, "html.parser")
+
+    # 1) Sidebar: lista os processos agrupados em camadas
+    sidebar = soup.find("aside", class_="mp-sidebar") or soup.find("aside")
+    if sidebar:
+        # Substituir conteudo da sidebar
+        sidebar_html = render_n2_sidebar(processos)
+        new_sidebar = BeautifulSoup(sidebar_html, "html.parser")
+        sidebar.clear()
+        for child in list(new_sidebar.contents):
+            sidebar.append(child)
+
+    # 2) Paineis SIPOC: o template tem os paineis hardcoded por processo M7 — substituir todos
+    # Vou procurar todas <article id="..."> e substituir pelos do BRIEFING
+    main_panel = soup.find("main", class_="mp-main") or soup.find("main")
+    if main_panel:
+        # Limpar artigos existentes (M7 hardcoded)
+        for art in main_panel.find_all("article"):
+            art.decompose()
+        # Adicionar novos
+        panels_html = render_n2_panels(processos)
+        new_panels = BeautifulSoup(panels_html, "html.parser")
+        for child in list(new_panels.contents):
+            main_panel.append(child)
+
+    # Tabs
+    for tab in soup.find_all(class_="tab"):
+        text = tab.get_text(strip=True).lower()
+        if "visao geral" in text or "visão geral" in text:
+            tab.name = "a"
+            tab.attrs["href"] = f"cadeia-de-valor-{slug}.html"
+            tab.attrs["class"] = ["tab"]
+        elif "mapa" in text:
+            if "n3" in artefatos:
+                tab.name = "a"
+                tab.attrs["href"] = f"mapa-de-interdependencia-{slug}.html"
+                tab.attrs["class"] = ["tab"]
+
+    template = str(soup)
+    output_path = output_dir / f"missao-do-processo-{slug}.html"
+    output_path.write_text(template, encoding="utf-8")
+    return output_path
+
+
+def render_n2_sidebar(processos: list) -> str:
+    """HTML da sidebar do N2: 3 grupos (Gerenciais / Primarios / Apoio)."""
+    html = ['<header class="mp-sidebar-h">Processos</header>']
+    for camada, label in [("gerencial", "Gerenciais"), ("primario", "Primarios"), ("apoio", "Apoio")]:
+        items = [p for p in processos if p.get("camada") == camada]
+        if not items:
+            continue
+        html.append(f'<div class="mp-group"><h4>{escape_html(label)}</h4><ul>')
+        for p in items:
+            codigo = p.get("codigo", "")
+            nome = p.get("nome", "")
+            html.append(
+                f'<li data-code="{escape_html(codigo)}"><a href="#{escape_html(codigo)}">'
+                f'<span class="code">{escape_html(codigo)}</span> {escape_html(nome)}</a></li>'
+            )
+        html.append("</ul></div>")
+    return "\n".join(html)
+
+
+def render_n2_panels(processos: list) -> str:
+    """Cada processo vira um <article id='codigo' class='mp-process-page'>."""
+    panels = []
+    for p in processos:
+        sipoc = p.get("sipoc")
+        if not sipoc:
+            continue
+        codigo = p.get("codigo", "")
+        nome = p.get("nome", "")
+        camada = p.get("camada", "")
+        owner = sipoc.get("owner", "")
+        verbo = sipoc.get("verbo", "")
+        objeto = sipoc.get("objeto", "")
+        finalidade = sipoc.get("finalidade", "")
+        finalidade_clean = re.sub(r"^para\s+", "", finalidade, flags=re.IGNORECASE).strip()
+        chips_in = "\n".join(f'<div class="mp-chip">{escape_html(c)}</div>' for c in sipoc.get("inputs") or [])
+        chips_out = "\n".join(f'<div class="mp-chip">{escape_html(c)}</div>' for c in sipoc.get("outputs") or [])
+
+        panels.append(f"""<article id="{escape_html(codigo)}" class="mp-process-page">
+  <div class="mp-headline">
+    <h2><span class="code-prefix">{escape_html(codigo)}</span> {escape_html(nome)}</h2>
+    <span class="mp-camada-tag">{escape_html(camada.title())}</span>
+  </div>
+  <div class="mp-owner">OWNER · <span class="v">{escape_html(owner)}</span></div>
+  <div class="sipoc">
+    <div class="sipoc-col">
+      <div class="sipoc-label">INPUTS</div>
+      <div class="mp-chips">
+{chips_in}
+      </div>
+    </div>
+    <div class="sipoc-col mp-mission">
+      <div class="sipoc-label">MISSAO</div>
+      <p><span class="verb">{escape_html(verbo)}</span> {escape_html(objeto)} <em>para {escape_html(finalidade_clean)}</em>.</p>
+    </div>
+    <div class="sipoc-col">
+      <div class="sipoc-label">OUTPUTS</div>
+      <div class="mp-chips">
+{chips_out}
+      </div>
+    </div>
+  </div>
+</article>""")
+    return "\n\n".join(panels)
+
+
+# ============================================================================
+# Build N3 (mapa neural)
+# ============================================================================
+
+
+def build_n3(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path) -> Path:
+    empresa = briefing_fm.get("empresa", {})
+    slug = empresa.get("slug", "empresa")
+    n1 = briefing_fm.get("n1", {})
+    processos = briefing_fm.get("processos") or []
+    relacoes = briefing_fm.get("relacoes") or []
+    artefatos = set(briefing_fm.get("artefatos_a_gerar") or [])
+
+    template = (skill_dir / "templates" / "template-mapa-de-interdependencia.html").read_text(encoding="utf-8")
+
+    # Header globals
+    template = template.replace("{{NOME_DA_EMPRESA}}", escape_html(empresa.get("nome", "")))
+    template = template.replace("{{AREA_DOCUMENTO}}", escape_html(briefing_fm.get("area_documento", "")))
+    template = template.replace("{{DATA_REFERENCIA}}", escape_html(briefing_fm.get("data_referencia", "")))
+    template = template.replace("{{TOTAL_RELACOES}}", str(len(relacoes)))
+    fricoes_count = sum(1 for p in processos if (p.get("n3") or {}).get("friction", {}).get("is_friction"))
+    template = template.replace("{{TOTAL_FRICCOES}}", str(fricoes_count))
+    template = template.replace("{{VERSAO_CURTA}}", escape_html(briefing_fm.get("versao", "")))
+    template = template.replace("{{DATA_REVISAO}}", escape_html(briefing_fm.get("data_referencia", "")))
+    template = template.replace("{{OWNER_DIAGRAMA}}", escape_html(briefing_fm.get("area_documento", "")))
+
+    # Substituir nodes e edges via BeautifulSoup
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(template, "html.parser")
+
+    neural = soup.find("div", class_="neural") or soup.find("div", id="neural")
+    if not neural:
+        raise ValueError("Template N3 nao tem <div class='neural'>")
+
+    # Limpar nodes e paths existentes (M7 hardcoded)
+    for node in neural.find_all("div", class_="node"):
+        node.decompose()
+    edges = neural.find("svg", class_="edges")
+    if edges:
+        for path in edges.find_all("path"):
+            path.decompose()
+
+    # Adicionar nodes do BRIEFING
+    info_panel = neural.find("div", id="info-panel")
+    insertion_point = info_panel if info_panel else neural
+
+    nodes_html = render_n3_nodes(processos)
+    nodes_soup = BeautifulSoup(nodes_html, "html.parser")
+    if info_panel:
+        for child in list(nodes_soup.contents):
+            info_panel.insert_before(child)
+    else:
+        for child in list(nodes_soup.contents):
+            neural.append(child)
+
+    # Adicionar edges
+    if edges:
+        edges_html = render_n3_edges(relacoes, processos)
+        edges_soup = BeautifulSoup(edges_html, "html.parser")
+        for child in list(edges_soup.contents):
+            edges.append(child)
+
+    # Substituir RELATIONS no JS
+    script_tag = None
+    for s in soup.find_all("script"):
+        if s.string and "RELATIONS" in s.string:
+            script_tag = s
+            break
+    if script_tag:
+        new_relations = render_n3_relations_js(relacoes)
+        new_script = re.sub(
+            r"const RELATIONS = \[.*?\];",
+            f"const RELATIONS = {new_relations};",
+            script_tag.string, count=1, flags=re.DOTALL,
+        )
+        script_tag.string = new_script
+
+    # Tabs
+    for tab in soup.find_all(class_="tab"):
+        href = tab.get("href", "")
+        if "missao-do-processo" in href:
+            tab["href"] = f"missao-do-processo-{slug}.html"
+        elif "exemplo-m7-preenchido" in href or "cadeia-de-valor" in href:
+            tab["href"] = f"cadeia-de-valor-{slug}.html"
+
+    output_path = output_dir / f"mapa-de-interdependencia-{slug}.html"
+    output_path.write_text(str(soup), encoding="utf-8")
+    return output_path
+
+
+def render_n3_nodes(processos: list) -> str:
+    """HTML dos nodes (<div class='node'>) com posicoes %."""
+    items = []
+    for p in processos:
+        n3 = p.get("n3") or {}
+        if not n3:
+            continue
+        codigo = p.get("codigo", "")
+        nome = p.get("nome", "")
+        coluna = n3.get("coluna", "apoio")
+        layer = LAYER_MAP.get(coluna, "A")
+        pos = n3.get("posicao") or {}
+        left = pos.get("left", 50)
+        top = pos.get("top", 50)
+        # Descricao para o painel info
+        desc = ""
+        if p.get("sipoc"):
+            sipoc = p["sipoc"]
+            desc = f"{sipoc.get('verbo', '')} {sipoc.get('objeto', '')}".strip()
+        else:
+            tooltip = p.get("tooltip") or []
+            desc = " ".join(tooltip[:2])
+
+        friction = n3.get("friction") or {}
+        is_fr = friction.get("is_friction") and friction.get("text")
+
+        attrs = (f'data-layer="{escape_html(layer)}" '
+                 f'data-name="{escape_html(codigo)} · {escape_html(nome)}" '
+                 f'data-desc="{escape_html(desc)}"')
+        if is_fr:
+            attrs += f' data-friction="true" data-friction-text="{escape_html(friction["text"])}"'
+
+        items.append(
+            f'<div class="node" {attrs} '
+            f'style="left: {left}%; top: {top}%;">{escape_html(codigo)}</div>'
+        )
+    return "\n".join(items)
+
+
+def render_n3_edges(relacoes: list, processos: list) -> str:
+    """SVG <path> por relacao usando coordenadas % dos processos."""
+    pos_by_code = {}
+    for p in processos:
+        n3 = p.get("n3") or {}
+        pos = n3.get("posicao") or {}
+        if pos.get("left") is not None and pos.get("top") is not None:
+            pos_by_code[p.get("codigo")] = (pos["left"], pos["top"])
+
+    paths = []
+    for r in relacoes:
+        f, t = r.get("from"), r.get("to")
+        if f not in pos_by_code or t not in pos_by_code:
+            continue
+        x1, y1 = percent_to_svg(*pos_by_code[f])
+        x2, y2 = percent_to_svg(*pos_by_code[t])
+        kind = r.get("kind", "info")
+        forca = r.get("forca") if kind == "cliente" else None
+        css_class = EDGE_CLASS_MAP.get((kind, forca))
+        if not css_class:
+            css_class = "e-info"
+        paths.append(f'<path class="{css_class}" d="{bezier_path(x1, y1, x2, y2)}"/>')
+
+    return "\n".join(paths)
+
+
+def render_n3_relations_js(relacoes: list) -> str:
+    """Gera o array JS de relations — mesmo formato esperado pelo template."""
+    items = []
+    for r in relacoes:
+        items.append(
+            f'      {{ from: {json.dumps(r.get("from", ""))}, '
+            f'to: {json.dumps(r.get("to", ""))}, '
+            f'kind: {json.dumps(r.get("kind", ""))}, '
+            f'label: {json.dumps(r.get("label", ""))} }}'
+        )
+    return "[\n" + ",\n".join(items) + "\n    ]"
+
+
+# ============================================================================
+# Build N4 (delega para build_n4.py)
+# ============================================================================
+
+
+def build_n4_html(briefing_path: Path, output_dir: Path, skill_dir: Path) -> Path:
+    """Invoca build_n4.py para montar documento-oficial-{slug}.html."""
+    build_n4 = skill_dir / "scripts" / "build_n4.py"
+    result = subprocess.run(
+        [sys.executable, str(build_n4), str(briefing_path), str(output_dir),
+         "--skill-dir", str(skill_dir)],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        sys.stderr.write(f"build_n4.py falhou (rc={result.returncode}):\n{result.stderr}\n")
+        raise RuntimeError("Falha em build_n4.py")
+    print(result.stdout.strip())
+
+    # Achar o output
+    fm, _ = parse_briefing(briefing_path)
+    slug = fm.get("empresa", {}).get("slug", "empresa")
+    return output_dir / f"documento-oficial-{slug}.html"
+
+
+def render_n4_pdf(html_path: Path, skill_dir: Path) -> Path:
+    """Invoca render_pdf.py para gerar PDF a partir do HTML."""
+    render_script = skill_dir / "scripts" / "render_pdf.py"
+    pdf_path = html_path.with_suffix(".pdf")
+
+    result = subprocess.run(
+        [sys.executable, str(render_script), str(html_path), str(pdf_path)],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        sys.stderr.write(f"render_pdf.py falhou (rc={result.returncode}):\n{result.stderr}\n")
+        raise RuntimeError("Falha em render_pdf.py")
+    print(result.stdout.strip())
+    return pdf_path
+
+
+# ============================================================================
+# Main
+# ============================================================================
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Gera os 4 artefatos N1/N2/N3/N4 a partir do BRIEFING.")
+    parser.add_argument("briefing", type=Path)
+    parser.add_argument("output_dir", type=Path)
+    parser.add_argument("--skill-dir", type=Path, default=None)
+    parser.add_argument("--skip-pdf", action="store_true",
+                       help="Gera N4.html mas pula o render do PDF")
+    parser.add_argument("--skip-validate", action="store_true",
+                       help="Pula validacao previa do BRIEFING")
+    args = parser.parse_args()
+
+    if not args.briefing.is_file():
+        sys.stderr.write(f"ERRO: BRIEFING nao encontrado: {args.briefing}\n")
+        return 2
+
+    skill_dir = args.skill_dir or Path(__file__).resolve().parent.parent
+    output_dir = args.output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Validacao
+    if not args.skip_validate:
+        if not validate_briefing(args.briefing, skill_dir):
+            sys.stderr.write("ERRO: BRIEFING tem bloqueadores. Use --skip-validate para ignorar.\n")
+            return 1
+
+    # Parse
+    try:
+        fm, body = parse_briefing(args.briefing)
+    except (yaml.YAMLError, ValueError) as e:
+        sys.stderr.write(f"ERRO ao parsear BRIEFING: {e}\n")
+        return 1
+
+    # Copiar assets primeiro
+    copy_assets(skill_dir, output_dir)
+
+    artefatos = set(fm.get("artefatos_a_gerar") or [])
+
+    # Sequencial: N1 -> N2 -> N3 -> N4
+    if "n1" in artefatos:
+        n1_path = build_n1(fm, body, skill_dir, output_dir)
+        size_kb = n1_path.stat().st_size / 1024
+        print(f"OK · {n1_path} ({size_kb:.1f} KB)")
+
+    if "n2" in artefatos:
+        n2_path = build_n2(fm, body, skill_dir, output_dir)
+        size_kb = n2_path.stat().st_size / 1024
+        print(f"OK · {n2_path} ({size_kb:.1f} KB)")
+
+    if "n3" in artefatos:
+        n3_path = build_n3(fm, body, skill_dir, output_dir)
+        size_kb = n3_path.stat().st_size / 1024
+        print(f"OK · {n3_path} ({size_kb:.1f} KB)")
+
+    if "n4-pdf" in artefatos:
+        # Pre-condicao
+        if not all(k in artefatos for k in ("n1", "n2", "n3")):
+            sys.stderr.write("ERRO: n4-pdf requer n1, n2 e n3 em artefatos_a_gerar.\n")
+            return 1
+
+        n4_html = build_n4_html(args.briefing, output_dir, skill_dir)
+
+        if not args.skip_pdf:
+            try:
+                pdf = render_n4_pdf(n4_html, skill_dir)
+                size_mb = pdf.stat().st_size / 1024 / 1024
+                print(f"OK · {pdf} ({size_mb:.2f} MB)")
+            except RuntimeError:
+                sys.stderr.write("AVISO: PDF nao gerado. HTML do N4 esta disponivel.\n")
+                return 1
+        else:
+            print(f"SKIP PDF (use sem --skip-pdf para gerar)")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
