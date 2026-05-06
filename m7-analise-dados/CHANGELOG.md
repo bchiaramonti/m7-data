@@ -5,6 +5,25 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [2.0.1] - 2026-05-06
+
+### Removed
+- `.mcp.json` agora vazio — registros inline de `clickhouse-m7bronze` e `bitrix24` removidos. MCPs do ClickHouse e Bitrix24 passam a ser configurados em **user scope** via `claude mcp add` (preferência operacional do owner), não distribuídos no plugin
+
+### Migration
+Após upgrade, configure os MCPs em user scope:
+```bash
+claude mcp add clickhouse-m7bronze --scope user --transport http \
+  --url https://clickhouse.mcp-tunnels-01-4f6d8a.com/mcp \
+  --header "Authorization: Bearer <token>"
+
+claude mcp add bitrix24 --scope user --transport http \
+  --url https://bitrix24.mcp-tunnels-01-4f6d8a.com/mcp \
+  --header "Authorization: Bearer <token>"
+```
+
+O plugin continua referenciando ambos os MCPs em skills/agents — apenas a entrega do registro deixa de ser inline.
+
 ## [2.0.0] - 2026-03-27
 
 ### Breaking Changes
