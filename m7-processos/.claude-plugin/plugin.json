@@ -1,7 +1,7 @@
 {
   "name": "m7-processos",
-  "version": "1.0.0",
-  "description": "Plugin M7 para mapeamento e gestão de processos no nível macro (N1). Conduz pipeline de 3 fases (entrevista crítica → BRIEFING.md → produção) com análise iterativa de até 3 ciclos, e gera 4 artefatos com design system M7-2026: Cadeia de Valor (N1, Porter 3 camadas), Missão SIPOC (N2), Mapa de Interdependência (N3, grafo neural) e Documento Oficial PDF paginado (N4) renderizado via Playwright.",
+  "version": "1.1.0",
+  "description": "Plugin M7 para mapeamento e gestão de processos com design system M7-2026. Inclui (1) skill mapeamento-n1: pipeline N1 (cadeia de valor, SIPOC, mapa de interdependência, documento oficial PDF) e (2) skill drawing-bpmn-flowcharts: construtor BPMN 2.0 com auto-layout determinístico, validação iterativa de legibilidade, cores M7 via bioc:, suporte a AI agents (Camunda 8.8+ ad-hoc sub-process) e geração de .bpmn portátil compatível com Camunda Modeler / bpmn.io / Bizagi.",
   "author": {
     "name": "Bruno Chiaramonti"
   },
@@ -18,6 +18,13 @@
     "porter",
     "mapeamento-n1",
     "documento-oficial",
-    "pdf-paginado"
+    "pdf-paginado",
+    "bpmn",
+    "bpmn-2.0",
+    "flowchart",
+    "auto-layout",
+    "camunda",
+    "ai-agents",
+    "ad-hoc-sub-process"
   ]
 }

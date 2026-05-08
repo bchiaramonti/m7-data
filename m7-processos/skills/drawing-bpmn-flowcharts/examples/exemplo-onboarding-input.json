@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "title": "Onboarding de Lead M7",
+    "level": "N3",
+    "version": "1.0",
+    "date": "2026-05-08",
+    "author": "Bruno Chiaramonti"
+  },
+  "pools": [
+    {
+      "id": "pool1",
+      "name": "M7 Investimentos",
+      "isExecutable": false,
+      "lanes": [
+        { "id": "lane-comercial", "name": "Comercial" },
+        { "id": "lane-compliance", "name": "Compliance" },
+        { "id": "lane-ops", "name": "Operacoes" }
+      ]
+    }
+  ],
+  "nodes": [
+    { "id": "n1", "type": "startEvent", "label": "Lead recebido", "lane": "lane-comercial", "pool": "pool1" },
+    { "id": "n2", "type": "userTask", "label": "Qualificar lead", "lane": "lane-comercial", "pool": "pool1",
+      "description": "Analisa fit do lead com criterios M7 (perfil, ticket, segmento)" },
+    { "id": "n3", "type": "exclusiveGateway", "label": "Aprovado?", "lane": "lane-comercial", "pool": "pool1" },
+    { "id": "n4", "type": "userTask", "label": "Validar KYC", "lane": "lane-compliance", "pool": "pool1",
+      "description": "Valida documentos e checks de compliance regulatorio" },
+    { "id": "n5", "type": "exclusiveGateway", "label": "KYC ok?", "lane": "lane-compliance", "pool": "pool1" },
+    { "id": "n6", "type": "serviceTask", "label": "Abrir conta", "lane": "lane-ops", "pool": "pool1",
+      "description": "Cria conta no sistema core, envia credenciais" },
+    { "id": "n7", "type": "endEvent", "label": "Cliente ativo", "lane": "lane-ops", "pool": "pool1" },
+    { "id": "n8", "type": "endEvent", "label": "Lead descartado", "lane": "lane-comercial", "pool": "pool1" },
+    { "id": "n9", "type": "endEvent", "label": "Bloqueado por compliance", "lane": "lane-compliance", "pool": "pool1" }
+  ],
+  "edges": [
+    { "id": "e1", "type": "sequenceFlow", "source": "n1", "target": "n2" },
+    { "id": "e2", "type": "sequenceFlow", "source": "n2", "target": "n3" },
+    { "id": "e3", "type": "sequenceFlow", "source": "n3", "target": "n4", "label": "Sim" },
+    { "id": "e4", "type": "sequenceFlow", "source": "n3", "target": "n8", "label": "Nao", "isDefault": true },
+    { "id": "e5", "type": "sequenceFlow", "source": "n4", "target": "n5" },
+    { "id": "e6", "type": "sequenceFlow", "source": "n5", "target": "n6", "label": "Sim" },
+    { "id": "e7", "type": "sequenceFlow", "source": "n5", "target": "n9", "label": "Nao", "isDefault": true },
+    { "id": "e8", "type": "sequenceFlow", "source": "n6", "target": "n7" }
+  ]
+}

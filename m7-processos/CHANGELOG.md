@@ -4,6 +4,44 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.0] - 2026-05-08
+
+Adição da skill `drawing-bpmn-flowcharts` — construtor de diagramas BPMN 2.0 com auto-layout determinístico, validação iterativa de legibilidade e cores M7-2026.
+
+### Added
+- **Skill `drawing-bpmn-flowcharts`** — workflow de 7 fases (parse → validação de notação → auto-layout → M7 styling → validação de legibilidade iterativa → re-validação de notação → escrita de artefatos):
+  - Aceita 3 formatos de input: JSON estruturado, descrição conversacional em PT, markdown narrativo
+  - Gera `.bpmn` portátil (BPMN 2.0 standard) compatível com Camunda Modeler 7+, Camunda 8, bpmn.io, Bizagi, Signavio
+  - Aplica cores M7-2026 via extensões `bioc:fill` / `bioc:stroke` (Camunda / bpmn-js native)
+  - Validação iterativa (max 3 ciclos) garante: sem sobreposição de linhas, sem cruzar nós, sem texto trincado, sem distorção de aspect-ratio, fluxo predominante LTR
+  - **Suporte nativo a AI agents (Camunda 8.8+)**: `aiAgentTask` (single-call) e `adHocSubProcess` agentic com tools, suportando os 4 padrões canônicos (Human triggers AI / AI suggests + human decides / Multi-agent / Fallback)
+- **5 references** (`skills/drawing-bpmn-flowcharts/references/`):
+  - `bpmn-notation-essentials.md` — catálogo BPMN 2.0 (events, activities, gateways, conexões, pools/lanes, artefatos) + checklist de validação em 7 categorias
+  - `auto-layout-algorithm.md` — algoritmo determinístico (topological sort + ranks + lanes × rank grouping + waypoints) com constantes geométricas (H_SPACING=150, V_SPACING=100, dimensões padrão por tipo)
+  - `readability-rules.md` — 5 detectores geométricos (edge-crosses-node via Cohen-Sutherland, edge-overlap por colinearidade, label-overflow por largura de char, aspect-ratio guard, RTL flow ratio > 30%) + estratégias de relayout
+  - `m7-bpmn-styling.md` — tabela de cores M7 por tipo de elemento BPMN + sintaxe XML (extensão `bioc:`) + compatibilidade entre ferramentas
+  - `ai-agents-bpmn.md` — ad-hoc sub-process pattern (Camunda 8.8+) + 4 padrões canônicos + naming conventions + anti-patterns + casos de uso M7
+- **3 templates** (`skills/drawing-bpmn-flowcharts/templates/`):
+  - `bpmn-skeleton.tmpl.xml` — esqueleto XML com 9 namespaces (bpmn, bpmndi, dc, di, xsi, bioc, color, zeebe, camunda) e placeholders
+  - `input-schema.tmpl.json` — JSON Schema completo com enum de 30+ tipos BPMN, suporte a `aiAgent` config (model, tools, exitCondition)
+  - `descritivo.tmpl.md` — relatório companion com 10 seções (sumário, atividades, gateways, validação de notação, validação de legibilidade, aderência M7, AI agents, issues residuais, observações, como visualizar)
+- **2 scripts Python** (stdlib only — sem dependências externas):
+  - `compute_auto_layout.py` — recebe input JSON, retorna layout JSON com bounds e waypoints. Implementa o algoritmo determinístico de 7 passos
+  - `validate_bpmn_readability.py` — recebe `.bpmn`, retorna `{passed, issues}` JSON com os 5 detectores geométricos. Cohen-Sutherland para edge-crosses-node, colinearidade para overlap, heurística de char-width para label-overflow
+- **1 exemplo end-to-end** (`skills/drawing-bpmn-flowcharts/examples/`):
+  - `exemplo-onboarding-input.json` — onboarding M7 com 3 lanes (Comercial, Compliance, Operações), 9 nodes, 8 edges, 3 caminhos terminais
+  - `exemplo-onboarding.bpmn` — output gerado, validado: passa validação de legibilidade com 0 fails, 1 warning. Cores M7-2026 aplicadas
+  - `exemplo-onboarding-descritivo.md` — relatório companion com checklist completo, validação 23 pass / 1 warning / 0 fails
+
+### Changed
+- **`plugin.json`** — versão 1.0.0 → 1.1.0, descrição expandida para mencionar BPMN, novas keywords (bpmn, bpmn-2.0, flowchart, auto-layout, camunda, ai-agents, ad-hoc-sub-process)
+- **`marketplace.json`** (no marketplace `m7-data`) — entrada do plugin sincronizada com nova versão e descrição
+- **`README.md`** — adicionada seção da nova skill `drawing-bpmn-flowcharts`, atualizada estrutura do plugin
+
+### Migration
+
+Não há migração necessária — adição não-breaking. Plugin antigo `mapeamento-processos` (v1.3.2) descontinuado; conhecimento técnico extraído e adaptado para a nova skill com auto-contenção total (zero dependência runtime do plugin antigo).
+
 ## [1.0.0] - 2026-05-06
 
 Primeira versão estável da skill `mapeamento-n1`. Pipeline completo de 3 fases (entrevista crítica → BRIEFING.md SSOT → produção) que gera 4 artefatos M7-2026.

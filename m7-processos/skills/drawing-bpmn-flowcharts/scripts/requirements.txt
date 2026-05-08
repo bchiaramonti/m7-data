@@ -1,0 +1,9 @@
+# Stdlib only — sem dependencias externas.
+# Os scripts compute_auto_layout.py e validate_bpmn_readability.py usam:
+#   - json
+#   - sys
+#   - xml.etree.ElementTree
+#   - collections (defaultdict, deque)
+#   - itertools (combinations)
+#
+# Funciona em Python >= 3.10 (sintaxe `dict[str, ...]` em type hints).

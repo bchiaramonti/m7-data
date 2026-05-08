@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "drawing-bpmn-flowcharts input schema",
+  "description": "JSON canonico de input para a skill. Pode ser passado diretamente OU gerado pela skill a partir de descricao conversacional / markdown narrativo.",
+  "type": "object",
+  "required": ["metadata", "pools", "nodes", "edges"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["title", "level", "version", "date", "author"],
+      "properties": {
+        "title": { "type": "string", "description": "Nome do processo" },
+        "level": {
+          "type": "string",
+          "enum": ["N1", "N2", "N3", "N4", "N5"],
+          "description": "Nivel BPM CBOK do mapeamento"
+        },
+        "version": { "type": "string", "description": "Versao do diagrama (ex: 1.0)" },
+        "date": { "type": "string", "format": "date", "description": "Data de geracao YYYY-MM-DD" },
+        "author": { "type": "string" }
+      }
+    },
+    "pools": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "lanes"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$" },
+          "name": { "type": "string" },
+          "isExecutable": { "type": "boolean", "default": false },
+          "lanes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 6,
+            "items": {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$" },
+                "name": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "label", "lane", "pool"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "startEvent", "startEvent-message", "startEvent-timer", "startEvent-signal",
+              "intermediateEvent", "intermediateEvent-message", "intermediateEvent-timer",
+              "intermediateEvent-error", "intermediateEvent-signal",
+              "endEvent", "endEvent-message", "endEvent-error", "endEvent-terminate",
+              "task", "userTask", "serviceTask", "scriptTask", "sendTask", "receiveTask",
+              "subProcess", "adHocSubProcess", "aiAgentTask",
+              "exclusiveGateway", "parallelGateway", "inclusiveGateway", "eventBasedGateway",
+              "dataObject", "dataStore", "textAnnotation", "group"
+            ]
+          },
+          "label": { "type": "string" },
+          "lane": { "type": "string", "description": "ID da lane onde este node fica" },
+          "pool": { "type": "string", "description": "ID do pool" },
+          "description": {
+            "type": "string",
+            "description": "(Opcional) Mapeia para <bpmn:documentation>"
+          },
+          "attachedTo": {
+            "type": "string",
+            "description": "(Opcional) Para boundary events: ID da activity hospedeira"
+          },
+          "parent": {
+            "type": "string",
+            "description": "(Opcional) Para tools dentro de adHocSubProcess: ID do sub-process pai"
+          },
+          "aiAgent": {
+            "type": "object",
+            "description": "(Opcional) Configuracao para AI agent (aiAgentTask ou adHocSubProcess agentic). Ver references/ai-agents-bpmn.md",
+            "properties": {
+              "model": { "type": "string", "description": "ID do modelo (ex: claude-3-5-sonnet)" },
+              "systemPrompt": { "type": "string" },
+              "promptTemplate": { "type": "string", "description": "Para single-call (aiAgentTask)" },
+              "tools": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Para adHocSubProcess: lista de IDs de service tasks que sao tools"
+              },
+              "exitCondition": {
+                "type": "string",
+                "description": "Expressao FEEL para termino do loop agentico"
+              },
+              "outputVariable": { "type": "string" },
+              "type": {
+                "type": "string",
+                "enum": ["single-call", "agentic", "orchestrator"],
+                "default": "agentic"
+              }
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "source", "target"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$" },
+          "type": {
+            "type": "string",
+            "enum": ["sequenceFlow", "messageFlow", "association"]
+          },
+          "source": { "type": "string", "description": "ID do node de origem" },
+          "target": { "type": "string", "description": "ID do node de destino" },
+          "label": {
+            "type": "string",
+            "description": "(Opcional) Rotulo da conexao (ex: 'Sim', 'Nao')"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "(Opcional) Marca como caminho default de XOR gateway"
+          },
+          "condition": {
+            "type": "string",
+            "description": "(Opcional) Expressao formal FEEL/JUEL para conditional flow"
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "metadata": {
+        "title": "Onboarding de Lead",
+        "level": "N3",
+        "version": "1.0",
+        "date": "2026-05-08",
+        "author": "Bruno Chiaramonti"
+      },
+      "pools": [
+        {
+          "id": "pool1",
+          "name": "M7 Investimentos",
+          "isExecutable": false,
+          "lanes": [
+            { "id": "lane-comercial", "name": "Comercial" },
+            { "id": "lane-compliance", "name": "Compliance" },
+            { "id": "lane-ops", "name": "Operacoes" }
+          ]
+        }
+      ],
+      "nodes": [
+        { "id": "n1", "type": "startEvent", "label": "Lead recebido", "lane": "lane-comercial", "pool": "pool1" },
+        { "id": "n2", "type": "userTask", "label": "Qualificar lead", "lane": "lane-comercial", "pool": "pool1" },
+        { "id": "n3", "type": "exclusiveGateway", "label": "Aprovado?", "lane": "lane-comercial", "pool": "pool1" },
+        { "id": "n4", "type": "userTask", "label": "Validar KYC", "lane": "lane-compliance", "pool": "pool1" },
+        { "id": "n5", "type": "serviceTask", "label": "Abrir conta", "lane": "lane-ops", "pool": "pool1" },
+        { "id": "n6", "type": "endEvent", "label": "Cliente ativo", "lane": "lane-ops", "pool": "pool1" },
+        { "id": "n7", "type": "endEvent", "label": "Lead descartado", "lane": "lane-comercial", "pool": "pool1" }
+      ],
+      "edges": [
+        { "id": "e1", "type": "sequenceFlow", "source": "n1", "target": "n2" },
+        { "id": "e2", "type": "sequenceFlow", "source": "n2", "target": "n3" },
+        { "id": "e3", "type": "sequenceFlow", "source": "n3", "target": "n4", "label": "Sim" },
+        { "id": "e4", "type": "sequenceFlow", "source": "n3", "target": "n7", "label": "Nao", "isDefault": true },
+        { "id": "e5", "type": "sequenceFlow", "source": "n4", "target": "n5" },
+        { "id": "e6", "type": "sequenceFlow", "source": "n5", "target": "n6" }
+      ]
+    }
+  ]
+}

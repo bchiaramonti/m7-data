@@ -2,7 +2,7 @@
 
 Plugin M7 para mapeamento e gestão de processos no nível macro (N1) com pipeline de 3 fases (entrevista crítica → BRIEFING.md SSOT → produção) e 4 artefatos visuais seguindo o design system M7-2026.
 
-> **Status**: estável (`v1.0.0`).
+> **Status**: estável (`v1.1.0`).
 
 ## Marketplace
 
@@ -16,6 +16,26 @@ Este plugin pertence ao marketplace [`m7-data`](../).
 ```
 
 ## Skills
+
+### `drawing-bpmn-flowcharts`
+
+Constrói diagramas BPMN 2.0 a partir de JSON estruturado, descrição conversacional ou markdown narrativo. Gera `.bpmn` portátil (abre em Camunda Modeler / bpmn.io / Bizagi) com auto-layout determinístico, validação iterativa de legibilidade e cores M7-2026 via extensões `bioc:`.
+
+| Input | Output |
+|---|---|
+| JSON estruturado / descrição conversacional / markdown narrativo | `.bpmn` (XML BPMN 2.0 portátil) + `-descritivo.md` (narrativa + checklist + relatório de legibilidade) |
+
+**Diferenciais**:
+- Auto-layout determinístico (topological sort + ranks + waypoints) — script Python stdlib
+- Validação iterativa de legibilidade (max 3 ciclos): sem sobreposição, sem cruzar nós, sem texto trincado
+- Validação de notação BPMN 2.0 embutida (7 categorias, 23+ regras)
+- Cores M7-2026 via `bioc:fill` / `bioc:stroke` (Camunda Modeler / bpmn-js compatible)
+- **Suporte nativo a AI agents** (Camunda 8.8+): ad-hoc sub-process com tools, AI Agent Task single-call, 4 padrões canônicos
+- Sem dependências externas (Python stdlib only)
+
+**Quando usar**: usuário pede para gerar/construir/desenhar/modelar um fluxograma BPMN, ou fornece atividades/lanes/gateways e quer um arquivo `.bpmn`.
+
+**A skill gera apenas `.bpmn`**: a renderização downstream (HTML embed via bpmn-js, PDF, etc.) é responsabilidade do consumidor.
 
 ### `mapeamento-n1`
 
@@ -70,8 +90,14 @@ m7-processos/
 ├── .claude-plugin/
 │   └── plugin.json
 ├── skills/
+│   ├── drawing-bpmn-flowcharts/
+│   │   ├── SKILL.md                      # entrypoint da skill BPMN
+│   │   ├── references/                   # 5 refs (notation, layout, readability, m7-styling, ai-agents)
+│   │   ├── templates/                    # bpmn-skeleton.tmpl.xml + input-schema + descritivo
+│   │   ├── scripts/                      # compute_auto_layout.py + validate_bpmn_readability.py
+│   │   └── examples/                     # exemplo-onboarding (input + .bpmn + descritivo)
 │   └── mapeamento-n1/
-│       ├── SKILL.md                      # entrypoint do pipeline
+│       ├── SKILL.md                      # entrypoint do pipeline N1
 │       ├── BRIEFING.tmpl.md              # template do SSOT
 │       ├── references/                   # 9 references (N1-N4, fases A-C, regras)
 │       ├── agents/                       # process-critic + pdf-validator (read-only)
