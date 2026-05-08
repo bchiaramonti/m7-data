@@ -113,12 +113,12 @@ Resultado dos 5 detectores geometricos:
 | Item | Status | Detalhe |
 |---|---|---|
 | Namespace `bioc:` declarado | ✅ | http://bpmn.io/schema/bpmn/biocolor/1.0 |
-| Cores aplicadas conforme tabela v1.2 | ✅ | Lane warm `#fffdef` · Task off-white esverdeado `#fdfbe5` · Gateway amarelo palido `#fef3a8` · End vermelho `#b8000f` |
+| Cores aplicadas conforme tabela v1.2.1 | ✅ | Pool warm `#fffdef` · Lane branca `#ffffff` · Task esverdeado `#fdfbe5` · Gateway amarelo `#fef3a8` · End vermelho `#b8000f` |
 | Apenas 1 startEvent com lime | ✅ | n1 ("Lead recebido") com `bioc:fill="#eef77c"` |
-| Tasks contrastam com lanes | ✅ | Tasks `#fdfbe5` sobre lanes `#fffdef` (contraste sutil mas visivel) |
+| Tasks contrastam com lanes | ✅ | Tasks `#fdfbe5` sobre lanes `#ffffff` (contraste alto e nitido) |
 | Gateways tem realce | ✅ | n3 ("Aprovado?") e n5 ("KYC ok?") com `bioc:fill="#fef3a8"` |
 | End events sao todos vermelhos | ✅ | n7 (sucesso), n8 (descarte), n9 (bloqueio) — todos `bioc:fill="#b8000f"` |
-| Sem branco frio (`#ffffff`) | ✅ | Todos os fills usam `#fffdef`, `#fdfbe5`, `#fef3a8`, `#eef77c`, ou `#b8000f` |
+| Branco apenas em lanes (excecao BPMN) | ✅ | `#ffffff` so em lanes; pool/tasks/eventos seguem cores warm/distintas |
 | Edges com stroke `#424135` | ✅ | 8/8 edges com stroke verde caqui |
 
 > Nota: `bioc:` e suportado por Camunda Modeler 7+, Camunda 8 e bpmn-js. Bizagi e Signavio ignoram silenciosamente.

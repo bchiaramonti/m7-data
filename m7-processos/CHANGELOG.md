@@ -4,6 +4,18 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.2.1] - 2026-05-08
+
+Patch visual: lanes brancas (`#ffffff`) em vez de warm off-white (`#fffdef`) para contraste máximo com tasks `#fdfbe5`.
+
+### Changed
+- **Lane fill: `#fffdef` → `#ffffff`** — feedback de uso real (BPMN Onda1 v0.4) mostrou que o contraste entre lane warm e task esverdeado era visualmente fraco. Lanes brancas + tasks esverdeadas dão contraste muito mais nítido. **Pool mantém `#fffdef`** (preserva aroma M7).
+- **`exemplo-onboarding.bpmn`** — 3 lanes (Comercial, Compliance, Operações) atualizadas para `bioc:fill="#ffffff"`.
+- **`m7-bpmn-styling.md`** — tabela, filosofia, anti-padrões e checklist atualizados; nova nota "exceção BPMN para `#ffffff` em lanes" com justificativa explícita (não propagar para outros artefatos M7).
+
+### Migration
+Não-breaking. Mudança visual incremental sobre a v1.2.0. BPMNs gerados com paleta v1.2.0 continuam válidos; ao reabrir e re-renderizar via skill v1.2.1, recebem lanes brancas automaticamente.
+
 ## [1.2.0] - 2026-05-08
 
 Correções visuais e bug fixes do validador na skill `drawing-bpmn-flowcharts` baseadas em feedback de uso real (BPMN do projeto Onda1 Quick Win MVP).
