@@ -61,9 +61,10 @@
               "intermediateEvent-error", "intermediateEvent-signal",
               "endEvent", "endEvent-message", "endEvent-error", "endEvent-terminate",
               "task", "userTask", "serviceTask", "scriptTask", "sendTask", "receiveTask",
-              "subProcess", "adHocSubProcess", "aiAgentTask",
+              "manualTask", "businessRuleTask",
+              "subProcess", "adHocSubProcess", "transaction", "callActivity", "aiAgentTask",
               "exclusiveGateway", "parallelGateway", "inclusiveGateway", "eventBasedGateway",
-              "dataObject", "dataStore", "textAnnotation", "group"
+              "dataStoreReference", "dataObjectReference", "textAnnotation", "group"
             ]
           },
           "label": { "type": "string" },

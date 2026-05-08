@@ -16,13 +16,25 @@ Tabela de cores M7-2026 por tipo de elemento BPMN, sintaxe XML para aplicar via 
 
 ## 1. Filosofia
 
-M7-2026 e **editorial, nao corporativo**. Em BPMN isso significa:
+M7-2026 e **editorial, nao corporativo**. Em BPMN isso significa **3 niveis hierarquicos** de fundo + acentos pontuais:
 
-- **Verde caqui (`#424135`) como ancora**: stroke de quase tudo, fundo de pool/lane labels
-- **Off-white (`#fffdef`) como respiro**: fill de fluxo (tasks, gateways, lanes)
-- **Lime (`#eef77c`) como acento pontual**: APENAS no start event do fluxo principal
+```
+Nivel 1 (container)  Pool / Lane     #fffdef  warm off-white
+Nivel 2 (conteudo)   Task / Subproc  #fdfbe5  off-white esverdeado (contraste sutil)
+Nivel 3 (decisao)    Gateway          #fef3a8  amarelo palido (accent de decisao)
+Acento foco          Start            #eef77c  lime cheio
+Acento termino       End (todos)      #b8000f  vermelho M7 WCAG-safe
+```
+
+Principios que se aplicam:
+
+- **Verde caqui (`#424135`) como ancora**: stroke de quase tudo (incluindo edges)
+- **Hierarquia por contraste sutil**: container claro → conteudo levemente esverdeado → accent amarelo no ponto de decisao. Leitor identifica papeis sem precisar ler labels
+- **Acentos so onde precisa**: lime (start) e vermelho (end) marcam ponta a ponta. Amarelo palido (gateway) chama atencao SEM gritar
 - **Preto puro (`#000000`) e branco frio (`#ffffff`) sao proibidos**: quebram a estetica warm
 - **Nenhum gradiente**: sombras sutis se necessarias, nada mais
+
+> **Nota sobre `#fef3a8`:** este amarelo palido nao existe no design system M7-2026 canonico (`mapeamento-n1/references/design-system-m7.md`). E uma cor exclusiva do contexto BPMN, justificada porque BPMN tem mais primitivos visuais (4 categorias: container, conteudo, decisao, terminal) do que outros artefatos M7 (que se contentam com 3 cores). **Nao propagar para outros artefatos M7.**
 
 A ideia e que mesmo um diagrama BPMN — naturalmente tecnico — carregue a marca M7 ao ser exibido via bpmn-js no documento oficial.
 
@@ -30,29 +42,40 @@ A ideia e que mesmo um diagrama BPMN — naturalmente tecnico — carregue a mar
 
 ## 2. Tabela de cores por elemento BPMN
 
+> Atualizada em v1.2.0 (2026-05-08) para diferenciar visualmente container (lane) de conteudo (task) e introduzir accent de decisao no gateway.
+
 | Elemento | bioc:fill | bioc:stroke | Justificativa |
 |---|---|---|---|
 | **startEvent** (fluxo principal) | `#eef77c` | `#424135` | Lime accent unico, marca o inicio |
-| **startEvent-message / startEvent-timer / startEvent-signal** | `#fffdef` | `#424135` | Inicios secundarios em off-white |
-| **endEvent** (sucesso) | `#424135` | `#424135` | Verde caqui solido — fim feliz |
-| **endEvent-error** | `#b8000f` | `#424135` | Status error WCAG (vermelho safe) |
-| **endEvent-terminate** | `#28271f` | `#28271f` | Verde escuro 700 — encerramento total |
-| **intermediateEvent** (qualquer) | `#fffdef` | `#424135` | Off-white com contorno verde |
-| **task / userTask** | `#fffdef` | `#424135` | Card off-white, contorno fino |
-| **serviceTask** | `#fffdef` | `#424135` | Mesmo card; o icone de engrenagem ja sinaliza tipo |
-| **scriptTask** | `#fffdef` | `#424135` | Mesmo card; o icone de doc ja sinaliza |
-| **sendTask / receiveTask** | `#fffdef` | `#424135` | Mesmo card; envelope ja sinaliza |
-| **subProcess** (collapsed) | `#fffdef` | `#424135` (stroke 2px) | Borda mais grossa diferencia de task |
-| **subProcess** (expanded) | `#fffdef` | `#424135` (stroke 2px) | Mesmo, mas com conteudo dentro |
+| **startEvent-message / startEvent-timer / startEvent-signal** | `#fdfbe5` | `#424135` | Inicios secundarios em off-white esverdeado (igual task) |
+| **endEvent** (sucesso) | `#b8000f` | `#424135` | Vermelho M7 WCAG-safe — termino do processo |
+| **endEvent-error** | `#b8000f` | `#424135` | Mesmo vermelho — error termina processo |
+| **endEvent-terminate** | `#600000` | `#424135` | Vermelho escuro — encerramento total |
+| **intermediateEvent** (qualquer) | `#fdfbe5` | `#424135` | Off-white esverdeado, mesmo nivel hierarquico de task |
+| **task / userTask** | `#fdfbe5` | `#424135` | Card off-white esverdeado — contraste sobre lane |
+| **serviceTask** | `#fdfbe5` | `#424135` | Mesmo card; o icone de engrenagem ja sinaliza tipo |
+| **scriptTask** | `#fdfbe5` | `#424135` | Mesmo card; o icone de doc ja sinaliza |
+| **sendTask / receiveTask** | `#fdfbe5` | `#424135` | Mesmo card; envelope ja sinaliza |
+| **subProcess** (collapsed) | `#fdfbe5` | `#424135` (stroke 2px) | Borda mais grossa diferencia de task |
+| **subProcess** (expanded) | `#fdfbe5` | `#424135` (stroke 2px) | Mesmo, mas com conteudo dentro |
 | **adHocSubProcess** (AI agent) | `#eef77c` (subtle, 15% opacity bg) | `#424135` (stroke 2px) | Lime sutil sinaliza zona nao-deterministica |
-| **exclusiveGateway** (XOR) | `#fffdef` | `#424135` | Diamante off-white com X visivel |
-| **parallelGateway** (AND) | `#fffdef` | `#424135` | Diamante off-white com + visivel |
-| **inclusiveGateway** (OR) | `#fffdef` | `#424135` | Diamante off-white com O visivel |
-| **eventBasedGateway** | `#fffdef` | `#424135` | Diamante com pentagono |
-| **Pool** | `#fffdef` (bg) | `#424135` | Container externo |
-| **Lane** | `#fffdef` (bg) | `#424135` | Container interno; label `#fffdef` sobre fundo `#424135` |
+| **exclusiveGateway** (XOR) | `#fef3a8` | `#424135` | Amarelo palido — accent de decisao |
+| **parallelGateway** (AND) | `#fef3a8` | `#424135` | Mesmo amarelo, simbolo + diferencia |
+| **inclusiveGateway** (OR) | `#fef3a8` | `#424135` | Mesmo amarelo, simbolo O diferencia |
+| **eventBasedGateway** | `#fef3a8` | `#424135` | Mesmo amarelo, pentagono diferencia |
+| **Pool** | `#fffdef` (bg) | `#424135` | Container externo — warm off-white |
+| **Lane** | `#fffdef` (bg) | `#424135` | Container interno — warm off-white. Label segue cor padrao do bpmn-js (preto sobre off-white). Para customizar cor da label: CSS no consumer (HTML embed). |
 | **dataObject / dataStore** | `#f6f6f5` | `#8a8981` | Cinza esverdeado sutil — artefato secundario |
 | **textAnnotation** | (sem fill) | `#66655b` | Comentario discreto |
+
+### Mudancas v1.1 → v1.2
+
+| Elemento | v1.1 (uniforme) | v1.2 (diferenciado) |
+|---|---|---|
+| Task / Subprocess | `#fffdef` (igual lane) | `#fdfbe5` (off-white esverdeado) |
+| Gateway | `#fffdef` (igual task) | `#fef3a8` (amarelo palido) |
+| End (sucesso) | `#424135` (verde caqui) | `#b8000f` (vermelho) |
+| End (terminate) | `#28271f` (verde escuro) | `#600000` (vermelho escuro) |
 
 ### Cores nao usadas (intencional)
 
@@ -158,13 +181,16 @@ A skill **assume Camunda + bpmn-js** como ambiente alvo (o que e usado pela M7).
 
 ## 6. Anti-padroes M7-2026 herdados
 
-Heranca de `m7-processos/skills/mapeamento-n1/references/design-system-m7.md`:
+Heranca de `m7-processos/skills/mapeamento-n1/references/design-system-m7.md` + especificos do contexto BPMN:
 
-- ❌ **Branco frio (`#ffffff`) em fills**: sempre `#fffdef` (off-white warm)
+- ❌ **Tasks com mesma cor da lane**: invisibilidade visual. Task `#fdfbe5` deve contrastar com lane `#fffdef` (regra v1.2)
+- ❌ **Gateway com mesma cor de task**: ponto de decisao precisa chamar atencao. Gateway `#fef3a8` (amarelo palido) e o accent (regra v1.2)
+- ❌ **End event verde caqui (`#424135`)**: confunde com stroke. End sempre vermelho `#b8000f` (regra v1.2)
+- ❌ **Branco frio (`#ffffff`) em fills**: sempre `#fffdef` ou `#fdfbe5` (off-white warm)
 - ❌ **Lime em texto corrido ou em mais de 1 elemento**: lime e accent — start event apenas
 - ❌ **Bold em labels**: peso 400 (regular) e assinatura M7
 - ❌ **Gradientes em fills**: sombras sutis ok, gradiente nao
-- ❌ **Multiplas cores acentuadas no mesmo diagrama**: 1 lime + 1 verde caqui + 1 vermelho de erro = teto. Mais que isso = ruido
+- ❌ **Mais de 1 amarelo no diagrama**: amarelo palido (`#fef3a8`) e exclusivo de gateway. Outras tonalidades amarelo = ruido
 - ❌ **Centralizar todos os labels**: lane labels uppercase ficam alinhados a esquerda
 - ❌ **Adicionar sombras pesadas em shapes**: BPMN ja e tecnico, nao precisa de glamour visual
 - ❌ **Adicionar logos / ornamentos no diagrama**: BPMN e funcional, nao decorativo
@@ -181,14 +207,18 @@ Esta reference (`m7-bpmn-styling.md`) cobre apenas o subset aplicavel a BPMN. Mu
 
 ---
 
-## Checklist de aplicacao M7 no `.bpmn` gerado
+## Checklist de aplicacao M7 no `.bpmn` gerado (v1.2)
 
 A skill verifica automaticamente em **Fase 4** e reporta no `-descritivo.md`:
 
 - [ ] Namespace `bioc:` declarado em `<bpmn:definitions>`
 - [ ] Todo `<bpmndi:BPMNShape>` tem atributos `bioc:fill` e `bioc:stroke`
-- [ ] Cores aplicadas batem com a tabela acima por tipo de elemento
-- [ ] Apenas 1 startEvent com lime fill (`#eef77c`)
+- [ ] Cores aplicadas batem com a tabela v1.2 por tipo de elemento
+- [ ] Apenas 1 startEvent com lime fill (`#eef77c`); demais starts com `#fdfbe5`
+- [ ] Tasks/Subprocessos com fill `#fdfbe5` (NAO `#fffdef` — esse e da lane)
+- [ ] Gateways com fill `#fef3a8` (amarelo palido — accent de decisao)
+- [ ] End events com fill `#b8000f` (vermelho M7)
+- [ ] Pool/Lane com fill `#fffdef` (warm off-white)
 - [ ] Nenhum element com `#ffffff` ou `#000000` (proibidos)
 - [ ] Edges tem `bioc:stroke="#424135"` (padrao M7)
 

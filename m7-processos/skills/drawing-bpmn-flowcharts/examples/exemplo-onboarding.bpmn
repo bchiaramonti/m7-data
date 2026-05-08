@@ -120,33 +120,33 @@
         <dc:Bounds x="252" y="72" width="36" height="36" />
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="n2_di" bpmnElement="n2" bioc:fill="#fffdef" bioc:stroke="#424135">
+      <bpmndi:BPMNShape id="n2_di" bpmnElement="n2" bioc:fill="#fdfbe5" bioc:stroke="#424135">
         <dc:Bounds x="370" y="50" width="100" height="80" />
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="n3_di" bpmnElement="n3" isMarkerVisible="true"
-                        bioc:fill="#fffdef" bioc:stroke="#424135">
+                        bioc:fill="#fef3a8" bioc:stroke="#424135">
         <dc:Bounds x="545" y="65" width="50" height="50" />
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="n4_di" bpmnElement="n4" bioc:fill="#fffdef" bioc:stroke="#424135">
+      <bpmndi:BPMNShape id="n4_di" bpmnElement="n4" bioc:fill="#fdfbe5" bioc:stroke="#424135">
         <dc:Bounds x="670" y="170" width="100" height="80" />
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="n5_di" bpmnElement="n5" isMarkerVisible="true"
-                        bioc:fill="#fffdef" bioc:stroke="#424135">
+                        bioc:fill="#fef3a8" bioc:stroke="#424135">
         <dc:Bounds x="845" y="185" width="50" height="50" />
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="n6_di" bpmnElement="n6" bioc:fill="#fffdef" bioc:stroke="#424135">
+      <bpmndi:BPMNShape id="n6_di" bpmnElement="n6" bioc:fill="#fdfbe5" bioc:stroke="#424135">
         <dc:Bounds x="970" y="290" width="100" height="80" />
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="n7_di" bpmnElement="n7" bioc:fill="#424135" bioc:stroke="#424135">
+      <bpmndi:BPMNShape id="n7_di" bpmnElement="n7" bioc:fill="#b8000f" bioc:stroke="#424135">
         <dc:Bounds x="1152" y="312" width="36" height="36" />
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="n8_di" bpmnElement="n8" bioc:fill="#424135" bioc:stroke="#424135">
+      <bpmndi:BPMNShape id="n8_di" bpmnElement="n8" bioc:fill="#b8000f" bioc:stroke="#424135">
         <dc:Bounds x="702" y="72" width="36" height="36" />
       </bpmndi:BPMNShape>
 

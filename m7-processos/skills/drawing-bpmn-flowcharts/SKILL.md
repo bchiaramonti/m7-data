@@ -125,15 +125,19 @@ O script implementa o algoritmo descrito em [`references/auto-layout-algorithm.m
 
 Output: `<nome>-layout.json` com bounds de cada shape e waypoints de cada edge.
 
-### Fase 4 — Aplicar M7 styling
+### Fase 4 — Aplicar M7 styling (paleta v1.2)
 
-Consultar tabela em [`references/m7-bpmn-styling.md`](references/m7-bpmn-styling.md). Para cada shape, aplicar `bioc:fill` e `bioc:stroke` (extensao Camunda) baseado no tipo:
+Consultar tabela em [`references/m7-bpmn-styling.md`](references/m7-bpmn-styling.md). Para cada shape, aplicar `bioc:fill` e `bioc:stroke` (extensao Camunda) com **3 niveis hierarquicos** + acentos:
 
-- Start event → fill `#eef77c` (lime), stroke `#424135`
-- End event sucesso → fill `#424135`, stroke `#424135`
-- End event erro → fill `#b8000f`, stroke `#424135`
-- Task / Subprocess / Gateway → fill `#fffdef`, stroke `#424135`
-- Pool / Lane → fill `#fffdef`, stroke `#424135` (label `#fffdef` sobre fundo `#424135`)
+| Nivel | Elemento | bioc:fill | bioc:stroke |
+|---|---|---|---|
+| Container | Pool / Lane | `#fffdef` (warm off-white) | `#424135` |
+| Conteudo | Task / Subprocess | `#fdfbe5` (off-white esverdeado, contraste sobre lane) | `#424135` |
+| Decisao | Gateway (XOR/AND/OR) | `#fef3a8` (amarelo palido — accent) | `#424135` |
+| Foco | Start event (fluxo principal) | `#eef77c` (lime cheio) | `#424135` |
+| Termino | End event (todos) | `#b8000f` (vermelho M7 WCAG-safe) | `#424135` |
+
+Hierarquia visual: lane (mais clara) → task (sutilmente esverdeada) → gateway (amarelo accent) → start (lime) → end (vermelho).
 
 ### Fase 5 — Renderizacao do `.bpmn` + validacao iterativa
 

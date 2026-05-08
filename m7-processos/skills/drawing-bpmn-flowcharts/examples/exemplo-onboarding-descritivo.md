@@ -108,16 +108,18 @@ Resultado dos 5 detectores geometricos:
 
 ---
 
-## 6. Aderencia ao Design System M7-2026
+## 6. Aderencia ao Design System M7-2026 (paleta v1.2)
 
 | Item | Status | Detalhe |
 |---|---|---|
 | Namespace `bioc:` declarado | ✅ | http://bpmn.io/schema/bpmn/biocolor/1.0 |
-| Cores aplicadas conforme tabela | ✅ | Verde caqui em strokes, off-white em fills |
+| Cores aplicadas conforme tabela v1.2 | ✅ | Lane warm `#fffdef` · Task off-white esverdeado `#fdfbe5` · Gateway amarelo palido `#fef3a8` · End vermelho `#b8000f` |
 | Apenas 1 startEvent com lime | ✅ | n1 ("Lead recebido") com `bioc:fill="#eef77c"` |
-| Sem branco frio (`#ffffff`) | ✅ | Todos os fills usam `#fffdef` ou `#424135` |
+| Tasks contrastam com lanes | ✅ | Tasks `#fdfbe5` sobre lanes `#fffdef` (contraste sutil mas visivel) |
+| Gateways tem realce | ✅ | n3 ("Aprovado?") e n5 ("KYC ok?") com `bioc:fill="#fef3a8"` |
+| End events sao todos vermelhos | ✅ | n7 (sucesso), n8 (descarte), n9 (bloqueio) — todos `bioc:fill="#b8000f"` |
+| Sem branco frio (`#ffffff`) | ✅ | Todos os fills usam `#fffdef`, `#fdfbe5`, `#fef3a8`, `#eef77c`, ou `#b8000f` |
 | Edges com stroke `#424135` | ✅ | 8/8 edges com stroke verde caqui |
-| End event de erro com vermelho WCAG | ✅ | n9 com `bioc:fill="#b8000f"` |
 
 > Nota: `bioc:` e suportado por Camunda Modeler 7+, Camunda 8 e bpmn-js. Bizagi e Signavio ignoram silenciosamente.
 

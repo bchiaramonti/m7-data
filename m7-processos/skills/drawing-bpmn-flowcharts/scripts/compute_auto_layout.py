@@ -42,10 +42,13 @@ EVENT_W, EVENT_H = 36, 36
 TASK_W, TASK_H = 100, 80
 SUBPROC_W, SUBPROC_H = 120, 80
 GATEWAY_W, GATEWAY_H = 50, 50
+DATA_STORE_W, DATA_STORE_H = 50, 50    # cilindro
+DATA_OBJECT_W, DATA_OBJECT_H = 36, 50  # documento
 
 # Categorias de tipo
 EVENT_PREFIXES = ("startEvent", "intermediateEvent", "endEvent")
 GATEWAY_SUFFIX = "Gateway"
+DATA_TYPES = ("dataStoreReference", "dataObjectReference")
 
 
 def element_size(node_type: str) -> tuple[int, int]:
@@ -56,6 +59,10 @@ def element_size(node_type: str) -> tuple[int, int]:
         return (GATEWAY_W, GATEWAY_H)
     if node_type in ("subProcess", "adHocSubProcess"):
         return (SUBPROC_W, SUBPROC_H)
+    if node_type == "dataStoreReference":
+        return (DATA_STORE_W, DATA_STORE_H)
+    if node_type == "dataObjectReference":
+        return (DATA_OBJECT_W, DATA_OBJECT_H)
     return (TASK_W, TASK_H)
 
 
@@ -67,6 +74,11 @@ def is_boundary_event(node: dict) -> bool:
 def is_child_of_subprocess(node: dict) -> bool:
     """Tools dentro de adHocSubProcess tem 'parent' apontando para o sub-process."""
     return bool(node.get("parent"))
+
+
+def is_data_reference(node: dict) -> bool:
+    """DataStoreReference / DataObjectReference: layout especial (centralizado na lane)."""
+    return node.get("type") in DATA_TYPES
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -91,10 +103,10 @@ def assign_ranks(nodes: list[dict], edges: list[dict]) -> dict[str, int]:
         outgoing[e["source"]].append(e["target"])
         incoming[e["target"]].append(e["source"])
 
-    # Filtrar nodes elegiveis para layout (excluir boundary e child-of-subprocess)
+    # Filtrar nodes elegiveis para layout (excluir boundary, child-of-subprocess, data references)
     layoutable = [
         n for n in nodes
-        if not is_boundary_event(n) and not is_child_of_subprocess(n)
+        if not is_boundary_event(n) and not is_child_of_subprocess(n) and not is_data_reference(n)
     ]
     layoutable_ids = {n["id"] for n in layoutable}
 
@@ -156,10 +168,11 @@ def compute_layout(input_data: dict) -> dict:
     # Filtrar nodes elegiveis para layout principal
     layoutable_nodes = [
         n for n in nodes
-        if not is_boundary_event(n) and not is_child_of_subprocess(n)
+        if not is_boundary_event(n) and not is_child_of_subprocess(n) and not is_data_reference(n)
     ]
     boundary_nodes = [n for n in nodes if is_boundary_event(n)]
     child_nodes = [n for n in nodes if is_child_of_subprocess(n)]
+    data_ref_nodes = [n for n in nodes if is_data_reference(n)]
 
     # ─ Passo 1 ─ ranks
     ranks = assign_ranks(nodes, edges)
@@ -276,6 +289,31 @@ def compute_layout(input_data: dict) -> dict:
             "type": b["type"],
         })
 
+    # DataStoreReferences / DataObjectReferences: posicionar centralizados na lane,
+    # com offset horizontal entre multiplas refs na mesma lane (evita overlap).
+    # NUNCA permitir bounds identicos entre 2 refs (mesmo se apontam para mesmo dataStore global).
+    refs_per_lane: dict[str, int] = defaultdict(int)
+    for d in data_ref_nodes:
+        lane = lane_bounds.get(d["lane"])
+        if not lane:
+            continue
+        dw, dh = element_size(d["type"])
+        idx = refs_per_lane[d["lane"]]
+        refs_per_lane[d["lane"]] += 1
+        # Centralizar verticalmente na lane; espacar horizontalmente se >1 na mesma lane
+        DATA_REF_GAP = 80
+        center_x = lane["x"] + lane["width"] // 2 - dw // 2
+        x = center_x + (idx * DATA_REF_GAP) - ((refs_per_lane[d["lane"]] - 1) * DATA_REF_GAP) // 2
+        y = lane["y"] + lane["height"] // 2 - dh // 2
+        layout_nodes.append({
+            "id": d["id"],
+            "x": x,
+            "y": y,
+            "width": dw,
+            "height": dh,
+            "type": d["type"],
+        })
+
     # Tools dentro de adHocSubProcess: posicionar em grid 2x2 ou 3x2 dentro do parent
     for c in child_nodes:
         parent = layout_node_by_id.get(c["parent"])
@@ -319,22 +357,26 @@ def compute_layout(input_data: dict) -> dict:
         wp2_x = target["x"]
         wp2_y = target["y"] + target["height"] // 2
 
-        # Loop-back: target.x < source.x → ir por cima
+        # Loop-back: target.x < source.x → sair pela direita com offset lateral, subir, atravessar, descer
         if target["x"] < source["x"]:
-            # waypoint acima da lane
             host_lane = next(
                 (l for l in layout_lanes if l["id"] == [n for n in nodes if n["id"] == e["source"]][0]["lane"]),
                 None,
             )
             if host_lane:
                 top_y = host_lane["y"] - 20
-                wp1_x_loop = source["x"] + source["width"] // 2
-                wp2_x_loop = target["x"] + target["width"] // 2
+                # Offset lateral de 30px alem da borda direita do source
+                # Evita kink visual colado no node — da "respiro" antes da virada vertical
+                LOOP_LATERAL_OFFSET = 30
+                exit_x = source["x"] + source["width"] + LOOP_LATERAL_OFFSET
+                target_center_x = target["x"] + target["width"] // 2
+                source_mid_y = source["y"] + source["height"] // 2
                 waypoints = [
-                    {"x": wp1_x_loop, "y": source["y"]},
-                    {"x": wp1_x_loop, "y": top_y},
-                    {"x": wp2_x_loop, "y": top_y},
-                    {"x": wp2_x_loop, "y": target["y"]},
+                    {"x": source["x"] + source["width"], "y": source_mid_y},  # sai pela direita
+                    {"x": exit_x, "y": source_mid_y},                          # offset lateral
+                    {"x": exit_x, "y": top_y},                                  # sobe
+                    {"x": target_center_x, "y": top_y},                         # atravessa horizontal
+                    {"x": target_center_x, "y": target["y"]},                   # desce ate borda superior do target
                 ]
             else:
                 waypoints = [{"x": wp1_x, "y": wp1_y}, {"x": wp2_x, "y": wp2_y}]

@@ -123,6 +123,34 @@ def parse_bpmn(path: str) -> dict:
             mf.attrib.get("targetRef"),
         )
 
+    # Data associations (input/output) — endpoints sao ref interna + parent task
+    # dataInputAssociation: sourceRef = dataStore/dataObject, targetRef interno = property; o "from" do edge e o sourceRef e o "to" e a parent task
+    # dataOutputAssociation: sourceRef interno = property; targetRef = dataStore/dataObject; o "from" do edge e a parent task e o "to" e o targetRef
+    TASK_LIKE_TAGS = {
+        "task", "userTask", "serviceTask", "sendTask", "receiveTask",
+        "scriptTask", "manualTask", "businessRuleTask",
+        "subProcess", "adHocSubProcess", "transaction", "callActivity",
+    }
+    for parent in root.iter():
+        if "}" not in parent.tag:
+            continue
+        parent_tag = parent.tag.split("}")[-1]
+        if parent_tag not in TASK_LIKE_TAGS:
+            continue
+        parent_id = parent.attrib.get("id")
+        if not parent_id:
+            continue
+        for dia in parent.findall(f"{{{NS['bpmn']}}}dataInputAssociation"):
+            eid = dia.attrib.get("id")
+            source_ref_el = dia.find(f"{{{NS['bpmn']}}}sourceRef")
+            if eid and source_ref_el is not None and source_ref_el.text:
+                edge_endpoints[eid] = (source_ref_el.text, parent_id)
+        for doa in parent.findall(f"{{{NS['bpmn']}}}dataOutputAssociation"):
+            eid = doa.attrib.get("id")
+            target_ref_el = doa.find(f"{{{NS['bpmn']}}}targetRef")
+            if eid and target_ref_el is not None and target_ref_el.text:
+                edge_endpoints[eid] = (parent_id, target_ref_el.text)
+
     for edge in root.iter(f"{{{NS['bpmndi']}}}BPMNEdge"):
         bpmn_element = edge.attrib.get("bpmnElement")
         if not bpmn_element:
@@ -345,12 +373,27 @@ def detect_label_overflow(shapes: list[dict]) -> list[dict]:
             continue
         usable_w = shape["width"] - 2 * LABEL_PADDING
         usable_h = shape["height"] - 2 * LABEL_PADDING
-        text_w_1line = len(shape["label"]) * LABEL_CHAR_WIDTH
 
-        if text_w_1line <= usable_w:
+        # Reconhecer labels ja quebrados em multiplas linhas (\n no texto).
+        # Tratar \r\n e \n como quebra; bpmn-js renderiza ambos como nova linha.
+        normalized = shape["label"].replace("\r\n", "\n")
+        existing_lines = normalized.split("\n")
+        max_line_chars = max(len(line) for line in existing_lines)
+        text_w_existing = max_line_chars * LABEL_CHAR_WIDTH
+        total_h_existing = len(existing_lines) * LABEL_LINE_HEIGHT
+
+        # Se o label ja vem pre-quebrado e cabe, ok
+        if text_w_existing <= usable_w and total_h_existing <= usable_h:
             continue
 
-        words = shape["label"].split()
+        # Se eh single-line e cabe, ok
+        text_w_1line = len(shape["label"]) * LABEL_CHAR_WIDTH
+        if "\n" not in normalized and text_w_1line <= usable_w:
+            continue
+
+        # Caso contrario, tentar (re)splittar em 2 linhas
+        flat_label = " ".join(line.strip() for line in existing_lines)
+        words = flat_label.split()
         if len(words) < 2:
             issues.append({
                 "type": "label-overflow",
@@ -465,6 +508,81 @@ def detect_rtl_flow(shapes: list[dict], edges: list[dict]) -> list[dict]:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Detector 6 — Duplicate shape bounds
+# ─────────────────────────────────────────────────────────────────────
+
+def detect_duplicate_shape_bounds(shapes: list[dict]) -> list[dict]:
+    """
+    Detecta 2+ shapes com bounds identicas. Filtra pool/lane (containers).
+    Caso classico: dois <bpmn:dataStoreReference> apontando para mesmo dataStore
+    cross-pool, mas com bounds identicas → cilindros sobrepostos no diagrama.
+    """
+    issues = []
+    flow_shapes = [s for s in shapes if s["type"] not in ("participant", "lane")]
+    seen: dict[tuple, str] = {}
+    for shape in flow_shapes:
+        key = (shape["x"], shape["y"], shape["width"], shape["height"])
+        if key in seen:
+            issues.append({
+                "type": "duplicate-shape-bounds",
+                "shapeIds": [seen[key], shape["id"]],
+                "bounds": [shape["x"], shape["y"], shape["width"], shape["height"]],
+                "severity": "fail",
+                "suggestion": (
+                    f"Shapes {seen[key]} and {shape['id']} have identical bounds — "
+                    f"assign distinct positions (typical: 1 dataStoreReference per pool/lane)"
+                ),
+            })
+        else:
+            seen[key] = shape["id"]
+    return issues
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Detector 7 — Long container label
+# ─────────────────────────────────────────────────────────────────────
+
+POOL_LABEL_MAX = 30
+LANE_LABEL_MAX = 25
+
+
+def detect_long_container_label(shapes: list[dict]) -> list[dict]:
+    """
+    Pool labels > 30 chars e lane labels > 25 chars sao truncados pelo bpmn-js
+    quando o container e alto (rotacao vertical da label trunca o texto na barra).
+    """
+    issues = []
+    for shape in shapes:
+        if shape["type"] == "participant":
+            label_len = len(shape["label"])
+            if label_len > POOL_LABEL_MAX:
+                issues.append({
+                    "type": "long-container-label",
+                    "shapeId": shape["id"],
+                    "labelLength": label_len,
+                    "severity": "warning",
+                    "suggestion": (
+                        f"Pool '{shape['label']}' has {label_len} chars (> {POOL_LABEL_MAX}) — "
+                        f"abbreviate to avoid truncation in bpmn-js"
+                    ),
+                })
+        elif shape["type"] == "lane":
+            label_len = len(shape["label"])
+            if label_len > LANE_LABEL_MAX:
+                issues.append({
+                    "type": "long-container-label",
+                    "shapeId": shape["id"],
+                    "labelLength": label_len,
+                    "severity": "warning",
+                    "suggestion": (
+                        f"Lane '{shape['label']}' has {label_len} chars (> {LANE_LABEL_MAX}) — "
+                        f"abbreviate to avoid truncation in bpmn-js"
+                    ),
+                })
+    return issues
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Orquestracao
 # ─────────────────────────────────────────────────────────────────────
 
@@ -476,6 +594,8 @@ def validate(path: str) -> dict:
     issues.extend(detect_label_overflow(parsed["shapes"]))
     issues.extend(detect_aspect_ratio(parsed["shapes"]))
     issues.extend(detect_rtl_flow(parsed["shapes"], parsed["edges"]))
+    issues.extend(detect_duplicate_shape_bounds(parsed["shapes"]))
+    issues.extend(detect_long_container_label(parsed["shapes"]))
 
     fail_count = sum(1 for i in issues if i["severity"] == "fail")
     warning_count = sum(1 for i in issues if i["severity"] == "warning")

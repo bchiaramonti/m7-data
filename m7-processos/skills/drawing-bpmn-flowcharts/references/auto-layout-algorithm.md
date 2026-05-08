@@ -2,14 +2,18 @@
 
 Algoritmo deterministico para calcular coordenadas de shapes (`<bpmndi:BPMNShape>`) e waypoints de edges (`<bpmndi:BPMNEdge>`) em arquivos `.bpmn`. Implementado em `scripts/compute_auto_layout.py`.
 
+> **Atualizado em v1.2.0 (2026-05-08):** loop-back com offset lateral (sem kink colado na borda do node) + posicionamento de dataStoreReferences (1 shape por referencia, evita overlap quando ha refs cross-pool ao mesmo `<bpmn:dataStore>` global).
+
 ## Sumario
 
 1. [Constantes geometricas](#1-constantes-geometricas)
 2. [Dimensoes por tipo de elemento](#2-dimensoes-por-tipo-de-elemento)
 3. [Pseudocodigo (6 passos)](#3-pseudocodigo-6-passos)
-4. [Estrategias de relayout](#4-estrategias-de-relayout)
-5. [Saida do algoritmo](#5-saida-do-algoritmo)
-6. [Implementacao de referencia](#6-implementacao-de-referencia)
+4. [Loop-back com offset lateral](#4-loop-back-com-offset-lateral)
+5. [DataStoreReference cross-pool](#5-datastorereference-cross-pool)
+6. [Estrategias de relayout](#6-estrategias-de-relayout)
+7. [Saida do algoritmo](#7-saida-do-algoritmo)
+8. [Implementacao de referencia](#8-implementacao-de-referencia)
 
 ---
 
@@ -199,7 +203,107 @@ para cada edge E (sequenceFlow, messageFlow, association):
 
 ---
 
-## 4. Estrategias de relayout
+## 4. Loop-back com offset lateral (v1.2)
+
+Quando uma sequence flow tem `target.x < source.x` (loop-back classico), o waypoint nao pode sair pela borda esquerda do source colado, porque visualmente parece que a edge "comeca dentro" do node. **Solucao:** offset lateral antes da virada vertical.
+
+### Algoritmo (5 waypoints)
+
+```python
+LOOP_LATERAL_OFFSET = 30  # px alem da borda direita
+
+# 1. Sai pela direita do source (meio vertical)
+wp1 = (source.x + source.width, source.y + source.height/2)
+
+# 2. Vai 30px lateral antes da virada
+wp2 = (source.x + source.width + LOOP_LATERAL_OFFSET, wp1.y)
+
+# 3. Sobe ate top da lane com -20px de margem
+host_lane = lane do source
+top_y = host_lane.y - 20
+wp3 = (wp2.x, top_y)
+
+# 4. Atravessa horizontal ate centro do target
+target_center_x = target.x + target.width/2
+wp4 = (target_center_x, top_y)
+
+# 5. Desce ate borda superior do target
+wp5 = (target_center_x, target.y)
+```
+
+### Comparacao v1.1 vs v1.2
+
+| | v1.1 (antigo) | v1.2 (atual) |
+|---|---|---|
+| Saida do source | borda superior (kink colado) | borda direita + 30px offset |
+| Numero de waypoints | 4 | 5 |
+| Visual | linha sai "do meio do node" | linha tem "respiro" lateral antes de virar |
+
+### Caso especifico do exemplo onboarding
+
+Em `examples/exemplo-onboarding-input.json` nao ha loop-back, entao essa logica nao e exercitada. Mas em diagramas como `maquina-de-vendas-onda1.bpmn` (loop A6 → A2), a v1.2 produz waypoints mais limpos:
+
+```
+v1.1: (470, 530) → (470, 510) → (570, 510) → (570, 250)         # 4 wp, kink no source
+v1.2: (470, 570) → (500, 570) → (500, 130) → (570, 130) → (570, 170)  # 5 wp, offset lateral
+```
+
+---
+
+## 5. DataStoreReference cross-pool (v1.2)
+
+BPMN 2.0 permite que multiplos `<bpmn:dataStoreReference>` apontem para o mesmo `<bpmn:dataStore>` global (cross-pool data sharing). Cada referencia precisa de **bounds proprias** — caso contrario, 2 cilindros sao desenhados nas mesmas coordenadas (overlap visual completo).
+
+### Algoritmo de posicionamento
+
+```python
+DATA_STORE_W, DATA_STORE_H = 50, 50    # cilindro
+DATA_OBJECT_W, DATA_OBJECT_H = 36, 50  # documento
+DATA_REF_GAP = 80                       # espacamento horizontal entre refs na mesma lane
+
+refs_per_lane = {}  # contagem por lane
+for d in data_ref_nodes:
+    lane = lane_bounds[d["lane"]]
+    dw, dh = element_size(d["type"])
+    idx = refs_per_lane[d["lane"]]
+    refs_per_lane[d["lane"]] += 1
+
+    # Centralizado verticalmente na lane
+    center_x = lane.x + lane.width/2 - dw/2
+    # Espacar horizontalmente se >1 na mesma lane
+    x = center_x + (idx * DATA_REF_GAP) - ((refs_per_lane[d["lane"]] - 1) * DATA_REF_GAP) / 2
+    y = lane.y + lane.height/2 - dh/2
+```
+
+### Padroes de uso
+
+**Caso 1: 1 dataStore + 1 referencia (single-pool)**
+```json
+{ "id": "ds1", "type": "dataStoreReference", "lane": "lane-banco", "pool": "pool1" }
+```
+Posicionada centralizada na `lane-banco`.
+
+**Caso 2: 1 dataStore + N referencias na mesma lane**
+```json
+{ "id": "ds1a", "type": "dataStoreReference", "lane": "lane-banco", "pool": "pool1" },
+{ "id": "ds1b", "type": "dataStoreReference", "lane": "lane-banco", "pool": "pool1" }
+```
+Espacadas com 80px lateral entre si, simetricas em torno do centro da lane.
+
+**Caso 3: 1 dataStore + N referencias cross-pool (padrao Camunda)**
+```json
+{ "id": "ds-pool1", "type": "dataStoreReference", "lane": "lane-banco-pool1", "pool": "pool1" },
+{ "id": "ds-pool2", "type": "dataStoreReference", "lane": "lane-banco-pool2", "pool": "pool2" }
+```
+Cada uma na sua lane do respectivo pool — bounds completamente distintas.
+
+### Anti-pattern caught pelo validador
+
+Se 2 dataStoreReferences acabam com bounds identicas (ex: foram input-ed no JSON sem `lane` distinta), o detector `duplicate-shape-bounds` em `validate_bpmn_readability.py` flagrara como `severity: fail`.
+
+---
+
+## 6. Estrategias de relayout
 
 Quando `validate_bpmn_readability.py` retorna `passed: false`, aplicar uma das estrategias abaixo conforme o tipo de issue. Maximo **3 iteracoes** total.
 
@@ -272,7 +376,7 @@ Se a estrategia nao resolver em 1 iteracao, registrar issue residual.
 
 ---
 
-## 5. Saida do algoritmo
+## 7. Saida do algoritmo
 
 `compute_auto_layout.py` produz JSON com a seguinte estrutura:
 
@@ -329,7 +433,7 @@ A skill consome este JSON em **Fase 5** (renderizacao) para popular o `<bpmndi:B
 
 ---
 
-## 6. Implementacao de referencia
+## 8. Implementacao de referencia
 
 A implementacao canonica esta em [`scripts/compute_auto_layout.py`](../scripts/compute_auto_layout.py):
 

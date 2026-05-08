@@ -303,6 +303,8 @@ A skill aplica este checklist em **Fase 2** (pre-construcao) e **Fase 6** (pos-l
 - ❌ **End event ausente em algum caminho**: dead-end implicito = bug do mapeamento
 - ❌ **Pool unico com 1 lane**: redundante — usar pool sem lanes
 - ❌ **Subprocess de 1 atividade**: nao agrupa nada — virar task simples
+- ❌ **Pool label > 30 chars / Lane label > 25 chars**: bpmn-js trunca em containers altos (height > 400px). Abreviar ou usar siglas. Detector `long-container-label` reporta como warning
+- ❌ **2+ dataStoreReferences com mesmas bounds**: padrao cross-pool exige 1 referencia por pool, em sua propria lane. Bounds identicas = 2 cilindros sobrepostos. Detector `duplicate-shape-bounds` reporta como fail
 
 ---
 

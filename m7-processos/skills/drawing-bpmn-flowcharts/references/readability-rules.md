@@ -1,6 +1,8 @@
 # Regras de Legibilidade — Validadores Geometricos
 
-5 detectores deterministicos de problemas de legibilidade visual em arquivos `.bpmn`. Implementados em `scripts/validate_bpmn_readability.py` e usados pela skill em **Fase 5** (validacao iterativa).
+7 detectores deterministicos de problemas de legibilidade visual em arquivos `.bpmn`. Implementados em `scripts/validate_bpmn_readability.py` e usados pela skill em **Fase 5** (validacao iterativa).
+
+> **Atualizado em v1.2.0:** validador reconhece data associations (`<bpmn:dataInputAssociation>` / `<bpmn:dataOutputAssociation>`) e labels multiline (com `\n`). 2 detectores novos: `duplicate-shape-bounds` e `long-container-label`.
 
 ## Sumario
 
@@ -10,8 +12,10 @@
 4. [Detector 3 — Label overflow](#4-detector-3--label-overflow)
 5. [Detector 4 — Aspect ratio violation](#5-detector-4--aspect-ratio-violation)
 6. [Detector 5 — RTL flow](#6-detector-5--rtl-flow)
-7. [Severidade e relayout](#7-severidade-e-relayout)
-8. [Output JSON do validador](#8-output-json-do-validador)
+7. [Detector 6 — Duplicate shape bounds (v1.2)](#7-detector-6--duplicate-shape-bounds-v12)
+8. [Detector 7 — Long container label (v1.2)](#8-detector-7--long-container-label-v12)
+9. [Severidade e relayout](#9-severidade-e-relayout)
+10. [Output JSON do validador](#10-output-json-do-validador)
 
 ---
 
@@ -34,6 +38,8 @@ Cada detector e **deterministico** (mesmo input → mesmo output) e roda em Pyth
 ### Problema
 
 Um waypoint de edge (ou segmento entre 2 waypoints) cruza o bounding-box de um node que **nao** e nem o source nem o target do edge. Isso polui a leitura visual ("o que esse fluxo esta fazendo passando por essa atividade?").
+
+> **Fix v1.2:** o validador agora reconhece `<bpmn:dataInputAssociation>` e `<bpmn:dataOutputAssociation>` — extrai source/target corretamente do parent task + sourceRef/targetRef interno. Antes (v1.1), data associations nao tinham endpoints e eram flagadas como "cruzando seu proprio source/target" → 14 falsos positivos no diagrama tipico com dataStores. Apos o fix, falsos positivos desaparecem; apenas issues geometricos genuinos sao reportados.
 
 ### Algoritmo
 
@@ -120,6 +126,8 @@ Adicionar waypoint intermediario em um dos edges com offset de ±15px no eixo pe
 ### Problema
 
 O texto do label do node nao cabe dentro do container do node (overflow). Resultado: texto trincado, cortado ou invadindo espaco visual de outro elemento.
+
+> **Fix v1.2:** o validador agora reconhece labels multiline — quando o XML tem `\n` ou `\r\n` no `name` do node (ex: `"A3\nOrquestrador"`), o detector splita por `\n` e usa a maior linha como largura, somando todas as linhas como altura. Antes (v1.1), labels pre-quebrados eram contados como 1 linha de N chars → flagados como overflow. Apos o fix, labels que ja vem quebrados e cabem nas dimensoes do node passam direto.
 
 ### Algoritmo
 
@@ -274,7 +282,84 @@ Re-executar topological sort com tie-breaking diferente (ordem do JSON original)
 
 ---
 
-## 7. Severidade e relayout
+## 7. Detector 6 — Duplicate shape bounds (v1.2)
+
+### Problema
+
+2+ shapes com bounds completamente identicas. Caso classico: 2 `<bpmn:dataStoreReference>` apontando para o mesmo `<bpmn:dataStore>` global (cross-pool data sharing) recebendo as mesmas coordenadas → 2 cilindros sobrepostos no diagrama, leitura impossivel.
+
+### Algoritmo
+
+```python
+def detect_duplicate_shape_bounds(shapes):
+    issues = []
+    flow_shapes = [s for s in shapes if s["type"] not in ("participant", "lane")]
+    seen = {}
+    for shape in flow_shapes:
+        key = (shape["x"], shape["y"], shape["width"], shape["height"])
+        if key in seen:
+            issues.append({
+                "type": "duplicate-shape-bounds",
+                "shapeIds": [seen[key], shape["id"]],
+                "bounds": list(key),
+                "severity": "fail",
+                "suggestion": "Assign distinct positions (typical: 1 dataStoreReference per pool/lane)"
+            })
+        else:
+            seen[key] = shape["id"]
+    return issues
+```
+
+### Estrategia de relayout
+
+Indica problema arquitetural — nao tem fix automatico no auto-layout. Recomendacao no descritivo: "Posicionar cada referencia em sua propria lane, ou usar 1 unica referencia se o caso de uso permite".
+
+---
+
+## 8. Detector 7 — Long container label (v1.2)
+
+### Problema
+
+Pool labels > 30 chars e lane labels > 25 chars sao truncados pelo bpmn-js viewer quando o container e alto (rotacao vertical da label trunca o texto na barra esquerda). Resultado visual: "Maquina/Inglesia - Plataforma de Dados" com overlap entre label do pool e label da lane.
+
+### Algoritmo
+
+```python
+POOL_LABEL_MAX = 30
+LANE_LABEL_MAX = 25
+
+def detect_long_container_label(shapes):
+    issues = []
+    for shape in shapes:
+        if shape["type"] == "participant" and len(shape["label"]) > POOL_LABEL_MAX:
+            issues.append({
+                "type": "long-container-label",
+                "shapeId": shape["id"],
+                "labelLength": len(shape["label"]),
+                "severity": "warning",
+                "suggestion": "Abbreviate to avoid truncation in bpmn-js"
+            })
+        elif shape["type"] == "lane" and len(shape["label"]) > LANE_LABEL_MAX:
+            issues.append({...})
+    return issues
+```
+
+### Estrategia de relayout
+
+Severity: warning (nao bloqueia construcao). Sugestao: abreviar manualmente. Esse e um problema de **conteudo**, nao layout — auto-layout nao tem como adivinhar a abreviacao desejada.
+
+### Limites recomendados
+
+| Container | Max chars |
+|---|---|
+| Pool | 30 |
+| Lane | 25 |
+
+Para textos mais longos, usar siglas + tooltip externo ou virar subprocess.
+
+---
+
+## 9. Severidade e relayout
 
 | Severidade | Significado | Comportamento da skill |
 |---|---|---|
@@ -300,7 +385,7 @@ Apos 3 iteracoes sem convergir, **NAO joga erro** — escreve o `.bpmn` mesmo as
 
 ---
 
-## 8. Output JSON do validador
+## 10. Output JSON do validador
 
 `scripts/validate_bpmn_readability.py` produz JSON deterministico:
 
