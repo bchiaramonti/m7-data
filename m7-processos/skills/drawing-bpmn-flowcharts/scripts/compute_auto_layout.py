@@ -225,14 +225,18 @@ def compute_layout(input_data: dict) -> dict:
         })
 
         # Adicionar lanes (Y crescente dentro do pool)
+        # IMPORTANTE: lane.x = pool.x + LANE_HEADER_WIDTH e lane.width = pool.width - LANE_HEADER_WIDTH
+        # Isso reserva uma faixa de LANE_HEADER_WIDTH (30px) na borda esquerda do pool exclusiva
+        # para o label vertical do pool. Sem esse inset, label do pool e labels das lanes se
+        # sobrepoem na mesma faixa vertical (issue corrigido em v1.2.2).
         current_lane_y = current_pool_y + POOL_HEADER_HEIGHT
         for lane in pool_lanes:
             lh = lane_heights[lane["id"]]
             layout_lanes.append({
                 "id": lane["id"],
-                "x": POOL_X,
+                "x": POOL_X + LANE_HEADER_WIDTH,
                 "y": current_lane_y,
-                "width": pool_width,
+                "width": pool_width - LANE_HEADER_WIDTH,
                 "height": lh,
             })
             current_lane_y += lh

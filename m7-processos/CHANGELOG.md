@@ -4,6 +4,19 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.2.2] - 2026-05-08
+
+Patch de layout: inset de 30px nas lanes em relação à borda esquerda do pool — corrige sobreposição de labels.
+
+### Fixed
+- **Lane inset (`lane.x = pool.x + LANE_HEADER_WIDTH`)** — bug v1.1-v1.2.1: lanes herdavam `x = pool.x`, fazendo o label vertical do pool ("Maquina de Vendas - Onda 1") competir com labels verticais das lanes ("Comercial", "Plataforma de Dados") pela mesma faixa de 30px à esquerda. Resultado: texto sobreposto e truncado no bpmn-js. **Fix:** `lane.x = pool.x + 30` e `lane.width = pool.width - 30`. Cria uma faixa exclusiva para o label do pool.
+  - `compute_auto_layout.py` Passo 4 atualizado
+  - `auto-layout-algorithm.md` § Passo 4 documenta o inset com diagrama ASCII
+  - `exemplo-onboarding.bpmn` lanes atualizadas (`x=160→190`, `width=1240→1210`)
+
+### Migration
+Não-breaking. Apenas correção de coordenadas das lanes nos artefatos gerados pela skill. BPMNs existentes continuam funcionando — para corrigir manualmente um BPMN antigo, ajustar `<dc:Bounds>` de cada `<bpmndi:BPMNShape>` referenciando lane: somar 30 ao `x` e subtrair 30 do `width`.
+
 ## [1.2.1] - 2026-05-08
 
 Patch visual: lanes brancas (`#ffffff`) em vez de warm off-white (`#fffdef`) para contraste máximo com tasks `#fdfbe5`.

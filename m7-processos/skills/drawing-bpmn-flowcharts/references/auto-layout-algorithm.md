@@ -117,7 +117,7 @@ para cada lane L:
 
 A altura minima de 120px garante leitura confortavel mesmo em lanes com 1 unico node.
 
-### Passo 4 — Calcular Y das lanes (dentro do pool)
+### Passo 4 — Calcular X/Y das lanes (dentro do pool, com inset lateral)
 
 ```
 para cada pool P:
@@ -125,8 +125,24 @@ para cada pool P:
     para cada lane L em P (ordem do JSON):
         lane.y = current_y
         lane.height = lane_heights[L]
-        lane.x = pool.x
+        lane.x = pool.x + LANE_HEADER_WIDTH       # ← inset 30px
+        lane.width = pool.width - LANE_HEADER_WIDTH
         current_y += lane.height
+```
+
+**Importante (fix em v1.2.2):** lane.x precisa ser `pool.x + LANE_HEADER_WIDTH` (NAO `pool.x`). Sem o inset, label vertical do pool ("Maquina de Vendas - Onda 1") e labels verticais das lanes ("Comercial", "Plataforma de Dados") brigam pela mesma faixa de 30px na borda esquerda → texto sobreposto e truncado no bpmn-js.
+
+Visualmente o inset cria uma faixa exclusiva para o label do pool:
+
+```
++--POOL (30px label vertical)----------------------+
+|                                                  |
+| +--LANE 1 (30px label vertical)----------------+ |
+| |                                              | |
+| +----------------------------------------------+ |
+| +--LANE 2-------------------------------------+ |
+| ...                                              |
++--------------------------------------------------+
 ```
 
 ### Passo 5 — Calcular X e Y dos nodes
