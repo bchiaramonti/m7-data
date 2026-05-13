@@ -52,6 +52,14 @@ KINDS_VALIDOS = {"cliente", "info", "decisao"}
 FORCAS_VALIDAS = {"strong", "mid", "soft"}
 ARTEFATOS_VALIDOS = {"n1", "n2", "n3", "n4-pdf"}
 
+# Politica · campos obrigatorios por sub-objeto (quando n4-pdf em artefatos)
+POLITICA_METADATA_OBRIG = ["codigo_documento", "data_vigencia",
+                            "proxima_revisao", "area_responsavel"]
+POLITICA_APROV_PAPEIS = ["elaborador", "revisor", "aprovador"]
+POLITICA_APROV_CAMPOS = ["nome", "cargo", "data"]
+POLITICA_GOV_OBRIG = ["comite_revisor", "doc_sla", "area_compliance"]
+POLITICA_VERSAO_CAMPOS = ["versao", "data", "alteracoes", "responsavel", "status"]
+
 # Owner deve conter pelo menos um destes marcadores de cargo
 MARCADORES_CARGO = re.compile(
     r"\b(CEO|CFO|COO|CTO|CMO|CIO|CHRO|CXO|"
@@ -446,6 +454,181 @@ def check_relacoes(briefing: dict, issues: list) -> None:
                                f"Par {key[0]}->{key[1]} tem multiplos kinds: {sorted(kinds)}. Escolha um dominante."))
 
 
+def check_politica(briefing: dict, issues: list) -> None:
+    """Valida secao politica: — obrigatoria se n4-pdf em artefatos_a_gerar.
+
+    Politica reune metadata formal (codigo, vigencia, area), controle de versoes,
+    aprovacoes (3 papeis com nome/cargo/data), objetivo narrativo, escopo
+    (inclusoes/exclusoes/doc_relacionados), governanca e selecao de 2
+    processos para a pagina de SIPOC sample.
+    """
+    artefatos = set(briefing.get("artefatos_a_gerar", []))
+    if "n4-pdf" not in artefatos:
+        return  # politica e opcional quando N4 nao sera gerado
+
+    politica = briefing.get("politica")
+    if not politica:
+        issues.append(Issue("POLITICA-AUSENTE", "bloqueador", "politica",
+                           "Secao politica: obrigatoria quando n4-pdf esta em artefatos_a_gerar"))
+        return
+
+    # metadata
+    metadata = politica.get("metadata") or {}
+    for f in POLITICA_METADATA_OBRIG:
+        v = metadata.get(f)
+        if not v or (isinstance(v, str) and v.strip() == ""):
+            issues.append(Issue("POLITICA-META-VAZIO", "bloqueador",
+                               f"politica.metadata.{f}",
+                               f"Campo obrigatorio ausente em politica.metadata: {f}"))
+
+    # versoes
+    versoes = politica.get("versoes") or []
+    if not versoes:
+        issues.append(Issue("POLITICA-SEM-VERSAO", "bloqueador", "politica.versoes",
+                           "Deve haver pelo menos 1 versao (a vigente atual)"))
+    else:
+        vigentes = [v for v in versoes
+                    if isinstance(v, dict) and v.get("status") == "vigente"]
+        if len(vigentes) != 1:
+            issues.append(Issue("POLITICA-VIGENTE", "bloqueador", "politica.versoes",
+                               f"Exatamente 1 versao deve ter status=vigente, encontrei {len(vigentes)}"))
+        for i, v in enumerate(versoes):
+            if not isinstance(v, dict):
+                issues.append(Issue("POLITICA-VERSAO-FORMATO", "bloqueador",
+                                   f"politica.versoes[{i}]",
+                                   "Cada versao deve ser um dict com versao/data/alteracoes/responsavel/status"))
+                continue
+            for f in POLITICA_VERSAO_CAMPOS:
+                val = v.get(f)
+                if not val or (isinstance(val, str) and val.strip() == ""):
+                    issues.append(Issue("POLITICA-VERSAO-INCOMPLETA", "bloqueador",
+                                       f"politica.versoes[{i}].{f}",
+                                       f"Campo obrigatorio ausente em versao: {f}"))
+            status = v.get("status")
+            if status and status not in ("vigente", "obsoleto"):
+                issues.append(Issue("POLITICA-VERSAO-STATUS", "bloqueador",
+                                   f"politica.versoes[{i}].status",
+                                   f"status deve ser 'vigente' ou 'obsoleto'. Valor: {status!r}"))
+        if len(versoes) > 3:
+            issues.append(Issue("POLITICA-VERSOES-EXCESSO", "aviso", "politica.versoes",
+                               f"{len(versoes)} versoes. Template suporta exatamente 3 linhas (vigente + 2 anteriores). Excedentes serao truncados."))
+
+    # aprovacoes
+    aprov = politica.get("aprovacoes") or {}
+    for role in POLITICA_APROV_PAPEIS:
+        r = aprov.get(role) or {}
+        if not r:
+            issues.append(Issue("POLITICA-APROV-AUSENTE", "bloqueador",
+                               f"politica.aprovacoes.{role}",
+                               f"Papel de aprovacao ausente: {role}"))
+            continue
+        if not isinstance(r, dict):
+            issues.append(Issue("POLITICA-APROV-FORMATO", "bloqueador",
+                               f"politica.aprovacoes.{role}",
+                               "Cada papel deve ser um dict com nome/cargo/data"))
+            continue
+        for f in POLITICA_APROV_CAMPOS:
+            val = r.get(f)
+            if not val or (isinstance(val, str) and val.strip() == ""):
+                issues.append(Issue("POLITICA-APROV-INCOMPLETO", "bloqueador",
+                                   f"politica.aprovacoes.{role}.{f}",
+                                   f"Campo obrigatorio: {f}"))
+
+    # objetivo_texto
+    obj = (politica.get("objetivo_texto") or "")
+    obj_s = obj.strip() if isinstance(obj, str) else ""
+    if not obj_s:
+        issues.append(Issue("POLITICA-OBJ-VAZIO", "bloqueador", "politica.objetivo_texto",
+                           "Texto do objetivo vazio. Escreva 2-4 linhas formais."))
+    elif len(obj_s) < 40:
+        issues.append(Issue("POLITICA-OBJ-CURTO", "aviso", "politica.objetivo_texto",
+                           f"Objetivo com {len(obj_s)} caracteres. Recomenda-se 100-400."))
+
+    # escopo
+    escopo = politica.get("escopo") or {}
+    inclusoes = escopo.get("inclusoes") or []
+    exclusoes = escopo.get("exclusoes") or []
+    doc_rel = escopo.get("doc_relacionados") or []
+    if len(inclusoes) < 2:
+        issues.append(Issue("POLITICA-INCLUSOES", "bloqueador", "politica.escopo.inclusoes",
+                           f"Pelo menos 2 inclusoes. Encontrado: {len(inclusoes)}"))
+    if len(inclusoes) > 3:
+        issues.append(Issue("POLITICA-INCLUSOES-EXCESSO", "aviso",
+                           "politica.escopo.inclusoes",
+                           f"{len(inclusoes)} inclusoes. Template renderiza 3 — excedentes serao truncados."))
+    if len(exclusoes) < 1:
+        issues.append(Issue("POLITICA-EXCLUSOES", "aviso", "politica.escopo.exclusoes",
+                           "Recomenda-se ao menos 1 exclusao (deixar claro o que NAO esta no escopo)."))
+    if len(exclusoes) > 2:
+        issues.append(Issue("POLITICA-EXCLUSOES-EXCESSO", "aviso",
+                           "politica.escopo.exclusoes",
+                           f"{len(exclusoes)} exclusoes. Template renderiza 2 — excedentes serao truncados."))
+    if len(doc_rel) < 1:
+        issues.append(Issue("POLITICA-DOC-REL", "aviso",
+                           "politica.escopo.doc_relacionados",
+                           "Recomenda-se ao menos 1 documento relacionado."))
+    if len(doc_rel) > 3:
+        issues.append(Issue("POLITICA-DOC-REL-EXCESSO", "aviso",
+                           "politica.escopo.doc_relacionados",
+                           f"{len(doc_rel)} documentos. Template renderiza 3 — excedentes serao truncados."))
+
+    # governanca
+    gov = politica.get("governanca") or {}
+    for f in POLITICA_GOV_OBRIG:
+        v = gov.get(f)
+        if not v or (isinstance(v, str) and v.strip() == ""):
+            issues.append(Issue("POLITICA-GOV-VAZIO", "bloqueador",
+                               f"politica.governanca.{f}",
+                               f"Campo obrigatorio ausente em politica.governanca: {f}"))
+
+    # sipoc_amostra (cross-check com processos[])
+    amostra = politica.get("sipoc_amostra") or []
+    processos = briefing.get("processos", [])
+    codigos_validos = {p.get("codigo") for p in processos if p.get("codigo")}
+    processos_com_sipoc = {p.get("codigo") for p in processos
+                           if p.get("sipoc") and (p.get("sipoc") or {}).get("verbo")}
+    if len(amostra) != 2:
+        issues.append(Issue("POLITICA-AMOSTRA-QTD", "bloqueador", "politica.sipoc_amostra",
+                           f"Esperado exatamente 2 codigos para SIPOC sample, encontrei {len(amostra)}"))
+    else:
+        for i, c in enumerate(amostra):
+            if not c or (isinstance(c, str) and c.startswith("{{")):
+                issues.append(Issue("POLITICA-AMOSTRA-VAZIA", "bloqueador",
+                                   f"politica.sipoc_amostra[{i}]",
+                                   "Codigo vazio ou placeholder. Preencha com codigo real de processos[]."))
+                continue
+            if c not in codigos_validos:
+                issues.append(Issue("POLITICA-AMOSTRA-ORFA", "bloqueador",
+                                   f"politica.sipoc_amostra[{i}]",
+                                   f"Codigo {c!r} nao existe em processos[]"))
+            elif c not in processos_com_sipoc:
+                issues.append(Issue("POLITICA-AMOSTRA-SEM-SIPOC", "bloqueador",
+                                   f"politica.sipoc_amostra[{i}]",
+                                   f"Processo {c} nao tem SIPOC preenchido — escolha outro processo com SIPOC."))
+
+
+def check_processos_meta(briefing: dict, issues: list) -> None:
+    """Se n4-pdf, verticais (primarios do nucleo) devem ter campo `meta`.
+
+    P1/P2 (front) e P9 (back) sao excecoes — N4 mostra 'Camada' em vez de 'Meta'
+    para esses casos. Apenas verticais do nucleo precisam declarar KR/meta.
+    """
+    artefatos = set(briefing.get("artefatos_a_gerar", []))
+    if "n4-pdf" not in artefatos:
+        return
+    for i, p in enumerate(briefing.get("processos", [])):
+        if p.get("camada") != "primario":
+            continue
+        codigo = p.get("codigo", "?")
+        sc = p.get("subcamada")
+        # Heuristica: verticais sao subcamada=nucleo, OU sem subcamada e nao P1/P2/P9
+        is_vertical = (sc == "nucleo") or (sc is None and codigo not in ("P1", "P2", "P9"))
+        if is_vertical and not (p.get("meta") or "").strip():
+            issues.append(Issue("POLITICA-META-PRIM", "aviso",
+                               f"processos[{i}].meta ({codigo})",
+                               "Vertical (nucleo primario) sem campo `meta`. N4 (Politica) mostra Meta de cada vertical."))
+
+
 def check_artefatos(briefing: dict, issues: list) -> None:
     arts = briefing.get("artefatos_a_gerar") or []
     invalidos = set(arts) - ARTEFATOS_VALIDOS
@@ -492,6 +675,8 @@ def validate(briefing: dict) -> list:
     check_processos(briefing, issues)
     check_relacoes(briefing, issues)
     check_artefatos(briefing, issues)
+    check_politica(briefing, issues)
+    check_processos_meta(briefing, issues)
     check_todos(briefing, issues)
 
     # Ordena: bloqueadores primeiro, depois avisos

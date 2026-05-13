@@ -4,6 +4,54 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.0.0] - 2026-05-13
+
+**MAJOR · skill mapeamento-n1** — N4 (Documento Oficial) re-arquitetado de server-rendered (Playwright/Jinja) para HTML standalone client-side com export PDF via `window.print()`. Promovido para "Política formal" — documento assinável com governança completa (código, vigência, aprovações, escopo, controle de versões). Nova 4ª aba "Política DOC" navega entre todos os 4 templates.
+
+Cruzamento com o design canvas exportado de Claude Design (`process-mapping-value-chain`): identificadas 4 templates byte-quase-idênticas + 1 artefato novo (Política). Sincronizado.
+
+### Added
+- **N4 promovido a "Política"** — template `template-documento-oficial.html` agora é HTML standalone de 1660 linhas com 8 páginas A4 portrait, toolbar interativo (contador, navegação ◀/▶, botão "Exportar PDF") e estrutura formal: Capa · Controle de versões + Aprovações + Sumário · Objetivo/Escopo/Definições · Estrutura da cadeia + Princípios · Gerenciais · Primários · Apoio · SIPOC sample + Interdependências + Governança.
+- **4ª aba "Política DOC"** nos 4 templates principais (N1 master, N1 linear, N2 SIPOC, N3 mapa) — navegação consistente entre todos os artefatos do set.
+- **Seção `politica:`** no `BRIEFING.tmpl.md` — ~30 campos formais agrupados em `metadata` (código, vigência, próxima revisão, área responsável), `versoes` (histórico até 3 entradas com status vigente/obsoleto), `aprovacoes` (3 papéis: elaborador/revisor/aprovador), `objetivo_texto`, `escopo` (inclusões/exclusões/doc relacionados), `governanca` (comitê revisor, doc SLA, área compliance), `sipoc_amostra` (2 processos featurados).
+- **Campo `meta`** opcional em `processos[]` — KR/indicador principal exibido para verticais primárias na página de Primários do N4.
+- **Bloco 6 da Fase A · Governança & Política** em `references/phase-a-entrevista-critica.md` — 7 sub-blocos cobrindo todos os campos de `politica:` com perguntas, inferências, push-back proativo e checkpoints. Executado apenas se `n4-pdf` em `artefatos_a_gerar`.
+- **18 novas regras de validação** em `scripts/check_briefing.py`:
+  - `check_politica()`: POLITICA-AUSENTE, POLITICA-META-VAZIO, POLITICA-SEM-VERSAO, POLITICA-VIGENTE, POLITICA-VERSAO-INCOMPLETA, POLITICA-VERSAO-STATUS, POLITICA-VERSOES-EXCESSO, POLITICA-APROV-AUSENTE, POLITICA-APROV-INCOMPLETO, POLITICA-OBJ-VAZIO, POLITICA-OBJ-CURTO, POLITICA-INCLUSOES, POLITICA-INCLUSOES-EXCESSO, POLITICA-EXCLUSOES, POLITICA-DOC-REL, POLITICA-GOV-VAZIO, POLITICA-AMOSTRA-QTD, POLITICA-AMOSTRA-ORFA, POLITICA-AMOSTRA-SEM-SIPOC.
+  - `check_processos_meta()`: POLITICA-META-PRIM (aviso para verticais sem meta).
+- **`exemplo-briefing-m7.md`** atualizado com bloco `politica:` completo usando dados M7 reais (POL-PROC-001, aprovações Bruno/Juliane/Marcelo, comitê de processos, etc.) + campo `meta` em P3–P8.
+
+### Changed
+- **Arquitetura do N4** — server-rendered (Playwright primário + WeasyPrint fallback) → client-side (HTML standalone + `window.print()`). Trade-offs documentados em `references/n4-documento-oficial.md §7 · Migração e legacy`.
+- **`references/n4-documento-oficial.md`** reescrito de zero (231 linhas → 271 linhas) cobrindo nova arquitetura: estrutura de 8 páginas portrait, toolbar interativo, mapeamento BRIEFING→placeholders (122 placeholders catalogados), checklist de validação, anti-padrões atualizados e seção §7 com motivos da migração e quando ainda usar a abordagem legacy.
+- **SKILL.md** — tabela de Pré-requisitos menciona Bloco 6, tabela de Fase A inclui Bloco 6 condicional, schema BRIEFING expõe `politica:`, descrição do N4 troca "PDF paginado" por "HTML A4 com window.print()", file tree marca scripts deprecated.
+- **Descrição do plugin** (`plugin.json` + `marketplace.json`) — "documento oficial PDF" → "política formal A4-paginada com export PDF via window.print()" para refletir o framing de governança.
+
+### Deprecated
+- **`scripts/render_pdf.py`** — Playwright + WeasyPrint não é mais necessário para N4. Mantido com banner `[DEPRECATED 2026-05]` para casos de uso residuais (CI server-side, PDF de N1/N2/N3 individuais).
+- **`scripts/build_n4.py`** — Jinja includes + BeautifulSoup parsing de fragmentos não é mais necessário (template novo é standalone). Mantido com banner deprecation.
+
+### Fixed
+- **Bug pré-existente em `template-cadeia-de-valor--linear.html`** — aba "Mapa de interdependência" era `<div class="tab">` não-navegável; corrigida para `<a class="tab" href="template-mapa-de-interdependencia.html">`. Mesmo bug existia no design exportado de Claude Design.
+
+### Migration
+
+**BREAKING para usuários que geram N4 (Documento Oficial / Política):**
+
+1. **BRIEFINGs existentes com `n4-pdf` em `artefatos_a_gerar` agora falham validação** com `POLITICA-AUSENTE` até a seção `politica:` ser preenchida. Para migrar:
+   - Adicione o bloco `politica:` no frontmatter YAML (use [BRIEFING.tmpl.md](BRIEFING.tmpl.md) ou [exemplo-briefing-m7.md](examples/exemplo-briefing-m7.md) como referência).
+   - Adicione `meta: "KR/indicador"` em cada vertical primária (subcamada=nucleo) — aviso, não bloqueador.
+   - Execute o Bloco 6 da Fase A (`references/phase-a-entrevista-critica.md §7`) para coletar os campos guiado.
+
+2. **Pipeline de geração do N4 mudou**:
+   - **Antes**: `python3 scripts/build_n4.py briefing.md output_dir/` → `documento-oficial-{slug}.html` (com Jinja includes) → `python3 scripts/render_pdf.py *.html *.pdf` (Playwright)
+   - **Agora**: a skill substitui placeholders no `template-documento-oficial.html` standalone → usuário abre o HTML no navegador → clica em "Exportar PDF" no toolbar (Cmd+P, "Salvar como PDF", marcar "Plano de fundo gráfico")
+   - Scripts antigos foram deprecados (não removidos). Continuam funcionais para casos residuais — ver banners no topo dos arquivos.
+
+3. **Aba "Política" nos templates N1/N2/N3** — visualmente novos cliques. Quem tinha HTMLs gerados pela skill v1.x verá a aba ausente; re-gerar pela skill v2.0 para incorporar.
+
+4. **Sem perda de dados** — BRIEFINGs antigos que NÃO pediam N4 continuam validando sem mudança (seção `politica:` é opt-in por `n4-pdf`).
+
 ## [1.2.2] - 2026-05-08
 
 Patch de layout: inset de 30px nas lanes em relação à borda esquerda do pool — corrige sobreposição de labels.

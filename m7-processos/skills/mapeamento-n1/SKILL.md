@@ -33,7 +33,7 @@ Pipeline de 3 fases para mapeamento macro de processos (nível N1), produzindo *
 | **N1** | Cadeia de Valor (Porter, 3 camadas) | *O que a empresa faz?* |
 | **N2** | Missão do Processo (SIPOC) | *O que cada processo entrega?* |
 | **N3** | Mapa de Interdependência (grafo) | *Como os processos se conectam?* |
-| **N4** | Documento Oficial (PDF paginado) | *Como apresentar tudo isso oficialmente?* |
+| **N4** | Política / Documento Oficial (A4 paginado, export via window.print()) | *Como formalizar e assinar como política?* |
 
 A skill **não é apenas produtora** — é facilitadora: analisa criticamente respostas, detecta inconsistências e itera com o usuário antes de gerar artefatos.
 
@@ -70,7 +70,7 @@ Antes de iniciar a Fase A:
 2. **Escopo** — toda a holding? uma BU? um produto?
 3. **Empresa-alvo** — nome, setor, data de referência (mês/ano)
 4. **Logo** — usar M7 padrão (incluído nos assets) ou logo próprio?
-5. **Quais artefatos gerar** — N1 sempre primeiro; N2/N3 sob demanda; N4 (PDF) exige N1+N2+N3 prontos
+5. **Quais artefatos gerar** — N1 sempre primeiro; N2/N3 sob demanda; N4 (Política) exige N1+N2+N3 prontos **e** o Bloco 6 da Fase A (~30 metadados de governança: código, vigência, aprovações, escopo, governança)
 6. **Briefing existente?** — se houver PE, brandbook ou cadeia anterior, anexe antes da entrevista
 
 ## Arquivos da skill
@@ -94,19 +94,20 @@ skills/mapeamento-n1/
 │   ├── process-critic.md                     ← read-only, analisa BRIEFING
 │   └── pdf-validator.md                      ← read-only, valida PDF gerado
 ├── templates/
-│   ├── template-cadeia-de-valor.html         ← N1 variante A (master)
-│   ├── template-cadeia-de-valor--linear.html ← N1 variante B (linear)
-│   ├── template-missao-do-processo.html      ← N2 (sidebar + SIPOC)
-│   ├── template-mapa-de-interdependencia.html← N3 (neural graph)
-│   ├── template-documento-oficial.html       ← N4 (A4 paginado)
+│   ├── template-cadeia-de-valor.html         ← N1 variante A (master) · 4 abas
+│   ├── template-cadeia-de-valor--linear.html ← N1 variante B (linear) · 4 abas
+│   ├── template-missao-do-processo.html      ← N2 (sidebar + SIPOC) · 4 abas
+│   ├── template-mapa-de-interdependencia.html← N3 (neural graph) · 4 abas
+│   ├── template-documento-oficial.html       ← N4 Política (A4 paginado standalone, 1660 linhas)
 │   ├── m7-tokens.css                         ← tokens
-│   ├── m7-header-dark.css                    ← header escuro
-│   ├── m7-print.css                          ← @page, page-break, landscape
+│   ├── m7-header-dark.css                    ← header escuro (compartilhado entre N1/N2/N3)
+│   ├── m7-print.css                          ← @page, page-break (legacy — N4 atual usa CSS inline)
 │   ├── fonts/                                ← TWK Everett (6 .otf)
 │   └── assets/                               ← logos M7
 ├── scripts/
-│   ├── check_briefing.py                     ← validador determinístico
-│   ├── render_pdf.py                         ← Playwright + WeasyPrint
+│   ├── check_briefing.py                     ← validador determinístico (inclui politica:)
+│   ├── render_pdf.py                         ← [DEPRECATED] Playwright + WeasyPrint — pré-2026-05
+│   ├── build_n4.py                           ← [DEPRECATED] Jinja includes — pré-2026-05
 │   └── requirements.txt
 └── examples/
     ├── exemplo-m7-preenchido.html            ← N1 caso M7
@@ -116,7 +117,7 @@ skills/mapeamento-n1/
 
 ## Fase A — Entrevista & Crítica iterativa
 
-5 blocos curtos com **checkpoints** (heurísticas leves no prompt) ao final de cada bloco. Ao final do bloco 5, invoca `process-critic` para análise consolidada. Loop de **max 3 ciclos** de iteração antes de escalar.
+5–6 blocos curtos com **checkpoints** (heurísticas leves no prompt) ao final de cada bloco. Bloco 6 só executa se N4 está em `artefatos_a_gerar`. Ao final do bloco 5, invoca `process-critic` para análise consolidada. Loop de **max 3 ciclos** de iteração antes de escalar.
 
 Detalhes em [`references/phase-a-entrevista-critica.md`](references/phase-a-entrevista-critica.md).
 
@@ -126,6 +127,7 @@ Detalhes em [`references/phase-a-entrevista-critica.md`](references/phase-a-entr
 | 2 — Estrutura | Contagens por camada, variante A/B, nomes dos processos | Camadas válidas? Nomes ≤ 3 palavras? |
 | 3 — Primários | Detalhamento dos primários (SIPOC se N2) | Verbo não genérico? Inputs ≠ Outputs? |
 | 4 — Demais camadas | Gerenciais (com `Freq:`) e Apoio | Gerenciais têm frequência? |
+| **6 — Governança & Política** *(se N4)* | Código do doc, vigência, aprovações (3 papéis), objetivo, escopo, governança, SIPOC sample, meta por vertical | Aprovações com 3 papéis distintos? Sipoc-amostra existe em processos[]? |
 | 5 — Confirmação | Revisão final + invocação do `process-critic` | Bloqueadores resolvidos ou aceitos? |
 
 ## Fase B — BRIEFING.md (SSOT)
@@ -138,11 +140,21 @@ schema_version: 1
 empresa: { nome, slug, setor, escopo }
 data_referencia, versao, area_documento, logo
 n1: { variante, rotulo_nucleo, total_processos, contagens }
-processos:                          # lista canônica com sipoc + n3 por processo
+processos:                          # lista canônica com sipoc + n3 + meta por processo
   - codigo, camada, nome, tooltip, frequencia, highlight, blue_accent
+    meta: "KR/indicador"            # opcional, exigido para verticais se n4-pdf
     sipoc: { verbo, objeto, finalidade, inputs, outputs, owner }
     n3: { coluna, posicao, friction }
 relacoes: [ { from, to, kind, label, forca } ]
+politica:                           # OBRIGATÓRIO se n4-pdf em artefatos_a_gerar
+  metadata: { codigo_documento, data_vigencia, proxima_revisao, area_responsavel }
+  versoes: [ { versao, data, alteracoes, responsavel, status } ]   # 1-3 entradas
+  aprovacoes: { elaborador, revisor, aprovador }                   # cada: {nome, cargo, data}
+  objetivo_texto: |
+    ...
+  escopo: { inclusoes: [...], exclusoes: [...], doc_relacionados: [...] }
+  governanca: { comite_revisor, doc_sla, area_compliance }
+  sipoc_amostra: [ codigoA, codigoB ]                              # 2 processos com sipoc preenchido
 artefatos_a_gerar: [n1, n2, n3, n4-pdf]
 validacao: { bloqueadores, avisos, todos, bloqueadores_aceitos }
 ---
@@ -163,15 +175,16 @@ Sequência **rígida** (cada artefato lê o BRIEFING):
 1. **N1** → `cadeia-de-valor-{slug}.html` (variante A ou B segundo `n1.variante`)
 2. **N2** → `missao-do-processo-{slug}.html` (sidebar + painel SIPOC por processo)
 3. **N3** → `mapa-de-interdependencia-{slug}.html` (posições % + RELATIONS)
-4. **N4 PDF** → `documento-oficial-{slug}.html` → `documento-oficial-{slug}.pdf`
-   - **Bloqueia** se N1, N2 ou N3 não estão prontos no diretório
-   - Embute os 3 anteriores via Jinja `{% include %}` (vetorial, texto selecionável)
-   - Render: `python3 scripts/render_pdf.py input.html output.pdf` (Playwright; WeasyPrint fallback)
-   - Mapa N3 fica em **landscape** no meio do PDF; capa e SIPOC em retrato
+4. **N4 Política** → `documento-oficial-{slug}.html` (HTML standalone, 8 páginas A4, toolbar com botão "Exportar PDF")
+   - **Bloqueia** se N1/N2/N3 não estão prontos no diretório
+   - **Bloqueia** se seção `politica:` do BRIEFING não está preenchida (regra `POLITICA-AUSENTE`)
+   - Substitui ~120 placeholders do template; sem Jinja includes (template é standalone)
+   - **PDF**: usuário abre o HTML no navegador e clica em "Exportar PDF" → `window.print()` com `@page A4` (precisa marcar "Plano de fundo gráfico" no diálogo)
+   - 8 páginas portrait (sem landscape no MVP)
 
-Detalhes em [`references/phase-c-producao.md`](references/phase-c-producao.md).
+Detalhes em [`references/phase-c-producao.md`](references/phase-c-producao.md) e [`references/n4-documento-oficial.md`](references/n4-documento-oficial.md).
 
-Após gerar tudo, invoca `pdf-validator` (subagent) que abre o PDF e roda checklist de validação.
+Após gerar o HTML do N4, invoca `pdf-validator` (subagent) que pode abrir o HTML e simular o `window.print()` para validar a estrutura.
 
 ## Estilo visual — invariantes
 

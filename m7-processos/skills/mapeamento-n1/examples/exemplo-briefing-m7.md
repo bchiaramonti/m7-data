@@ -209,6 +209,7 @@ processos:
     camada: "primario"
     subcamada: "nucleo"
     nome: "Investimentos"
+    meta: "Captacao R$ 130MM ate 2030"
     tooltip:
       - "XP, Fundos, Renda Fixa/Variavel"
       - "Meta: R$ 9,7 MM"
@@ -239,6 +240,7 @@ processos:
     camada: "primario"
     subcamada: "nucleo"
     nome: "Wealth"
+    meta: "AuM R$ 80MM ate 2030"
     tooltip:
       - "Gestao patrimonial, Advisory"
       - "Meta: R$ 2,4 MM"
@@ -269,6 +271,7 @@ processos:
     camada: "primario"
     subcamada: "nucleo"
     nome: "Credito"
+    meta: "Operacoes R$ 25MM/ano"
     tooltip:
       - "FIDC Credito + Servicos, Consignado"
       - "Meta: R$ 22,6 MM"
@@ -299,6 +302,7 @@ processos:
     camada: "primario"
     subcamada: "nucleo"
     nome: "Universo"
+    meta: "Volume R$ 10MM/ano"
     tooltip:
       - "Produtos PF, Consorcios PF"
       - "Meta: R$ 2,2 MM"
@@ -329,6 +333,7 @@ processos:
     camada: "primario"
     subcamada: "nucleo"
     nome: "Seg/Cons"
+    meta: "Premios R$ 8MM/ano"
     tooltip:
       - "Seguros PF e PJ, Consorcios"
       - "Meta: R$ 7,35 MM"
@@ -359,6 +364,7 @@ processos:
     camada: "primario"
     subcamada: "nucleo"
     nome: "IB"
+    meta: "Receitas R$ 6MM/ano"
     tooltip:
       - "M&A, Estruturacoes"
       - "Meta: R$ 5,5 MM"
@@ -602,6 +608,63 @@ relacoes:
   - { from: "G3", to: "P5", kind: "decisao", label: "Compliance credito" }
   - { from: "G3", to: "P8", kind: "decisao", label: "Compliance M&A" }
   - { from: "G2", to: "P9", kind: "decisao", label: "Auditoria de NPS / KRs" }
+
+politica:
+  metadata:
+    codigo_documento: "POL-PROC-001"
+    data_vigencia: "01/03/2026"
+    proxima_revisao: "01/03/2027"
+    area_responsavel: "Estrategia & Governanca"
+
+  versoes:
+    - versao: "v1.0"
+      data: "Fev / 2026"
+      alteracoes: "Primeira versao formal da cadeia de valor apos workshop com BUs (jan/26). Substitui o mapa instrucional de 06/abr/2025."
+      responsavel: "Bruno Chiaramonti · Head of Performance"
+      status: "vigente"
+
+  aprovacoes:
+    elaborador:
+      nome: "Bruno Chiaramonti"
+      cargo: "Head of Performance"
+      data: "15/02/2026"
+    revisor:
+      nome: "Juliane Lima"
+      cargo: "COO"
+      data: "22/02/2026"
+    aprovador:
+      nome: "Marcelo Mello"
+      cargo: "CEO"
+      data: "28/02/2026"
+
+  objetivo_texto: |
+    Estabelecer a arquitetura formal de processos da M7 Investimentos como linguagem
+    comum entre as 6 BUs, base de execucao para os projetos H1 do Planejamento
+    Estrategico 2026-2030 (CRM, Maquina de Vendas, Customer Success). Reduz
+    dependencia de conhecimento individual e garante consistencia na experiencia
+    do cliente em todos os pontos de contato.
+
+  escopo:
+    inclusoes:
+      - "Todos os colaboradores das 6 BUs (Comercial, Investimentos, Credito, Seguros, Consorcio, CS)"
+      - "Parceiros e prestadores que operam processos com clientes M7"
+      - "Lideres de area com responsabilidade RACI sobre processos macro"
+    exclusoes:
+      - "Operacoes de M&A em curso (H2-01 Consolidacao)"
+      - "BUs em descontinuacao ou pivot estrutural"
+    doc_relacionados:
+      - "Plano Estrategico 2026-2030 (PE-2026)"
+      - "Brandbook M7-2026"
+      - "Manual de Compliance & Suitability"
+
+  governanca:
+    comite_revisor: "Comite de Processos · Reuniao Mensal"
+    doc_sla: "SLA-OPE-001"
+    area_compliance: "Compliance & Risco"
+
+  sipoc_amostra:
+    - "G1"           # Planejamento Estrategico (gerencial, topo da arquitetura)
+    - "P3"           # Investimentos (vertical principal, ponto de entrada PF)
 
 artefatos_a_gerar:
   - n1

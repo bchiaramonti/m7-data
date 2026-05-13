@@ -3,486 +3,1658 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cadeia de Valor — {{NOME_DA_EMPRESA}}</title>
+<title>Política de Processos — {{NOME_DA_EMPRESA}}</title>
 
 <!--
   ====================================================================
-  TEMPLATE: DOCUMENTO OFICIAL (N4) — M7 Design System 2026
+  TEMPLATE: POLÍTICA DE PROCESSOS (M7 Design System · 2026)
   ====================================================================
+  Documento formal que consolida tudo o que foi desenhado nas três
+  abas (Cadeia de Valor · Missão · Mapa de Interdependência) em um
+  único artefato A4 paginado, pronto para arquivamento e exportação
+  em PDF.
 
-  Documento PDF-ready paginado A4 que apresenta a cadeia de valor como
-  artefato oficial. Estrutura:
+  Como usar:
+  1. Substitua os placeholders {{...}} pelo conteúdo real.
+  2. As páginas A4 são <article class="page"> — adicione/remova
+     conforme a quantidade de processos. O contador no rodapé é
+     atualizado por JS no carregamento.
+  3. Botão "Exportar PDF" usa window.print() com @page A4. Garanta,
+     no diálogo do navegador, "Plano de fundo gráfico" ativo.
+  4. Tokens em m7-tokens.css — nenhuma cor inventada.
+  ==================================================================== -->
 
-     P1     CAPA (fullbleed verde-caqui, sem footer)
-     P2     SUMÁRIO (sem page numbers no MVP)
-     P3     INTRODUÇÃO (objetivo, escopo, metodologia)
-     P4-5   N1 CADEIA DE VALOR (retrato, diagrama embedado)
-     P6     ABERTURA "Missões dos processos"
-     P7..N  UMA POR PROCESSO (N2 SIPOC, retrato)
-     P N+1  ABERTURA "Mapa de interdependência" (retrato)
-     P N+2  N3 MAPA NEURAL (LANDSCAPE)
-     P N+3  TABELA DE RELAÇÕES + FRICÇÕES (LANDSCAPE)
-     P M+1  ENCERRAMENTO (retrato)
-
-  Render via scripts/render_pdf.py (Playwright primário, WeasyPrint fallback).
-
-  Placeholders Jinja2 (`{{...}}`) para a skill substituir.
-  Includes (`{% include %}`) para embedar fragmentos dos templates N1/N2/N3.
-  ====================================================================
--->
-
+<link rel="icon" href="assets/m7-logo-favicon.png">
 <link rel="stylesheet" href="m7-tokens.css">
 <link rel="stylesheet" href="m7-header-dark.css">
-<link rel="stylesheet" href="m7-print.css">
 
 <style>
-  /* Variavel de footer setada dinamicamente para todas as @page nao-cover */
-  :root { --doc-footer: "{{NOME_DA_EMPRESA}} · {{DATA_REFERENCIA}}"; }
-
-  /* Local: estilos so usados aqui */
-  .intro-section .intro-grid {
-    display: grid;
-    grid-template-columns: 8mm 1fr;
-    gap: 6mm 8mm;
-    margin-top: 8mm;
+  :root {
+    --lime-soft: rgba(238, 247, 124, 0.18);
+    --lime-faint: rgba(238, 247, 124, 0.08);
+    --page-w: 210mm;
+    --page-h: 297mm;
+    --page-pad-x: 18mm;
+    --page-pad-y: 16mm;
+    --radius: 10px;
+    --radius-sm: 6px;
   }
-  .intro-section .intro-num {
+
+  body {
+    background: var(--ow-600);
+    color: var(--vc-500);
+    line-height: 1.5;
+    padding: 32px 0 96px;
+    min-height: 100vh;
+  }
+
+  /* ============================================================
+     FLOATING TOOLBAR (apenas em tela)
+     ============================================================ */
+  .toolbar {
+    position: fixed;
+    top: 16px; right: 20px;
+    z-index: 100;
+    display: flex; align-items: center; gap: 12px;
+    background: var(--vc-700);
+    color: var(--off-white);
+    padding: 8px 10px 8px 16px;
+    border-radius: 999px;
+    box-shadow: var(--shadow-xl);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+  .toolbar .counter {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 11pt;
-    color: var(--vc-300);
-    padding-top: 2pt;
+    color: rgba(255,253,239,0.65);
+    font-size: 11px;
+    letter-spacing: 0.06em;
   }
-  .intro-section .intro-title {
-    font-size: 13pt;
-    font-weight: 500;
-    color: var(--vc-700);
-    margin-bottom: 3mm;
+  .toolbar .counter strong { color: var(--off-white); font-weight: 500; }
+  .toolbar .sep { width: 1px; height: 18px; background: rgba(255,253,239,0.18); }
+  .toolbar .navbtn {
+    background: transparent; color: rgba(255,253,239,0.7);
+    border: 0; cursor: pointer; padding: 4px 8px;
+    font-size: 14px; line-height: 1; border-radius: 999px;
+    transition: 0.15s;
   }
-  .intro-section .intro-text {
-    font-size: 11pt;
-    line-height: 1.55;
-    color: var(--vc-500);
+  .toolbar .navbtn:hover { background: rgba(255,253,239,0.08); color: var(--off-white); }
+  .toolbar .export {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--lime); color: var(--vc-700);
+    border: 0; cursor: pointer; font-weight: 500;
+    padding: 8px 14px; border-radius: 999px;
+    font-family: var(--font-sans); font-size: 12px;
+    letter-spacing: 0.04em;
+    transition: 0.15s;
+  }
+  .toolbar .export:hover { background: #f4ff8c; transform: translateY(-1px); }
+  .toolbar .export svg { width: 14px; height: 14px; }
+
+  /* ============================================================
+     A4 PAGES
+     ============================================================ */
+  .doc {
+    width: var(--page-w);
+    margin: 0 auto;
+    display: flex; flex-direction: column;
+    gap: 18px;
   }
 
-  /* N1 embed: a cadeia ocupa altura adequada na metade inferior */
-  .n1-embed-container {
-    margin-top: 12mm;
-    border-top: 0.3pt solid var(--vc-100);
-    padding-top: 8mm;
+  .page {
+    width: var(--page-w);
+    height: var(--page-h);
+    background: var(--white);
+    box-shadow: 0 4px 24px -8px rgba(0,0,0,0.18), 0 2px 6px -2px rgba(0,0,0,0.08);
+    position: relative;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    page-break-after: always;
+    break-after: page;
   }
 
-  /* Aberturas de seção (N2, N3) - meia página com tipografia grande */
-  .section-cover {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    height: calc(297mm - 2 * 18mm);
+  /* === Cabeçalho mínimo em páginas internas === */
+  .page-head {
+    height: 14mm;
+    padding: 0 var(--page-pad-x);
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--vc-100);
+    flex-shrink: 0;
   }
-  .section-cover .sc-num {
-    font-size: 64pt;
-    font-weight: 200;
-    color: var(--lime);
-    line-height: 1;
-    letter-spacing: -2pt;
+  .page-head .ph-left {
+    display: flex; align-items: center; gap: 12px;
   }
-  .section-cover .sc-title {
-    font-size: 36pt;
-    font-weight: 300;
-    color: var(--vc-700);
-    margin-top: 4mm;
-    letter-spacing: -0.5pt;
+  .page-head img { height: 18px; opacity: 0.85; }
+  .page-head .ph-sep { width: 1px; height: 14px; background: var(--vc-100); }
+  .page-head .ph-title {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--vc-400); font-weight: 500;
   }
-  .section-cover .sc-lead {
-    font-size: 13pt;
-    line-height: 1.55;
-    color: var(--vc-500);
-    max-width: 140mm;
-    margin-top: 8mm;
+  .page-head .ph-meta {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; color: var(--vc-300);
+    letter-spacing: 0.04em;
   }
 
-  /* Encerramento */
-  .closing h2 {
-    font-size: 22pt;
-    font-weight: 300;
+  /* === Rodapé padrão === */
+  .page-foot {
+    height: 12mm;
+    padding: 0 var(--page-pad-x);
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--vc-100);
+    font-size: 9.5px; color: var(--vc-300);
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+  .page-foot .pf-classif {
+    text-transform: uppercase; letter-spacing: 0.14em;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .page-foot .pf-classif::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--lime);
+  }
+  .page-foot .pf-page {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--vc-400);
+  }
+  .page-foot .pf-page strong { color: var(--vc-600); font-weight: 500; }
+
+  /* === Corpo padrão === */
+  .page-body {
+    flex: 1;
+    padding: 9mm var(--page-pad-x) 8mm;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  /* ============================================================
+     TIPOGRAFIA DO DOCUMENTO
+     ============================================================ */
+  .doc h2.section {
+    font-size: 18px; font-weight: 500; letter-spacing: -0.3px;
     color: var(--vc-700);
-    margin-bottom: 6mm;
+    margin: 0 0 4px;
+    display: flex; align-items: baseline; gap: 12px;
   }
-  .closing-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8mm;
-    margin-top: 6mm;
+  .doc h2.section .num {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; color: var(--vc-300);
+    font-weight: 400; letter-spacing: 0.04em;
   }
-  .closing-grid .col {
-    border-top: 0.5pt solid var(--vc-100);
-    padding-top: 4mm;
+  .doc .section-lede {
+    font-size: 11.5px; color: var(--verde-claro);
+    margin: 0 0 14px; max-width: 70ch;
   }
-  .closing-grid .col h3 {
-    font-size: 11pt;
+  .doc h3.sub {
+    font-size: 12px; font-weight: 500; color: var(--vc-600);
+    margin: 12px 0 6px;
+    letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .doc h3.sub::before {
+    content: ''; width: 12px; height: 1px; background: var(--lime);
+  }
+  .doc p, .doc li {
+    font-size: 11px; color: var(--vc-600); line-height: 1.55;
+    text-wrap: pretty;
+  }
+  .doc p + p { margin-top: 6px; }
+  .doc ul, .doc ol { margin: 4px 0 8px 18px; }
+  .doc li + li { margin-top: 3px; }
+  .doc strong { color: var(--vc-700); font-weight: 500; }
+  .doc .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+
+  hr.divider {
+    border: 0; border-top: 1px solid var(--vc-100);
+    margin: 14px 0;
+  }
+
+  /* ============================================================
+     PÁGINA 1 — CAPA
+     ============================================================ */
+  .page.cover .page-body { padding: 0; }
+  .cover-head {
+    background: var(--vc-700);
+    color: var(--off-white);
+    padding: 14mm var(--page-pad-x) 10mm;
+  }
+  .cover-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 10px; border-bottom: 1px solid rgba(255,253,239,0.14);
+    margin-bottom: 14px;
+  }
+  .cover-meta img { height: 22px; }
+  .cover-meta .meta {
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(255,253,239,0.55);
+    display: flex; gap: 14px; align-items: center;
+  }
+  .cover-meta .meta .dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,253,239,0.4); }
+
+  .cover-tabs {
+    display: flex; gap: 4px;
+    margin-top: 16px;
+  }
+  .cover-tabs .ctab {
+    padding: 8px 14px;
+    font-size: 11px; color: rgba(255,253,239,0.5);
+    border-bottom: 2px solid transparent;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .cover-tabs .ctab .num {
+    font-size: 9px; padding: 1px 5px; border-radius: 3px;
+    background: rgba(255,253,239,0.08); color: rgba(255,253,239,0.5);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .cover-tabs .ctab.active {
+    color: var(--lime); border-bottom-color: var(--lime); font-weight: 500;
+  }
+  .cover-tabs .ctab.active .num { background: var(--lime); color: var(--vc-700); }
+
+  .cover-body {
+    flex: 1;
+    padding: 22mm var(--page-pad-x) 0;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    background: var(--white);
+  }
+  .cover-eyebrow {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--vc-400);
+    margin-bottom: 18px;
+  }
+  .cover-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--lime); }
+  .cover-eyebrow .v { color: var(--vc-600); font-weight: 500; }
+  .cover-title {
+    font-size: 56px; font-weight: 200; letter-spacing: -1.6px; line-height: 0.98;
+    color: var(--vc-700);
+    margin: 0;
+  }
+  .cover-title em {
+    font-style: normal; font-weight: 500;
+    color: var(--verde-medio); position: relative;
+  }
+  .cover-title em::after {
+    content: ''; position: absolute; left: -2px; right: -2px; bottom: 6px; height: 14px;
+    background: var(--lime); z-index: -1; border-radius: 2px;
+  }
+  .cover-subtitle {
+    font-size: 16px; color: var(--verde-claro); font-weight: 300;
+    margin-top: 16px; max-width: 78%;
+    line-height: 1.4;
+  }
+
+  .cover-grid {
+    margin: 18mm 0 14mm;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--vc-100);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .cover-grid .cell {
+    padding: 14px 16px;
+    border-right: 1px solid var(--vc-100);
+    background: var(--white);
+  }
+  .cover-grid .cell:last-child { border-right: 0; }
+  .cover-grid .cell .l {
+    font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--vc-400);
+    margin-bottom: 6px;
+  }
+  .cover-grid .cell .v {
+    font-size: 16px; color: var(--vc-700); font-weight: 400;
+    letter-spacing: -0.2px; line-height: 1.1;
+  }
+  .cover-grid .cell .v.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; font-weight: 500;
+  }
+
+  .cover-foot {
+    margin-top: auto;
+    padding: 10mm var(--page-pad-x);
+    border-top: 1px solid var(--vc-100);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 10px; color: var(--vc-400);
+    letter-spacing: 0.06em;
+  }
+  .cover-foot .conf {
+    display: inline-flex; align-items: center; gap: 8px;
+    text-transform: uppercase; letter-spacing: 0.16em;
+  }
+  .cover-foot .conf::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--lime);
+  }
+
+  /* ============================================================
+     PÁGINA 2 — Controle de versões + Aprovações + Sumário
+     ============================================================ */
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .threecol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+  table.doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    margin-top: 6px;
+  }
+  table.doc-table th {
+    text-align: left;
+    font-size: 9px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--vc-400);
-    margin-bottom: 4mm;
+    font-weight: 500;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--vc-100);
+    background: var(--vc-50);
   }
-  .closing-grid .col ul {
-    list-style: none;
-    padding: 0;
+  table.doc-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--vc-50);
+    color: var(--vc-600);
+    vertical-align: top;
   }
-  .closing-grid .col li {
-    padding: 2mm 0;
-    font-size: 10.5pt;
-    color: var(--vc-500);
-    border-bottom: 0.3pt solid var(--vc-100);
+  table.doc-table td .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px; color: var(--vc-400);
   }
-  .closing-grid .col li:last-child { border-bottom: 0; }
+  table.doc-table td .tag {
+    display: inline-block; padding: 1px 7px;
+    font-size: 9px; letter-spacing: 0.06em;
+    border-radius: 3px; background: var(--lime); color: var(--vc-700);
+    font-weight: 500;
+  }
+  table.doc-table td .tag.muted {
+    background: var(--vc-50); color: var(--vc-400);
+  }
+  table.doc-table tbody tr:hover { background: var(--ow-300); }
 
-  /* Header simples para páginas de conteúdo (não-capa, não-mapa) */
-  .pg-runner-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    border-bottom: 0.3pt solid var(--vc-100);
-    padding-bottom: 3mm;
-    margin-bottom: 8mm;
+  .approval-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 6px;
   }
-  .pg-runner-header .runner-l {
-    font-size: 9pt;
-    letter-spacing: 0.16em;
+  .approval-card {
+    border: 1px solid var(--vc-100);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    background: var(--white);
+  }
+  .approval-card .role {
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--vc-400); margin-bottom: 6px;
+  }
+  .approval-card .who {
+    font-size: 11.5px; color: var(--vc-700); font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .approval-card .what {
+    font-size: 9.5px; color: var(--verde-claro);
+    margin-bottom: 12px;
+  }
+  .approval-card .sig-line {
+    border-top: 1px solid var(--vc-200);
+    padding-top: 4px;
+    font-size: 9px; color: var(--vc-300);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    display: flex; justify-content: space-between;
+  }
+
+  /* Sumário */
+  .toc { margin-top: 6px; }
+  .toc-item {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dotted var(--vc-100);
+    font-size: 11px;
+  }
+  .toc-item .num {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; color: var(--vc-300);
+  }
+  .toc-item .label { color: var(--vc-700); }
+  .toc-item .pg {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; color: var(--vc-400);
+  }
+  .toc-item.h2 { padding-left: 18px; }
+  .toc-item.h2 .label { color: var(--vc-500); }
+
+  /* ============================================================
+     PÁGINA 3+ — Conteúdo
+     ============================================================ */
+  .principles {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    margin-top: 4px;
+  }
+  .principle {
+    border-left: 2px solid var(--lime);
+    padding: 4px 10px 4px 12px;
+  }
+  .principle .pn {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px; color: var(--vc-300); letter-spacing: 0.06em;
+  }
+  .principle .pt {
+    font-size: 11px; font-weight: 500; color: var(--vc-700);
+    margin-top: 2px; line-height: 1.35;
+  }
+  .principle .pd {
+    font-size: 10px; color: var(--verde-claro); margin-top: 2px;
+  }
+
+  .defs { margin-top: 6px; }
+  .defs dt {
+    font-size: 10.5px; font-weight: 500; color: var(--vc-700);
+    margin-top: 8px;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .defs dt .mono {
+    font-size: 9px; color: var(--vc-300); font-weight: 400;
+  }
+  .defs dd {
+    font-size: 10.5px; color: var(--vc-600);
+    margin: 2px 0 0;
+    padding-left: 0;
+  }
+
+  /* ============================================================
+     PÁGINA 4 — Diagrama da Cadeia
+     ============================================================ */
+  .chain-mini {
+    margin-top: 6px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .clayer {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 0;
+    min-height: 56px;
+  }
+  .clayer .clane {
+    background: var(--vc-500);
+    color: var(--off-white);
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    padding: 8px 10px;
+    position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .clayer .clane::after {
+    content: ''; position: absolute; right: 0; top: 22%;
+    width: 2px; height: 56%; border-radius: 2px; background: var(--lime);
+  }
+  .clayer .clane h3 {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--off-white);
+  }
+  .clayer .clane .count {
+    font-size: 9px; color: var(--lime); margin-top: 2px;
+  }
+  .clayer .ccontent {
+    background: var(--white);
+    border: 1px solid var(--vc-100); border-left: 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 8px 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .clayer .ccontent.primarios {
+    display: grid;
+    grid-template-columns: 100px 16px 1fr 16px 100px;
+    gap: 6px;
+    align-items: center;
+  }
+  .cprocess {
+    flex: 1; min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--vc-100);
+    border-radius: 4px;
+    background: var(--white);
+  }
+  .cprocess.lime { background: var(--lime-faint); border-color: rgba(238,247,124,0.8); }
+  .cprocess.blue { background: rgba(0,102,255,0.06); border-color: rgba(0,102,255,0.5); }
+  .cprocess .ccode {
+    font-size: 9.5px; font-weight: 700; color: var(--vc-700);
+    line-height: 1;
+  }
+  .cprocess.blue .ccode { color: var(--info); }
+  .cprocess .cname {
+    font-size: 9px; color: var(--verde-claro); margin-top: 2px;
+    line-height: 1.3;
+  }
+  .cflow {
+    color: var(--vc-300); display: flex; align-items: center; justify-content: center;
+  }
+  .cverticais {
+    border: 1.5px solid var(--lime);
+    border-radius: var(--radius-sm);
+    padding: 12px 8px 8px;
+    background: rgba(238,247,124,0.04);
+    position: relative;
+  }
+  .cverticais .clabel {
+    position: absolute; top: -8px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--lime); color: var(--vc-700);
+    font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+    font-weight: 500;
+    padding: 2px 10px; border-radius: 8px;
+    white-space: nowrap;
+  }
+  .cverticais .cvgrid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  }
+  .col-fb {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+
+  .chain-legend {
+    margin-top: 10px;
+    display: flex; gap: 16px;
+    font-size: 9.5px; color: var(--verde-claro);
+  }
+  .chain-legend .ll {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .chain-legend .ll .dot {
+    width: 10px; height: 10px; border-radius: 3px;
+    border: 1px solid var(--vc-100);
+  }
+  .chain-legend .ll .dot.plain { background: var(--white); }
+  .chain-legend .ll .dot.lime { background: var(--lime-faint); border-color: var(--lime); }
+  .chain-legend .ll .dot.blue { background: rgba(0,102,255,0.06); border-color: var(--info); }
+
+  /* ============================================================
+     PÁGINA 5-7 — descrição dos processos
+     ============================================================ */
+  .proc-list {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-top: 6px;
+  }
+  .proc {
+    border: 1px solid var(--vc-100);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    background: var(--white);
+    display: grid;
+    grid-template-columns: 56px 1fr 110px;
+    gap: 14px;
+    align-items: start;
+  }
+  .proc.highlight {
+    background: var(--lime-faint);
+    border-color: rgba(238,247,124,0.7);
+  }
+  .proc.blue {
+    background: rgba(0,102,255,0.04);
+    border-color: rgba(0,102,255,0.4);
+  }
+  .proc-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; font-weight: 700;
+    color: var(--vc-700);
+    line-height: 1;
+    padding-top: 1px;
+  }
+  .proc.blue .proc-code { color: var(--info); }
+  .proc-main .pname {
+    font-size: 12px; font-weight: 500; color: var(--vc-700);
+    margin-bottom: 2px;
+  }
+  .proc-main .pmission {
+    font-size: 10px; color: var(--verde-claro);
+    line-height: 1.45;
+  }
+  .proc-meta {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .proc-meta .m {
+    font-size: 9px;
+    display: flex; justify-content: space-between;
+    gap: 6px;
+    color: var(--vc-400);
+    letter-spacing: 0.04em;
+  }
+  .proc-meta .m .k {
     text-transform: uppercase;
+    font-weight: 500;
+    color: var(--vc-300);
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+  }
+  .proc-meta .m .v {
+    color: var(--vc-600); text-align: right; font-weight: 500;
+    font-size: 10px;
+  }
+
+  /* ============================================================
+     PÁGINA SIPOC
+     ============================================================ */
+  .sipoc-list {
+    display: flex; flex-direction: column; gap: 10px;
+    margin-top: 6px;
+  }
+  .sipoc {
+    border: 1px solid var(--vc-100);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    background: var(--white);
+  }
+  .sipoc-head {
+    display: flex; align-items: baseline; gap: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--vc-50);
+    margin-bottom: 8px;
+  }
+  .sipoc-head .code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; font-weight: 700; color: var(--vc-700);
+  }
+  .sipoc-head .name {
+    font-size: 11.5px; font-weight: 500; color: var(--vc-700);
+  }
+  .sipoc-head .owner {
+    margin-left: auto;
+    font-size: 9px; letter-spacing: 0.08em;
     color: var(--vc-400);
   }
-  .pg-runner-header .runner-r {
-    font-size: 9pt;
-    color: var(--vc-300);
+  .sipoc-head .owner strong {
+    color: var(--vc-600); font-weight: 500;
+    margin-left: 6px;
+  }
+  .sipoc-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .sipoc-col h4 {
+    font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--vc-400); font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .sipoc-col .chips {
+    display: flex; flex-wrap: wrap; gap: 3px;
+  }
+  .sipoc-col .chip {
+    font-size: 9px; padding: 2px 6px;
+    background: var(--vc-50); border: 1px solid var(--vc-100);
+    border-radius: 3px; color: var(--vc-600);
+    font-family: var(--font-sans);
+  }
+  .sipoc-col.mission {
+    background: var(--lime-faint);
+    border: 1px solid rgba(238,247,124,0.6);
+    border-radius: 4px;
+    padding: 6px 8px;
+  }
+  .sipoc-col.mission h4 { color: var(--verde-medio); }
+  .sipoc-col.mission p {
+    font-size: 10px; color: var(--vc-700); line-height: 1.4;
+  }
+
+  /* ============================================================
+     PÁGINA — Interdependências (N3)
+     ============================================================ */
+  .depmap {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 4px;
+  }
+  .depmap .row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--vc-50);
+  }
+  .depmap .from {
+    font-size: 9.5px; color: var(--vc-700);
+    font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .depmap .from .code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; padding: 1px 5px;
+    background: var(--vc-500); color: var(--off-white);
+    border-radius: 3px;
+  }
+  .depmap .to {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    align-items: center;
+  }
+  .depmap .to .arr { color: var(--vc-300); font-size: 10px; }
+  .depmap .to .target {
+    font-size: 9.5px;
+    padding: 2px 7px;
+    border: 1px solid var(--vc-100);
+    border-radius: 3px;
+    color: var(--vc-600);
+    background: var(--white);
+  }
+  .depmap .to .target.lime {
+    background: var(--lime-faint);
+    border-color: rgba(238,247,124,0.7);
+    color: var(--vc-700);
+  }
+
+  /* ============================================================
+     PRINT
+     ============================================================ */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  @media print {
+    body {
+      background: var(--white) !important;
+      padding: 0 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .toolbar { display: none !important; }
+    .doc { width: var(--page-w); margin: 0; gap: 0; }
+    .page {
+      width: var(--page-w);
+      height: var(--page-h);
+      box-shadow: none !important;
+      margin: 0 !important;
+      break-after: page;
+      page-break-after: always;
+    }
+    .page:last-child {
+      break-after: auto;
+      page-break-after: auto;
+    }
   }
 </style>
 </head>
-<body data-source="n4">
+<body>
 
-<!-- ====================================================================
-     P1 — CAPA (fullbleed verde-caqui)
-     ==================================================================== -->
-<section class="page page--cover">
-  <img class="cover-logo" src="assets/m7-logo-offwhite.png" alt="{{NOME_DA_EMPRESA}}">
+<!-- ============================================================
+     TOOLBAR (apenas em tela)
+     ============================================================ -->
+<div class="toolbar" role="toolbar" aria-label="Controles do documento">
+  <button class="navbtn" id="prev-page" aria-label="Página anterior">◀</button>
+  <div class="counter">Página <strong id="cur-page">1</strong> / <span id="total-pages">8</span></div>
+  <button class="navbtn" id="next-page" aria-label="Próxima página">▶</button>
+  <div class="sep"></div>
+  <button class="export" id="export-pdf" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+    </svg>
+    Exportar PDF
+  </button>
+</div>
 
-  <div>
-    <div class="cover-eyebrow">{{AREA_DOCUMENTO}} · Documento Oficial</div>
-    <h1 class="cover-title">Cadeia <span class="accent">de valor</span></h1>
-    <p class="cover-subtitle">{{LEDE_DOCUMENTO}}</p>
-  </div>
+<div class="doc" id="doc">
 
-  <div class="cover-meta">
-    <div class="meta-block">
-      <div class="l">Empresa</div>
-      <div class="v">{{NOME_DA_EMPRESA}}</div>
-    </div>
-    <div class="meta-block">
-      <div class="l">Período</div>
-      <div class="v">{{DATA_REFERENCIA}}</div>
-    </div>
-    <div class="meta-block">
-      <div class="l">Versão</div>
-      <div class="v">{{VERSAO_CURTA}}</div>
-    </div>
-    <div class="meta-block">
-      <div class="l">Processos</div>
-      <div class="v">{{TOTAL_PROCESSOS}}</div>
-    </div>
-  </div>
-</section>
-
-<!-- ====================================================================
-     P2 — SUMÁRIO (sem page numbers no MVP)
-     ==================================================================== -->
-<section class="page page--toc">
-  <h1>Sumário</h1>
-
-  <ol class="toc-list">
-    <li>
-      <span class="num">01</span>
-      <span class="title">Introdução</span>
-      <ul class="toc-sublist">
-        <li>Objetivo do diagrama</li>
-        <li>Contexto da empresa</li>
-        <li>Metodologia</li>
-      </ul>
-    </li>
-    <li>
-      <span class="num">02</span>
-      <span class="title">Cadeia de Valor (N1)</span>
-      <ul class="toc-sublist">
-        <li>Visão consolidada das 3 camadas</li>
-        <li>Processos gerenciais · primários · apoio</li>
-      </ul>
-    </li>
-    <li>
-      <span class="num">03</span>
-      <span class="title">Missão dos Processos (N2)</span>
-      <ul class="toc-sublist">
-        <li>Gerenciais ({{N_GERENCIAIS}})</li>
-        <li>Primários ({{N_PRIMARIOS}})</li>
-        <li>Apoio ({{N_APOIO}})</li>
-      </ul>
-    </li>
-    <li>
-      <span class="num">04</span>
-      <span class="title">Mapa de Interdependência (N3)</span>
-      <ul class="toc-sublist">
-        <li>Blueprint da arquitetura de negócio</li>
-        <li>Tabela de relações</li>
-        <li>Pontos de fricção</li>
-      </ul>
-    </li>
-    <li>
-      <span class="num">05</span>
-      <span class="title">Encerramento</span>
-      <ul class="toc-sublist">
-        <li>Próximos passos</li>
-        <li>Notas de iteração</li>
-      </ul>
-    </li>
-  </ol>
-</section>
-
-<!-- ====================================================================
-     P3 — INTRODUÇÃO (objetivo, contexto, metodologia)
-     ==================================================================== -->
-<section class="page intro-section">
-  <div class="pg-runner-header">
-    <span class="runner-l">01 · Introdução</span>
-    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
-  </div>
-
-  <div class="section-eyebrow-print">Documento Oficial · Mapeamento N1</div>
-  <h1 class="section-title-print">Cadeia de Valor <span class="accent">{{NOME_DA_EMPRESA}}</span></h1>
-  <p class="section-lead-print">{{LEDE_DOCUMENTO}}</p>
-
-  <div class="intro-grid">
-    <div class="intro-num">01</div>
-    <div>
-      <div class="intro-title">Objetivo do diagrama</div>
-      <div class="intro-text">{{OBJETIVO_DOCUMENTO}}</div>
-    </div>
-
-    <div class="intro-num">02</div>
-    <div>
-      <div class="intro-title">Contexto da empresa</div>
-      <div class="intro-text">{{CONTEXTO_EMPRESA}}</div>
-    </div>
-
-    <div class="intro-num">03</div>
-    <div>
-      <div class="intro-title">Metodologia</div>
-      <div class="intro-text">
-        Mapeamento conduzido em pipeline de 3 fases (entrevista crítica, BRIEFING.md
-        como single source of truth, produção dos artefatos), seguindo o framework
-        Porter de 3 camadas (Gerenciais · Primários · Apoio) e o design system
-        M7-2026 (TWK Everett, verde-caqui + lime + off-white). Análise crítica
-        aplicada em até 3 ciclos de iteração; bloqueadores aceitos documentados
-        em rationale auditável.
+  <!-- ════════════════════════════════════════════════════════════
+       PÁGINA 1 — CAPA
+       ════════════════════════════════════════════════════════════ -->
+  <article class="page cover" data-page-label="Capa">
+    <div class="cover-head">
+      <div class="cover-meta">
+        <img src="assets/m7-logo-offwhite.png" alt="{{NOME_DA_EMPRESA}}">
+        <div class="meta">
+          <span>{{AREA_DOCUMENTO}}</span><span class="dot"></span>
+          <span>Política · N1</span><span class="dot"></span>
+          <span>{{DATA_REFERENCIA}}</span>
+        </div>
+      </div>
+      <div class="cover-tabs">
+        <span class="ctab">Visão geral <span class="num">N1</span></span>
+        <span class="ctab">Missão do processo</span>
+        <span class="ctab">Mapa de interdependência</span>
+        <span class="ctab active">Política <span class="num">DOC</span></span>
       </div>
     </div>
-  </div>
-</section>
 
-<!-- ====================================================================
-     P4-5 — N1 CADEIA DE VALOR (retrato)
-     ==================================================================== -->
-<section class="page">
-  <div class="pg-runner-header">
-    <span class="runner-l">02 · Cadeia de Valor (N1)</span>
-    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
-  </div>
+    <div class="cover-body">
+      <div>
+        <div class="cover-eyebrow">
+          <span>Documento de governança</span>
+          <span>·</span>
+          <span class="v">{{CODIGO_DOCUMENTO}}</span>
+        </div>
+        <h1 class="cover-title">Política <em>de processos</em><br>&amp; cadeia de valor</h1>
+        <p class="cover-subtitle">{{LEDE_DOCUMENTO}}</p>
 
-  <div class="section-eyebrow-print">N1 · Visão consolidada</div>
-  <h1 class="section-title-print">Cadeia de Valor</h1>
-  <p class="section-lead-print">
-    {{TOTAL_PROCESSOS}} processos macro distribuídos em 3 camadas
-    (Gerenciais · Primários · Apoio). {{N_VERTICAIS}} verticais no núcleo
-    produtivo. Processos com foco estratégico marcados em lime.
-  </p>
+        <div class="cover-grid">
+          <div class="cell">
+            <div class="l">Versão</div>
+            <div class="v mono">{{VERSAO_COMPLETA}}</div>
+          </div>
+          <div class="cell">
+            <div class="l">Vigência</div>
+            <div class="v">{{DATA_VIGENCIA}}</div>
+          </div>
+          <div class="cell">
+            <div class="l">Próxima revisão</div>
+            <div class="v">{{DATA_PROXIMA_REVISAO}}</div>
+          </div>
+          <div class="cell">
+            <div class="l">Responsável</div>
+            <div class="v">{{AREA_RESPONSAVEL}}</div>
+          </div>
+        </div>
+      </div>
 
-  <!-- DIAGRAMA N1 EMBEDADO (preenchido em Slice 6 — embed via Jinja include
-       ou cópia do bloco .chain-container do template N1) -->
-  <div class="n1-embed-container">
-    {{N1_DIAGRAMA_EMBEDADO}}
-  </div>
-</section>
-
-<!-- ====================================================================
-     P6 — ABERTURA "Missões dos processos"
-     ==================================================================== -->
-<section class="page">
-  <div class="section-cover">
-    <div class="sc-num">03</div>
-    <h1 class="sc-title">Missão dos processos</h1>
-    <p class="sc-lead">
-      Detalhamento de cada processo no formato SIPOC simplificado:
-      <strong>Inputs → Missão → Outputs</strong>, com Owner declarado.
-      Uma página por processo, agrupados em Gerenciais, Primários e Apoio.
-    </p>
-  </div>
-</section>
-
-<!-- ====================================================================
-     P7..N — UMA POR PROCESSO (N2 SIPOC)
-
-     Estrutura repetida para cada processo. A skill itera processos[] do
-     BRIEFING e gera um <article class="page process-page"> por processo.
-
-     Aqui apenas exemplo estrutural — Slice 6 substitui pela iteração real.
-     ==================================================================== -->
-
-<!-- INICIO BLOCO REPETIDO POR PROCESSO -->
-<article class="page process-page">
-  <div class="pg-runner-header">
-    <span class="runner-l">03 · Missão · {{CAMADA_LABEL}}</span>
-    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
-  </div>
-
-  <div class="pp-headline">
-    <span class="pp-code-prefix">{{CODIGO}}</span>
-    <span class="pp-name">{{NOME_PROCESSO}}</span>
-    <span class="pp-camada-tag">{{CAMADA}}</span>
-  </div>
-
-  <div class="pp-owner">
-    OWNER · <span class="v">{{OWNER}}</span>
-  </div>
-
-  <div class="sipoc-bloc">
-    <div class="sipoc-col sipoc-col-side">
-      <div class="sipoc-label">Inputs</div>
-      <div class="mp-chips">
-        {{CHIPS_INPUTS}}
+      <div class="cover-foot">
+        <span class="conf">Uso interno · Confidencial</span>
+        <span>{{NOME_DA_EMPRESA}} · {{CODIGO_DOCUMENTO}} · {{VERSAO_COMPLETA}}</span>
       </div>
     </div>
-    <div></div>
-    <div class="sipoc-col sipoc-col-mission">
-      <div class="sipoc-label">Missão</div>
-      <p class="mp-mission-text">
-        <span class="verb">{{VERBO}}</span>
-        {{OBJETO}}
-        <em>para {{FINALIDADE}}</em>.
-      </p>
-    </div>
-    <div></div>
-    <div class="sipoc-col sipoc-col-side">
-      <div class="sipoc-label">Outputs</div>
-      <div class="mp-chips">
-        {{CHIPS_OUTPUTS}}
+  </article>
+
+  <!-- ════════════════════════════════════════════════════════════
+       PÁGINA 2 — Controle de versões · Aprovações · Sumário
+       ════════════════════════════════════════════════════════════ -->
+  <article class="page" data-page-label="Controle &amp; sumário">
+    <header class="page-head">
+      <div class="ph-left">
+        <img src="assets/m7-logo-dark.png" alt="M7">
+        <div class="ph-sep"></div>
+        <span class="ph-title">Política de Processos · Cadeia de Valor</span>
+      </div>
+      <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_COMPLETA}}</span>
+    </header>
+
+    <div class="page-body">
+      <h2 class="section"><span class="num">00</span> Controle de versões</h2>
+      <p class="section-lede">Histórico de revisões aprovadas. Toda alteração relevante gera nova versão e re-aprovação pelo comitê responsável.</p>
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th style="width:14%">Versão</th>
+            <th style="width:18%">Data</th>
+            <th>Alterações</th>
+            <th style="width:22%">Responsável</th>
+            <th style="width:12%">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="mono">{{VERSAO_COMPLETA}}</span></td>
+            <td>{{DATA_REFERENCIA}}</td>
+            <td>{{ALTERACOES_VERSAO_ATUAL}}</td>
+            <td>{{AREA_RESPONSAVEL}}</td>
+            <td><span class="tag">vigente</span></td>
+          </tr>
+          <tr>
+            <td><span class="mono">{{VERSAO_ANTERIOR_1}}</span></td>
+            <td>{{DATA_VERSAO_ANTERIOR_1}}</td>
+            <td>{{ALTERACOES_VERSAO_ANTERIOR_1}}</td>
+            <td>{{RESPONSAVEL_VERSAO_ANTERIOR_1}}</td>
+            <td><span class="tag muted">obsoleto</span></td>
+          </tr>
+          <tr>
+            <td><span class="mono">{{VERSAO_ANTERIOR_2}}</span></td>
+            <td>{{DATA_VERSAO_ANTERIOR_2}}</td>
+            <td>{{ALTERACOES_VERSAO_ANTERIOR_2}}</td>
+            <td>{{RESPONSAVEL_VERSAO_ANTERIOR_2}}</td>
+            <td><span class="tag muted">obsoleto</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr class="divider">
+
+      <h2 class="section"><span class="num">00</span> Aprovações</h2>
+      <p class="section-lede">Esta política só entra em vigor após aprovação formal das três instâncias abaixo.</p>
+      <div class="approval-grid">
+        <div class="approval-card">
+          <div class="role">Elaborador</div>
+          <div class="who">{{NOME_ELABORADOR}}</div>
+          <div class="what">{{CARGO_ELABORADOR}}</div>
+          <div class="sig-line"><span>Assinatura</span><span>{{DATA_ELABORACAO}}</span></div>
+        </div>
+        <div class="approval-card">
+          <div class="role">Revisor</div>
+          <div class="who">{{NOME_REVISOR}}</div>
+          <div class="what">{{CARGO_REVISOR}}</div>
+          <div class="sig-line"><span>Assinatura</span><span>{{DATA_REVISAO}}</span></div>
+        </div>
+        <div class="approval-card">
+          <div class="role">Aprovador</div>
+          <div class="who">{{NOME_APROVADOR}}</div>
+          <div class="what">{{CARGO_APROVADOR}}</div>
+          <div class="sig-line"><span>Assinatura</span><span>{{DATA_APROVACAO}}</span></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <h2 class="section"><span class="num">00</span> Sumário</h2>
+      <div class="toc">
+        <div class="toc-item"><span class="num">1</span><span class="label">Objetivo</span><span class="pg">p. 3</span></div>
+        <div class="toc-item"><span class="num">2</span><span class="label">Escopo e aplicação</span><span class="pg">p. 3</span></div>
+        <div class="toc-item"><span class="num">3</span><span class="label">Definições e termos</span><span class="pg">p. 3</span></div>
+        <div class="toc-item"><span class="num">4</span><span class="label">Estrutura da cadeia de valor</span><span class="pg">p. 4</span></div>
+        <div class="toc-item"><span class="num">5</span><span class="label">Processos gerenciais (G1 – G4)</span><span class="pg">p. 5</span></div>
+        <div class="toc-item"><span class="num">6</span><span class="label">Processos primários (P1 – P9)</span><span class="pg">p. 6</span></div>
+        <div class="toc-item"><span class="num">7</span><span class="label">Processos de apoio (A1 – A5)</span><span class="pg">p. 7</span></div>
+        <div class="toc-item"><span class="num">8</span><span class="label">Missão dos processos (SIPOC)</span><span class="pg">p. 8</span></div>
+        <div class="toc-item"><span class="num">9</span><span class="label">Mapa de interdependências (N3)</span><span class="pg">p. 9</span></div>
+        <div class="toc-item"><span class="num">10</span><span class="label">Governança, revisão e exceções</span><span class="pg">p. 10</span></div>
       </div>
     </div>
-  </div>
-</article>
-<!-- FIM BLOCO REPETIDO -->
 
-<!-- ====================================================================
-     P (N+1) — ABERTURA "Mapa de interdependência" (retrato)
-     ==================================================================== -->
-<section class="page">
-  <div class="section-cover">
-    <div class="sc-num">04</div>
-    <h1 class="sc-title">Mapa de <span class="accent" style="color: var(--lime);">interdependência</span></h1>
-    <p class="sc-lead">
-      Blueprint da arquitetura de negócio: como os {{TOTAL_PROCESSOS}} processos se
-      conectam, onde passa o cliente, onde existem fricções estruturais.
-      A página seguinte está em <strong>orientação landscape</strong>.
-    </p>
-  </div>
-</section>
+    <footer class="page-foot">
+      <span class="pf-classif">Uso interno · Confidencial</span>
+      <span class="pf-page">Página <strong>2</strong> de <span class="total-pg">8</span></span>
+    </footer>
+  </article>
 
-<!-- ====================================================================
-     P (N+2) — N3 MAPA NEURAL (LANDSCAPE)
-     ==================================================================== -->
-<section class="page page--landscape">
-  <div class="pg-runner-header">
-    <span class="runner-l">04 · Mapa de interdependência</span>
-    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
-  </div>
+  <!-- ════════════════════════════════════════════════════════════
+       PÁGINA 3 — Objetivo · Escopo · Definições
+       ════════════════════════════════════════════════════════════ -->
+  <article class="page" data-page-label="Objetivo · Escopo · Definições">
+    <header class="page-head">
+      <div class="ph-left">
+        <img src="assets/m7-logo-dark.png" alt="M7">
+        <div class="ph-sep"></div>
+        <span class="ph-title">Política de Processos · Cadeia de Valor</span>
+      </div>
+      <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_COMPLETA}}</span>
+    </header>
 
-  <div class="section-eyebrow-print">Blueprint da arquitetura · grafo de processos</div>
-  <h1 class="section-title-print" style="font-size: 18pt; margin-bottom: 4mm;">
-    Como os processos se conectam
-  </h1>
+    <div class="page-body">
+      <h2 class="section"><span class="num">01</span> Objetivo</h2>
+      <p>{{TEXTO_OBJETIVO}}</p>
+      <p>Esta política estabelece <strong>linguagem comum</strong>, <strong>arquitetura de processos</strong> e <strong>regras de governança</strong> para a operação de {{NOME_DA_EMPRESA}}, alinhando a estratégia desenhada à execução do dia a dia.</p>
 
-  <!-- DIAGRAMA N3 EMBEDADO (preenchido em Slice 6) -->
-  <div class="neural-embed">
-    {{N3_DIAGRAMA_EMBEDADO}}
-  </div>
-</section>
+      <hr class="divider">
 
-<!-- ====================================================================
-     P (N+3) — TABELA DE RELAÇÕES + LISTA DE FRICÇÕES (LANDSCAPE)
-     ==================================================================== -->
-<section class="page page--landscape">
-  <div class="pg-runner-header">
-    <span class="runner-l">04 · Mapa · Relações e fricções</span>
-    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
-  </div>
+      <h2 class="section"><span class="num">02</span> Escopo e aplicação</h2>
+      <p class="section-lede">Aplica-se a todos os colaboradores, áreas e parceiros que operam processos contemplados na cadeia de valor N1 de {{NOME_DA_EMPRESA}}.</p>
+      <div class="threecol">
+        <div>
+          <h3 class="sub">Aplica-se a</h3>
+          <ul>
+            <li>{{ESCOPO_INCLUSAO_1}}</li>
+            <li>{{ESCOPO_INCLUSAO_2}}</li>
+            <li>{{ESCOPO_INCLUSAO_3}}</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="sub">Não se aplica a</h3>
+          <ul>
+            <li>{{ESCOPO_EXCLUSAO_1}}</li>
+            <li>{{ESCOPO_EXCLUSAO_2}}</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="sub">Documentos relacionados</h3>
+          <ul>
+            <li>{{DOC_RELACIONADO_1}}</li>
+            <li>{{DOC_RELACIONADO_2}}</li>
+            <li>{{DOC_RELACIONADO_3}}</li>
+          </ul>
+        </div>
+      </div>
 
-  <div class="section-eyebrow-print">{{TOTAL_RELACOES}} relações · {{TOTAL_FRICCOES}} fricções</div>
-  <h1 class="section-title-print" style="font-size: 18pt; margin-bottom: 6mm;">
-    Tabela de relações
-  </h1>
+      <hr class="divider">
 
-  <table class="relations-table">
-    <thead>
-      <tr>
-        <th style="width: 14mm;">De</th>
-        <th style="width: 14mm;">Para</th>
-        <th style="width: 22mm;">Tipo</th>
-        <th style="width: 18mm;">Força</th>
-        <th>O que flui</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{LINHAS_RELACOES}}
-    </tbody>
-  </table>
+      <h2 class="section"><span class="num">03</span> Definições e termos</h2>
+      <dl class="defs">
+        <dt>Cadeia de valor <span class="mono">N1</span></dt>
+        <dd>Representação dos processos macro da organização, agrupados em três camadas (Gerenciais · Primários · Apoio), conforme modelo de Porter adaptado para a realidade de {{NOME_DA_EMPRESA}}.</dd>
 
-  <div class="frictions-list">
-    <h2>Pontos de fricção</h2>
-    {{LISTA_FRICCOES}}
-  </div>
-</section>
+        <dt>Processo macro <span class="mono">Nível 1</span></dt>
+        <dd>Conjunto coeso de atividades com missão única, donos definidos e fronteiras de entrada/saída claras. Cada caixa do diagrama N1 é um processo macro.</dd>
 
-<!-- ====================================================================
-     P final — ENCERRAMENTO (retrato)
-     ==================================================================== -->
-<section class="page closing">
-  <div class="pg-runner-header">
-    <span class="runner-l">05 · Encerramento</span>
-    <span class="runner-r">{{NOME_DA_EMPRESA}}</span>
-  </div>
+        <dt>Missão do processo <span class="mono">SIPOC</span></dt>
+        <dd>Verbo + objeto + finalidade. Expressa por que o processo existe, mapeando inputs, missão, outputs e responsáveis.</dd>
 
-  <div class="section-eyebrow-print">Próximos passos · Notas de iteração</div>
-  <h2>Para onde vamos a partir daqui</h2>
-  <p class="section-lead-print">
-    Este documento N1 fixa o entendimento macro da operação de {{NOME_DA_EMPRESA}}
-    em {{DATA_REFERENCIA}}. Para detalhar processos específicos, considere
-    aprofundar em N3 (subprocessos), N4 (atividades) e N5 (procedimentos),
-    seguindo a metodologia BPM CBOK.
-  </p>
+        <dt>Mapa de interdependência <span class="mono">N3</span></dt>
+        <dd>Visão das dependências entre processos macro: quais processos consomem outputs de quais, permitindo identificar gargalos sistêmicos.</dd>
 
-  <div class="closing-grid">
-    <div class="col">
-      <h3>Próximos passos sugeridos</h3>
+        <dt>Owner do processo <span class="mono">RACI</span></dt>
+        <dd>Papel responsável final pela performance, evolução e exceções do processo. Cada processo macro tem exatamente um owner.</dd>
+      </dl>
+    </div>
+
+    <footer class="page-foot">
+      <span class="pf-classif">Uso interno · Confidencial</span>
+      <span class="pf-page">Página <strong>3</strong> de <span class="total-pg">8</span></span>
+    </footer>
+  </article>
+
+  <!-- ════════════════════════════════════════════════════════════
+       PÁGINA 4 — Estrutura da Cadeia (diagrama)
+       ════════════════════════════════════════════════════════════ -->
+  <article class="page" data-page-label="Estrutura da Cadeia de Valor">
+    <header class="page-head">
+      <div class="ph-left">
+        <img src="assets/m7-logo-dark.png" alt="M7">
+        <div class="ph-sep"></div>
+        <span class="ph-title">Política de Processos · Cadeia de Valor</span>
+      </div>
+      <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_COMPLETA}}</span>
+    </header>
+
+    <div class="page-body">
+      <h2 class="section"><span class="num">04</span> Estrutura da cadeia de valor</h2>
+      <p class="section-lede">A operação de {{NOME_DA_EMPRESA}} se organiza em <strong>{{TOTAL_PROCESSOS}} processos macro</strong> distribuídos em três camadas. As verticais de produto compõem o núcleo produtivo entre o front-end (geração e qualificação de demanda) e o back-end (relacionamento e retenção).</p>
+
+      <div class="chain-mini">
+        <!-- Gerenciais -->
+        <div class="clayer">
+          <div class="clane">
+            <h3>Gerenciais</h3>
+            <span class="count">{{N_GERENCIAIS}} macro</span>
+          </div>
+          <div class="ccontent">
+            <div class="cprocess"><div class="ccode">G1</div><div class="cname">{{NOME_PROCESSO_G1}}</div></div>
+            <div class="cprocess"><div class="ccode">G2</div><div class="cname">{{NOME_PROCESSO_G2}}</div></div>
+            <div class="cprocess"><div class="ccode">G3</div><div class="cname">{{NOME_PROCESSO_G3}}</div></div>
+            <div class="cprocess"><div class="ccode">G4</div><div class="cname">{{NOME_PROCESSO_G4}}</div></div>
+          </div>
+        </div>
+
+        <!-- Primários -->
+        <div class="clayer" style="min-height: 150px;">
+          <div class="clane">
+            <h3>Primários</h3>
+            <span class="count">{{N_PRIMARIOS}} macro</span>
+          </div>
+          <div class="ccontent primarios">
+            <div class="col-fb">
+              <div class="cprocess"><div class="ccode">P1</div><div class="cname">{{NOME_PROCESSO_P1}}</div></div>
+              <div class="cprocess"><div class="ccode">P2</div><div class="cname">{{NOME_PROCESSO_P2}}</div></div>
+            </div>
+            <div class="cflow">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
+            </div>
+            <div class="cverticais">
+              <div class="clabel">{{ROTULO_NUCLEO}}</div>
+              <div class="cvgrid">
+                <div class="cprocess lime"><div class="ccode">P3</div><div class="cname">{{NOME_PROCESSO_P3}}</div></div>
+                <div class="cprocess"><div class="ccode">P4</div><div class="cname">{{NOME_PROCESSO_P4}}</div></div>
+                <div class="cprocess lime"><div class="ccode">P5</div><div class="cname">{{NOME_PROCESSO_P5}}</div></div>
+                <div class="cprocess"><div class="ccode">P6</div><div class="cname">{{NOME_PROCESSO_P6}}</div></div>
+                <div class="cprocess"><div class="ccode">P7</div><div class="cname">{{NOME_PROCESSO_P7}}</div></div>
+                <div class="cprocess"><div class="ccode">P8</div><div class="cname">{{NOME_PROCESSO_P8}}</div></div>
+              </div>
+            </div>
+            <div class="cflow">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
+            </div>
+            <div class="col-fb">
+              <div class="cprocess"><div class="ccode">P9</div><div class="cname">{{NOME_PROCESSO_P9}}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Apoio -->
+        <div class="clayer">
+          <div class="clane">
+            <h3>Apoio</h3>
+            <span class="count">{{N_APOIO}} macro</span>
+          </div>
+          <div class="ccontent">
+            <div class="cprocess blue"><div class="ccode">A1</div><div class="cname">{{NOME_PROCESSO_A1}}</div></div>
+            <div class="cprocess"><div class="ccode">A2</div><div class="cname">{{NOME_PROCESSO_A2}}</div></div>
+            <div class="cprocess"><div class="ccode">A3</div><div class="cname">{{NOME_PROCESSO_A3}}</div></div>
+            <div class="cprocess"><div class="ccode">A4</div><div class="cname">{{NOME_PROCESSO_A4}}</div></div>
+            <div class="cprocess"><div class="ccode">A5</div><div class="cname">{{NOME_PROCESSO_A5}}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chain-legend">
+        <span class="ll"><span class="dot plain"></span>Processo padrão</span>
+        <span class="ll"><span class="dot lime"></span>Foco estratégico</span>
+        <span class="ll"><span class="dot blue"></span>Cross-sell / Tech</span>
+      </div>
+
+      <hr class="divider">
+
+      <h3 class="sub">Princípios estruturantes</h3>
+      <div class="principles">
+        <div class="principle">
+          <div class="pn">P1</div>
+          <div class="pt">Um único dono por processo</div>
+          <div class="pd">Cada processo macro tem owner único e responsabilidades RACI definidas.</div>
+        </div>
+        <div class="principle">
+          <div class="pn">P2</div>
+          <div class="pt">Missão antes de atividade</div>
+          <div class="pd">Todo processo é descrito primeiro por sua missão (SIPOC), só depois por suas tarefas.</div>
+        </div>
+        <div class="principle">
+          <div class="pn">P3</div>
+          <div class="pt">Verticais como núcleo</div>
+          <div class="pd">A monetização acontece nas verticais; demais processos existem para servi-las.</div>
+        </div>
+        <div class="principle">
+          <div class="pn">P4</div>
+          <div class="pt">Interdependência explícita</div>
+          <div class="pd">Toda dependência entre processos é mapeada em N3 — gargalos não viram surpresa.</div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="page-foot">
+      <span class="pf-classif">Uso interno · Confidencial</span>
+      <span class="pf-page">Página <strong>4</strong> de <span class="total-pg">8</span></span>
+    </footer>
+  </article>
+
+  <!-- ════════════════════════════════════════════════════════════
+       PÁGINA 5 — Processos Gerenciais
+       ════════════════════════════════════════════════════════════ -->
+  <article class="page" data-page-label="Processos Gerenciais">
+    <header class="page-head">
+      <div class="ph-left">
+        <img src="assets/m7-logo-dark.png" alt="M7">
+        <div class="ph-sep"></div>
+        <span class="ph-title">Política de Processos · Cadeia de Valor</span>
+      </div>
+      <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_COMPLETA}}</span>
+    </header>
+
+    <div class="page-body">
+      <h2 class="section"><span class="num">05</span> Processos gerenciais</h2>
+      <p class="section-lede">Camada de direcionamento. Define metas, monitora performance, gerencia riscos e regula o uso de capital. Cadência típica: revisões trimestrais ou contínuas.</p>
+
+      <div class="proc-list">
+        <div class="proc">
+          <div class="proc-code">G1</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_G1}}</div>
+            <div class="pmission">{{MISSAO_G1}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_G1}}</span></div>
+            <div class="m"><span class="k">Freq.</span><span class="v">{{FREQUENCIA_G1}}</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">G2</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_G2}}</div>
+            <div class="pmission">{{MISSAO_G2}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_G2}}</span></div>
+            <div class="m"><span class="k">Freq.</span><span class="v">{{FREQUENCIA_G2}}</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">G3</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_G3}}</div>
+            <div class="pmission">{{MISSAO_G3}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_G3}}</span></div>
+            <div class="m"><span class="k">Freq.</span><span class="v">{{FREQUENCIA_G3}}</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">G4</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_G4}}</div>
+            <div class="pmission">{{MISSAO_G4}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_G4}}</span></div>
+            <div class="m"><span class="k">Freq.</span><span class="v">{{FREQUENCIA_G4}}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h3 class="sub">Regras gerais da camada</h3>
       <ul>
-        <li>Aprofundar N3 dos processos do núcleo produtivo</li>
-        <li>Resolver as fricções listadas (P2, P9, A1 — caso M7)</li>
-        <li>Mapear subprocessos críticos identificados</li>
-        <li>Revisar este documento ao fim de cada ciclo estratégico</li>
+        <li>Decisões estratégicas só ocorrem em rituais formais da camada gerencial — nunca por canal informal.</li>
+        <li>Toda meta de vertical é desdobrada de uma meta gerencial; nenhum processo primário define meta própria.</li>
+        <li>Exceções regulatórias (CVM, SUSEP, BACEN) sobrepõem decisões internas até que sejam reportadas a G3.</li>
       </ul>
     </div>
-    <div class="col">
-      <h3>Notas de iteração</h3>
-      <ul>
-        {{LISTA_NOTAS_ITERACAO}}
-      </ul>
+
+    <footer class="page-foot">
+      <span class="pf-classif">Uso interno · Confidencial</span>
+      <span class="pf-page">Página <strong>5</strong> de <span class="total-pg">8</span></span>
+    </footer>
+  </article>
+
+  <!-- ════════════════════════════════════════════════════════════
+       PÁGINA 6 — Processos Primários
+       ════════════════════════════════════════════════════════════ -->
+  <article class="page" data-page-label="Processos Primários">
+    <header class="page-head">
+      <div class="ph-left">
+        <img src="assets/m7-logo-dark.png" alt="M7">
+        <div class="ph-sep"></div>
+        <span class="ph-title">Política de Processos · Cadeia de Valor</span>
+      </div>
+      <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_COMPLETA}}</span>
+    </header>
+
+    <div class="page-body">
+      <h2 class="section"><span class="num">06</span> Processos primários</h2>
+      <p class="section-lede">Núcleo produtivo. Front-end gera e qualifica demanda; verticais entregam produto; back-end retém e expande a base.</p>
+
+      <div class="proc-list">
+        <div class="proc">
+          <div class="proc-code">P1</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P1}}</div>
+            <div class="pmission">{{MISSAO_P1}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P1}}</span></div>
+            <div class="m"><span class="k">Camada</span><span class="v">Front-end</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">P2</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P2}}</div>
+            <div class="pmission">{{MISSAO_P2}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P2}}</span></div>
+            <div class="m"><span class="k">Camada</span><span class="v">Front-end</span></div>
+          </div>
+        </div>
+        <div class="proc highlight">
+          <div class="proc-code">P3</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P3}}</div>
+            <div class="pmission">{{MISSAO_P3}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P3}}</span></div>
+            <div class="m"><span class="k">Meta</span><span class="v">{{META_P3}}</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">P4</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P4}}</div>
+            <div class="pmission">{{MISSAO_P4}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P4}}</span></div>
+            <div class="m"><span class="k">Meta</span><span class="v">{{META_P4}}</span></div>
+          </div>
+        </div>
+        <div class="proc highlight">
+          <div class="proc-code">P5</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P5}}</div>
+            <div class="pmission">{{MISSAO_P5}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P5}}</span></div>
+            <div class="m"><span class="k">Meta</span><span class="v">{{META_P5}}</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">P6</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P6}}</div>
+            <div class="pmission">{{MISSAO_P6}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P6}}</span></div>
+            <div class="m"><span class="k">Meta</span><span class="v">{{META_P6}}</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">P7</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P7}}</div>
+            <div class="pmission">{{MISSAO_P7}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P7}}</span></div>
+            <div class="m"><span class="k">Meta</span><span class="v">{{META_P7}}</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">P8</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P8}}</div>
+            <div class="pmission">{{MISSAO_P8}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P8}}</span></div>
+            <div class="m"><span class="k">Meta</span><span class="v">{{META_P8}}</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">P9</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_P9}}</div>
+            <div class="pmission">{{MISSAO_P9}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_P9}}</span></div>
+            <div class="m"><span class="k">Camada</span><span class="v">Back-end</span></div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</section>
+
+    <footer class="page-foot">
+      <span class="pf-classif">Uso interno · Confidencial</span>
+      <span class="pf-page">Página <strong>6</strong> de <span class="total-pg">8</span></span>
+    </footer>
+  </article>
+
+  <!-- ════════════════════════════════════════════════════════════
+       PÁGINA 7 — Processos de Apoio
+       ════════════════════════════════════════════════════════════ -->
+  <article class="page" data-page-label="Processos de Apoio">
+    <header class="page-head">
+      <div class="ph-left">
+        <img src="assets/m7-logo-dark.png" alt="M7">
+        <div class="ph-sep"></div>
+        <span class="ph-title">Política de Processos · Cadeia de Valor</span>
+      </div>
+      <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_COMPLETA}}</span>
+    </header>
+
+    <div class="page-body">
+      <h2 class="section"><span class="num">07</span> Processos de apoio</h2>
+      <p class="section-lede">Camada de habilitação. Garantem infraestrutura, segurança jurídica, capital, pessoas e operação back-office para que os primários funcionem com previsibilidade.</p>
+
+      <div class="proc-list">
+        <div class="proc blue">
+          <div class="proc-code">A1</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_A1}}</div>
+            <div class="pmission">{{MISSAO_A1}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_A1}}</span></div>
+            <div class="m"><span class="k">Tipo</span><span class="v">Habilitador</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">A2</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_A2}}</div>
+            <div class="pmission">{{MISSAO_A2}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_A2}}</span></div>
+            <div class="m"><span class="k">Tipo</span><span class="v">Risco</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">A3</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_A3}}</div>
+            <div class="pmission">{{MISSAO_A3}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_A3}}</span></div>
+            <div class="m"><span class="k">Tipo</span><span class="v">Capital</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">A4</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_A4}}</div>
+            <div class="pmission">{{MISSAO_A4}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_A4}}</span></div>
+            <div class="m"><span class="k">Tipo</span><span class="v">Pessoas</span></div>
+          </div>
+        </div>
+        <div class="proc">
+          <div class="proc-code">A5</div>
+          <div class="proc-main">
+            <div class="pname">{{NOME_PROCESSO_A5}}</div>
+            <div class="pmission">{{MISSAO_A5}}</div>
+          </div>
+          <div class="proc-meta">
+            <div class="m"><span class="k">Owner</span><span class="v">{{OWNER_A5}}</span></div>
+            <div class="m"><span class="k">Tipo</span><span class="v">Operação</span></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h3 class="sub">SLA inter-camadas</h3>
+      <p>Processos de apoio devem responder a solicitações dos primários dentro dos SLAs internos definidos em <span class="mono">{{DOC_SLA}}</span>. Quebras de SLA são reportadas a G2 (Gestão de Performance) na cadência mensal.</p>
+    </div>
+
+    <footer class="page-foot">
+      <span class="pf-classif">Uso interno · Confidencial</span>
+      <span class="pf-page">Página <strong>7</strong> de <span class="total-pg">8</span></span>
+    </footer>
+  </article>
+
+  <!-- ════════════════════════════════════════════════════════════
+       PÁGINA 8 — SIPOC, Interdependências, Governança
+       ════════════════════════════════════════════════════════════ -->
+  <article class="page" data-page-label="Missão · Interdependência · Governança">
+    <header class="page-head">
+      <div class="ph-left">
+        <img src="assets/m7-logo-dark.png" alt="M7">
+        <div class="ph-sep"></div>
+        <span class="ph-title">Política de Processos · Cadeia de Valor</span>
+      </div>
+      <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_COMPLETA}}</span>
+    </header>
+
+    <div class="page-body">
+      <h2 class="section"><span class="num">08</span> Missão dos processos · SIPOC</h2>
+      <p class="section-lede">Amostra. A versão integral está em <span class="mono">template-missao-do-processo</span>.</p>
+
+      <div class="sipoc-list">
+        <div class="sipoc">
+          <div class="sipoc-head">
+            <span class="code">{{CODIGO_PROCESSO_SIPOC_A}}</span>
+            <span class="name">{{NOME_PROCESSO_SIPOC_A}}</span>
+            <span class="owner">Owner <strong>{{OWNER_SIPOC_A}}</strong></span>
+          </div>
+          <div class="sipoc-row">
+            <div class="sipoc-col">
+              <h4>Inputs</h4>
+              <div class="chips">
+                <span class="chip">{{INPUT_A_1}}</span>
+                <span class="chip">{{INPUT_A_2}}</span>
+                <span class="chip">{{INPUT_A_3}}</span>
+              </div>
+            </div>
+            <div class="sipoc-col mission">
+              <h4>Missão</h4>
+              <p>{{MISSAO_SIPOC_A}}</p>
+            </div>
+            <div class="sipoc-col">
+              <h4>Outputs</h4>
+              <div class="chips">
+                <span class="chip">{{OUTPUT_A_1}}</span>
+                <span class="chip">{{OUTPUT_A_2}}</span>
+                <span class="chip">{{OUTPUT_A_3}}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sipoc">
+          <div class="sipoc-head">
+            <span class="code">{{CODIGO_PROCESSO_SIPOC_B}}</span>
+            <span class="name">{{NOME_PROCESSO_SIPOC_B}}</span>
+            <span class="owner">Owner <strong>{{OWNER_SIPOC_B}}</strong></span>
+          </div>
+          <div class="sipoc-row">
+            <div class="sipoc-col">
+              <h4>Inputs</h4>
+              <div class="chips">
+                <span class="chip">{{INPUT_B_1}}</span>
+                <span class="chip">{{INPUT_B_2}}</span>
+                <span class="chip">{{INPUT_B_3}}</span>
+              </div>
+            </div>
+            <div class="sipoc-col mission">
+              <h4>Missão</h4>
+              <p>{{MISSAO_SIPOC_B}}</p>
+            </div>
+            <div class="sipoc-col">
+              <h4>Outputs</h4>
+              <div class="chips">
+                <span class="chip">{{OUTPUT_B_1}}</span>
+                <span class="chip">{{OUTPUT_B_2}}</span>
+                <span class="chip">{{OUTPUT_B_3}}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <h2 class="section"><span class="num">09</span> Mapa de interdependências · N3</h2>
+      <p class="section-lede">Principais relações entre processos macro. Versão completa em <span class="mono">template-mapa-de-interdependencia</span>.</p>
+      <div class="depmap">
+        <div class="row">
+          <div class="from"><span class="code">G1</span></div>
+          <div class="to">
+            <span class="arr">→</span>
+            <span class="target lime">P3 Investimentos</span>
+            <span class="target lime">P5 Crédito</span>
+            <span class="target">G2 Performance</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="from"><span class="code">P1</span></div>
+          <div class="to">
+            <span class="arr">→</span>
+            <span class="target">P2 Qualificação</span>
+            <span class="target">A1 Tecnologia</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="from"><span class="code">P3</span></div>
+          <div class="to">
+            <span class="arr">→</span>
+            <span class="target">P9 Relacionamento</span>
+            <span class="target">A1 Tecnologia</span>
+            <span class="target">A2 Jurídico</span>
+            <span class="target">A3 Financeiro</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="from"><span class="code">A1</span></div>
+          <div class="to">
+            <span class="arr">→</span>
+            <span class="target lime">P3</span>
+            <span class="target lime">P5</span>
+            <span class="target">P9</span>
+            <span class="target">G2</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <h2 class="section"><span class="num">10</span> Governança, revisão e exceções</h2>
+      <div class="twocol">
+        <div>
+          <h3 class="sub">Cadência de revisão</h3>
+          <ul>
+            <li><strong>Revisão completa:</strong> anual, conduzida pelo {{COMITE_REVISOR}}.</li>
+            <li><strong>Revisões pontuais:</strong> sob demanda quando há criação/extinção de processo, mudança regulatória ou re-organização.</li>
+            <li><strong>Próxima revisão obrigatória:</strong> {{DATA_PROXIMA_REVISAO}}.</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="sub">Exceções</h3>
+          <ul>
+            <li>Toda exceção deve ser registrada e aprovada pelo owner do processo.</li>
+            <li>Exceções recorrentes (3+ no trimestre) disparam revisão pontual.</li>
+            <li>Exceções regulatórias têm trilha própria com {{AREA_COMPLIANCE}}.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <footer class="page-foot">
+      <span class="pf-classif">Uso interno · Confidencial</span>
+      <span class="pf-page">Página <strong>8</strong> de <span class="total-pg">8</span></span>
+    </footer>
+  </article>
+
+</div>
+
+<script>
+  // ============================================================
+  // Toolbar — conta páginas, navega e exporta PDF
+  // ============================================================
+  (function() {
+    const pages = Array.from(document.querySelectorAll('.page'));
+    const total = pages.length;
+    const totalEl = document.getElementById('total-pages');
+    const curEl = document.getElementById('cur-page');
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    const exportBtn = document.getElementById('export-pdf');
+
+    // Atualiza contagens
+    totalEl.textContent = total;
+    document.querySelectorAll('.total-pg').forEach(el => el.textContent = total);
+
+    // Página visível via IntersectionObserver
+    let current = 1;
+    const setCurrent = (n) => {
+      current = n;
+      curEl.textContent = n;
+    };
+
+    const io = new IntersectionObserver((entries) => {
+      // pega a entrada com maior interseção
+      const visible = entries
+        .filter(e => e.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) {
+        const idx = pages.indexOf(visible.target);
+        if (idx >= 0) setCurrent(idx + 1);
+      }
+    }, { threshold: [0.25, 0.5, 0.75] });
+
+    pages.forEach(p => io.observe(p));
+
+    // Navegação
+    const scrollToPage = (n) => {
+      const idx = Math.max(0, Math.min(total - 1, n - 1));
+      pages[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    prevBtn.addEventListener('click', () => scrollToPage(current - 1));
+    nextBtn.addEventListener('click', () => scrollToPage(current + 1));
+
+    // Keyboard nav (apenas quando não há foco em input)
+    document.addEventListener('keydown', (e) => {
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (['INPUT', 'TEXTAREA'].includes(tag)) return;
+      if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+        e.preventDefault(); scrollToPage(current + 1);
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault(); scrollToPage(current - 1);
+      }
+    });
+
+    // Export PDF — usa diálogo nativo de impressão (Salvar como PDF)
+    exportBtn.addEventListener('click', () => {
+      window.print();
+    });
+  })();
+</script>
 
 </body>
 </html>

@@ -1,7 +1,26 @@
 #!/usr/bin/env python3
-"""mapeamento-n1 · monta o documento oficial (N4) HTML a partir do BRIEFING + N1/N2/N3.
+"""[DEPRECATED 2026-05] mapeamento-n1 · monta o documento oficial (N4) HTML.
 
-Pipeline:
+================================================================================
+DEPRECATION NOTICE
+================================================================================
+A partir de 2026-05 o template N4 (template-documento-oficial.html) e
+STANDALONE — nao usa Jinja includes, nao parseia fragmentos de N1/N3.
+A skill agora faz substituicao direta de ~120 placeholders no template.
+
+Este script (que orquestrava Jinja {% include %} + BeautifulSoup parsing)
+NAO e mais invocado pelo fluxo padrao da skill.
+
+ARQUITETURA ATUAL:
+- Skill le BRIEFING.md (com secao politica:)
+- Skill substitui placeholders no template-documento-oficial.html
+- Skill grava documento-oficial-{slug}.html no diretorio do usuario
+- Usuario abre no navegador e exporta PDF via toolbar (window.print())
+
+Veja references/n4-documento-oficial.md §3 (arquitetura atual) e §7 (legacy).
+================================================================================
+
+Pipeline LEGACY (pre-2026-05):
     BRIEFING.md  +  N1.html  +  N3.html  ──▶  documento-oficial-{slug}.html
 
 Substitui placeholders globais, extrai fragmentos dos diagramas N1/N2/N3 ja

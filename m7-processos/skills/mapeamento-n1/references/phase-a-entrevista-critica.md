@@ -10,8 +10,9 @@ Documento de apoio à [SKILL.md](../SKILL.md). Detalha a Fase A do pipeline: 5 b
 4. [Bloco 3 · Detalhamento dos primários](#4-bloco-3--detalhamento-dos-primários)
 5. [Bloco 4 · Demais camadas](#5-bloco-4--demais-camadas)
 6. [Bloco 5 · Confirmação + critic](#6-bloco-5--confirmação--critic)
-7. [Loop de iteração](#7-loop-de-iteração)
-8. [Como aplicar correções](#8-como-aplicar-correções)
+7. [Bloco 6 · Governança & Política (se N4)](#7-bloco-6--governança--política-se-n4)
+8. [Loop de iteração](#8-loop-de-iteração)
+9. [Como aplicar correções](#9-como-aplicar-correções)
 
 ---
 
@@ -194,6 +195,8 @@ Se `n3` ou `n4-pdf` em `artefatos_a_gerar`, **continue** com a parte de mapa de 
 
 **Objetivo**: revisão final + invocação do `process-critic`.
 
+> **Pré-requisito**: se `n4-pdf` está em `artefatos_a_gerar`, execute primeiro o **[Bloco 6 · Governança & Política](#7-bloco-6--governança--política-se-n4)** para coletar os ~30 campos formais que a Política exige (código, vigência, aprovações, escopo, governança). Sem isso o validador bloqueia em `POLITICA-AUSENTE`.
+
 **Passos**:
 
 1. **Resumir o BRIEFING** ao usuário em 5-7 linhas:
@@ -221,7 +224,153 @@ Se `n3` ou `n4-pdf` em `artefatos_a_gerar`, **continue** com a parte de mapa de 
 
 ---
 
-## 7. Loop de iteração
+## 7. Bloco 6 · Governança & Política (se N4)
+
+**Aplicabilidade**: somente se `n4-pdf` está em `artefatos_a_gerar`.
+
+**Objetivo**: coletar metadados formais que transformam o mapa operacional (N1+N2+N3) em uma política assinável. São ~30 campos divididos em 6 sub-blocos.
+
+**Tom da entrevista**: aqui o usuário muda de "mapeador de processos" para "owner de governança". Reforce isso: "Vamos transformar o que mapeamos em um documento formal — preciso de algumas decisões de governança."
+
+### 6.1 · Identidade do documento
+
+**Perguntas** (use `AskUserQuestion`):
+
+1. Qual o **código formal** deste documento? (ex.: `POL-PROC-001`, `NORM-GOV-005`)
+   - Se a empresa não tem nomenclatura, sugira `POL-PROC-001` (Política de Processos · doc 001)
+2. **Data de vigência** (quando entra em vigor): DD/MM/AAAA
+3. **Próxima revisão obrigatória**: DD/MM/AAAA (típico: 12 meses após vigência)
+4. **Área responsável** pela política (não o owner do mapa — o owner DO DOCUMENTO): ex.: `Estratégia & Governança`
+
+**Checkpoint**:
+- [ ] Código formato `XXX-XXX-NNN` (3-3-3 alfanumérico) — não obrigatório, mas convenção
+- [ ] Vigência ≥ data_referencia
+- [ ] Próxima revisão > vigência (típico: vigência + 12m)
+
+### 6.2 · Histórico de versões
+
+**Perguntas**:
+
+1. **Versão atual**: rótulo (ex.: `v1.0`, `v2.1`), data, alterações nesta versão, responsável.
+2. **Existem versões anteriores documentadas?** (até 2 — template suporta exatamente 3 linhas)
+   - Se sim, para cada: versão, data, alterações, responsável, status="obsoleto"
+
+**Inferência**:
+- Se é a primeira política da empresa, registrar apenas v1.0 com `status="vigente"`, deixar histórico vazio.
+- Alterações da versão atual = derivar das notas de iteração ou perguntar "o que mudou desde o último mapeamento?".
+
+**Checkpoint**:
+- [ ] Exatamente 1 versão com `status="vigente"` (regra `POLITICA-VIGENTE`)
+- [ ] Cada versão tem versao+data+alteracoes+responsavel+status preenchidos
+- [ ] Máximo 3 entradas (excedentes truncados no render)
+
+### 6.3 · Aprovações (3 papéis)
+
+**Perguntas**:
+
+1. **Elaborador** (quem produz): Nome, Cargo, Data de elaboração.
+2. **Revisor** (quem revisa antes da aprovação): Nome, Cargo, Data de revisão.
+3. **Aprovador** (autoridade final): Nome, Cargo, Data de aprovação.
+
+**Inferência**:
+- Elaborador é geralmente o owner do mapeamento ou o coordenador do projeto.
+- Revisor é típico ser um par sênior (head, diretor) ou comitê técnico.
+- Aprovador costuma ser C-level (CEO, COO) ou comitê executivo.
+
+**Push-back proativo**:
+- Se o mesmo nome aparece como Elaborador E Aprovador, alertar: "Conflito de papéis — quem elabora não pode aprovar a si mesmo. Confirma ou ajusta?"
+- Datas: aprovação > revisão > elaboração (ordem cronológica).
+
+**Checkpoint**:
+- [ ] 3 papéis preenchidos, todos com nome+cargo+data (regra `POLITICA-APROV-INCOMPLETO`)
+- [ ] Datas em ordem cronológica
+- [ ] Elaborador ≠ Aprovador (recomendação, não bloqueador)
+
+### 6.4 · Objetivo & escopo
+
+**Perguntas**:
+
+1. **Objetivo formal** (2-4 linhas): para que esta política existe? Que valor estabelece?
+   - Sugira começar com verbo: "Estabelecer linguagem comum...", "Definir arquitetura de processos...", "Garantir consistência..."
+2. **Aplica-se a** (2-4 itens): quem deve seguir esta política?
+3. **NÃO se aplica a** (1-3 itens): exceções explícitas — operações em curso, BUs fora do escopo, parceiros, etc.
+4. **Documentos relacionados** (1-4 itens): Plano Estratégico, Manual de Compliance, SLAs, normas externas.
+
+**Inferência**:
+- Se o BRIEFING tem seção `## Objetivo do diagrama` preenchida, derivar uma versão formalizada (mais imperativa, menos descritiva).
+- Inclusões geralmente são: "Todos os colaboradores das BUs", "Parceiros que operam processos", "Pessoa que assina contrato como prestador".
+- Exclusões geralmente são: "Operações de M&A", "Joint ventures", "BUs em descontinuação".
+
+**Checkpoint**:
+- [ ] Objetivo ≥ 40 caracteres (regra `POLITICA-OBJ-CURTO`, aviso)
+- [ ] Mínimo 2 inclusões (regra `POLITICA-INCLUSOES`)
+- [ ] Mínimo 1 exclusão (recomendação)
+- [ ] Mínimo 1 doc relacionado
+
+### 6.5 · Governança
+
+**Perguntas**:
+
+1. **Comitê revisor** anual: quem audita e aprova revisões periódicas? (ex.: `Comitê de Processos`, `Conselho Executivo`)
+2. **Documento de SLAs** (referência cruzada): código do doc onde estão os SLAs inter-camadas (ex.: `SLA-OPE-001`). Se não existe, registrar `[a definir]`.
+3. **Área de compliance**: quem responde por exceções regulatórias? (ex.: `Compliance & Risco`)
+
+**Checkpoint**:
+- [ ] Os 3 campos preenchidos (regra `POLITICA-GOV-VAZIO`)
+- [ ] Comitê revisor não pode ser a mesma pessoa do Aprovador individual (deve ser colegiado)
+
+### 6.6 · Metas dos primários (verticais)
+
+**Aplicabilidade**: para cada processo com `camada=primario` e `subcamada=nucleo` (verticais — geralmente P3, P4, P5, P6, P7, P8).
+
+**Perguntas**:
+
+1. **Meta principal** da vertical (1 KR/indicador, formato curto): ex.: `Captação R$ 50MM/ano`, `NPS ≥ 70`, `MRR R$ 2MM`.
+
+**Inferência**:
+- Se o BRIEFING tem tooltip do processo mencionando métricas, reuse.
+- Front (P1, P2) e Back (P9) NÃO precisam de meta — N4 mostra "Camada" para esses.
+
+**Checkpoint**:
+- [ ] Cada vertical tem `meta` preenchido (aviso `POLITICA-META-PRIM`)
+- [ ] Meta ≤ 30 caracteres (cabe na coluna estreita do template)
+
+### 6.7 · SIPOC sample (2 processos featurados)
+
+**Pergunta**:
+
+1. Quais **2 processos** queremos featurar como amostra de SIPOC na página 8 do PDF?
+   - Recomendação: 1 gerencial + 1 primário, ou 2 verticais críticas.
+   - Os 2 escolhidos DEVEM ter SIPOC preenchido em `processos[]`.
+
+**Checkpoint**:
+- [ ] Exatamente 2 códigos (regra `POLITICA-AMOSTRA-QTD`)
+- [ ] Ambos existem em `processos[]` (regra `POLITICA-AMOSTRA-ORFA`)
+- [ ] Ambos têm `sipoc.verbo` preenchido (regra `POLITICA-AMOSTRA-SEM-SIPOC`)
+
+### Saída do Bloco 6
+
+Preenche a seção `politica:` do BRIEFING completa:
+
+```yaml
+politica:
+  metadata: { codigo_documento, data_vigencia, proxima_revisao, area_responsavel }
+  versoes: [ { versao, data, alteracoes, responsavel, status }, ... ]
+  aprovacoes: { elaborador: {...}, revisor: {...}, aprovador: {...} }
+  objetivo_texto: |
+    ...
+  escopo: { inclusoes: [...], exclusoes: [...], doc_relacionados: [...] }
+  governanca: { comite_revisor, doc_sla, area_compliance }
+  sipoc_amostra: [ codigoA, codigoB ]
+```
+
+E adiciona campo `meta:` em cada vertical primária.
+
+Após Bloco 6 → **voltar ao Bloco 5** para confirmação final + critic.
+
+---
+
+## 8. Loop de iteração
 
 Política herdada de [`m7-analise-dados/agents/executive-communicator.md`](../../m7-analise-dados/agents/executive-communicator.md): **max 3 ciclos**.
 
@@ -253,7 +402,7 @@ Round N:
 
 ---
 
-## 8. Como aplicar correções
+## 9. Como aplicar correções
 
 Quando o usuário aprova uma correção:
 

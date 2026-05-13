@@ -1,5 +1,25 @@
 #!/usr/bin/env python3
-"""mapeamento-n1 · render documento oficial HTML -> PDF.
+"""[DEPRECATED 2026-05] mapeamento-n1 · render documento oficial HTML -> PDF.
+
+================================================================================
+DEPRECATION NOTICE
+================================================================================
+A partir de 2026-05 o N4 (Politica) usa abordagem CLIENT-SIDE:
+- Template novo: template-documento-oficial.html (standalone, 1660 linhas)
+- Export: usuario abre HTML no navegador e clica em "Exportar PDF" (toolbar)
+- window.print() + @page A4 gera o PDF nativamente (~500KB tipico)
+
+Este script NAO e mais invocado pelo fluxo padrao da skill.
+
+QUANDO AINDA USAR:
+- Geracao server-side automatizada (CI, batch headless)
+- PDF de N1/N2/N3 individuais (renderizar a pagina standalone como PDF)
+- Casos extremos onde window.print() do usuario falha em fontes/cores
+
+ALTERNATIVA RECOMENDADA: usuario abre documento-oficial-{slug}.html no
+navegador dele e usa Cmd+P -> Salvar como PDF. Veja
+references/n4-documento-oficial.md §3 e §7.
+================================================================================
 
 Adaptado de m7-apresentacoes/.../scripts/render.py e m7-projects/.../build_opr.py
 (padrão Playwright primário + WeasyPrint fallback do marketplace M7).
