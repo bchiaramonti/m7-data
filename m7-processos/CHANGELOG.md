@@ -4,6 +4,27 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.0.6] - 2026-05-14
+
+Patch visual resolvendo 3 bugs reportados em revisão pixel-perfect dos artefatos M7 gerados em produção:
+
+### Fixed
+
+- **Bug A · Header centralizado vs full-width** — `m7-header-dark.css` constrain o `.doc-meta` e `.h-e` em `max-width: 1280px; margin: 0 auto`, deixando os headers de N1/N2/N3 centralizados com bordas vazias enormes em telas wide. A Política tinha override (`.shell-header .m7-header-dark { max-width: none }`) por estar dentro de wrapper próprio. Fix: removido `max-width: 1280px` do CSS base → header dark agora full-width por default em todos os 5 templates. Override da Política continua redundante mas inofensivo.
+
+- **Bug B · SIPOC do N2 com scroll vertical** — `body { min-height: 100vh }` permitia que o conteúdo da Missão do Processo (SIPOC com 3 colunas) excedesse a altura do viewport quando havia chips longos ou missão extensa, gerando scroll. Fix: trocado por `height: 100vh; overflow: hidden`. Como o shell já tinha `flex: 1; min-height: 0` corretamente nos containers internos, o SIPOC agora distribui altura disponível entre Input/Missão/Output sem overflow.
+
+- **Bug C · Canvas neural do N3 com cantos quadrados** — `template-mapa-de-interdependencia.html` usa `.neural { border-radius: var(--radius) }` mas o `:root` do template não declarava `--radius`. Como `m7-tokens.css` define apenas `--radius-md/-lg/-xl/-2xl/-3xl` (sem o `--radius` genérico), o `var()` resolvia para fallback nulo e o canvas saía com cantos retos. Fix: adicionado `:root { --radius: 12px; --radius-sm: 8px }` no template do mapa (mesmo padrão dos outros 4 templates).
+
+### Migration
+
+Não-breaking. Cosmetic-only — não muda comportamento, apenas aparência visual:
+- Headers de N1/N2/N3 ocupam toda largura do viewport (antes capped em 1280px)
+- N2 não rola mais (SIPOC cabe em 100vh)
+- Mapa N3 com cantos arredondados (`border-radius: 12px`)
+
+Quem gerou artefatos com v2.0.5 deve regenerar via `build_artifacts.py` para receber os fixes (o CSS é copiado durante `copy_assets`, então basta re-rodar).
+
 ## [2.0.5] - 2026-05-14
 
 Patch leve resolvendo Bug 4 do report v2.0.4: o `build_politica()` não repointava 3 hrefs do header dark, deixando as tabs Visão geral / Missão do processo / Mapa de interdependência apontando para os `template-*.html` originais do design em vez dos arquivos `{tipo}-{slug}.html` gerados pela skill.

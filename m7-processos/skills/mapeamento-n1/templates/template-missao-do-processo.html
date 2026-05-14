@@ -49,9 +49,12 @@
     background: var(--off-white);
     color: var(--vc-500);
     line-height: 1.5;
-    min-height: 100vh;
+    /* Fit-to-viewport: SIPOC nao deve gerar scroll vertical. O shell
+       usa flex column + flex:1 nos containers internos pra preencher
+       exatamente o espaco entre header e footer. */
+    height: 100vh;
+    overflow: hidden;
     padding: 32px;
-    /* O shell ocupa toda a tela menos header/footer/padding */
     display: flex;
     flex-direction: column;
   }

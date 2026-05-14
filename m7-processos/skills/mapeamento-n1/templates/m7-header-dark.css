@@ -12,7 +12,10 @@
 }
 
 .m7-header-dark .doc-meta {
-  max-width: 1280px; margin: 0 auto 18px;
+  /* Full-width: usa todo o espaco horizontal disponivel (alinhado com
+     a Politica, que ja fazia override via .shell-header). Templates N1/
+     N2/N3 herdam esse comportamento por default agora. */
+  width: 100%; margin: 0 0 18px;
   display: flex; align-items: center; justify-content: space-between;
   padding-bottom: 12px; border-bottom: 1px solid rgba(255,253,239,0.12);
 }
@@ -23,7 +26,7 @@
 }
 .m7-header-dark .doc-meta .meta .dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,253,239,0.35); }
 
-.m7-header-dark .h-e { max-width: 1280px; margin: 0 auto; }
+.m7-header-dark .h-e { width: 100%; margin: 0; }
 
 .m7-header-dark .h-e .body {
   display: grid; grid-template-columns: 1fr auto; gap: 32px;
