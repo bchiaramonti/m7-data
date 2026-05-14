@@ -4,6 +4,20 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.0.5] - 2026-05-14
+
+Patch leve resolvendo Bug 4 do report v2.0.4: o `build_politica()` não repointava 3 hrefs do header dark, deixando as tabs Visão geral / Missão do processo / Mapa de interdependência apontando para os `template-*.html` originais do design em vez dos arquivos `{tipo}-{slug}.html` gerados pela skill.
+
+### Fixed
+
+- **Bug 4 · Links cross-artefato órfãos no N4 Política** — 3 tabs do header dark (`<a class="tab" href="exemplo-m7-preenchido.html">`, `template-missao-do-processo.html`, `template-mapa-de-interdependencia.html`) eram emitidas sem repointamento. Adicionado bloco de tab-rewrite em `build_politica()` que segue o mesmo padrão dos builds N1/N2/N3: substitui href para `cadeia-de-valor-{slug}.html` / `missao-do-processo-{slug}.html` / `mapa-de-interdependencia-{slug}.html` quando o artefato correspondente está em `artefatos_a_gerar`, ou converte para `<div class="tab">` não-navegável caso contrário.
+
+### Migration
+
+Não-breaking. Quem gerou N4 com v2.0.4 deve regenerar via `python3 scripts/build_artifacts.py briefing.md output_dir/` para receber tabs funcionais. Os links órfãos não causavam erro — apenas levavam para 404 ao clicar.
+
+Validado com `examples/exemplo-briefing-m7.md`: 4 artefatos, 0 refs residuais a `template-*.html` em qualquer dos 4 outputs. Navegação cross-artefato 100% slug-based.
+
 ## [2.0.4] - 2026-05-14
 
 Patch crítico em `build_artifacts.py` resolvendo 3 bugs identificados em teste real com BRIEFING M7 (12 primários, acentos em labels, re-runs). Os bugs afetavam produção: N3 crashava com regex em labels acentuados, N4 nem era gerado, N1/N4 truncavam silenciosamente primários além de P9.

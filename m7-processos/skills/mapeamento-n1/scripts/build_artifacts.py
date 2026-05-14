@@ -1248,6 +1248,61 @@ def build_politica(briefing_fm: dict, body_md: str,
     for k, v in replacements.items():
         template = template.replace(k, v)
 
+    # ── Tabs do header dark: repointar refs cross-artefato ──
+    # Bug 4 fix do report v2.0.4: 3 hrefs apontavam para template-*.html
+    # do design oficial em vez dos {tipo}-{slug}.html gerados pela skill.
+    # Quando o artefato correspondente nao esta em artefatos_a_gerar,
+    # converte para <div class="tab"> nao-navegavel (mesma logica dos
+    # builds N1/N2/N3).
+    n1_tab_repl = (
+        f'<a class="tab" href="cadeia-de-valor-{slug}.html">'
+        if "n1" in artefatos else
+        '<div class="tab">'
+    )
+    n2_tab_repl = (
+        f'<a class="tab" href="missao-do-processo-{slug}.html">'
+        if "n2" in artefatos else
+        '<div class="tab">'
+    )
+    n3_tab_repl = (
+        f'<a class="tab" href="mapa-de-interdependencia-{slug}.html">'
+        if "n3" in artefatos else
+        '<div class="tab">'
+    )
+    # Substituir abertura da tag; fechamento (</a> vs </div>) ja casa
+    # porque o template oficial usa <a> nas 3, e quando convertemos para
+    # <div> precisamos converter </a> tambem.
+    if "n1" in artefatos:
+        template = template.replace(
+            '<a class="tab" href="exemplo-m7-preenchido.html">',
+            n1_tab_repl,
+        )
+    else:
+        template = template.replace(
+            '<a class="tab" href="exemplo-m7-preenchido.html">Visão geral <span class="num">N1</span></a>',
+            '<div class="tab">Visão geral <span class="num">N1</span></div>',
+        )
+    if "n2" in artefatos:
+        template = template.replace(
+            '<a class="tab" href="template-missao-do-processo.html">',
+            n2_tab_repl,
+        )
+    else:
+        template = template.replace(
+            '<a class="tab" href="template-missao-do-processo.html">Missão do processo</a>',
+            '<div class="tab">Missão do processo</div>',
+        )
+    if "n3" in artefatos:
+        template = template.replace(
+            '<a class="tab" href="template-mapa-de-interdependencia.html">',
+            n3_tab_repl,
+        )
+    else:
+        template = template.replace(
+            '<a class="tab" href="template-mapa-de-interdependencia.html">Mapa de interdependência</a>',
+            '<div class="tab">Mapa de interdependência</div>',
+        )
+
     # Render dinamico das listas de processos (chain-mini p4, proc-lists p5/6/7).
     # Resolve overflow (>9 primarios, >4 gerenciais, >5 apoio) e respeita
     # camada/subcamada do BRIEFING. Bug 1 fix do report v2.0.3.
