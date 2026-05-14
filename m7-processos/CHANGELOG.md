@@ -4,6 +4,29 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.0.1] - 2026-05-14
+
+Patch crítico de geração: o `build_artifacts.py` (skill `mapeamento-n1`) produzia o N2 (Missão do Processo) com markup divergente do template interativo, resultando em layout achatado (todos os SIPOCs empilhados em scroll) em vez do shell sidebar + panel-com-toggle. Corrigido para casar exatamente com a estrutura esperada pelo CSS + JS do template.
+
+### Fixed
+
+- **`render_n2_sidebar()`** — gerava `<li><a href="#X">` dentro de `<ul>` com `<h4>` headers. CSS do template espera `<div class="mp-group">` com `<div class="mp-group-label">` (não `<h4>`) e botões `<button class="mp-item" data-process-id="X">` (não anchors). Sem `data-process-id`, o JS de toggle nunca casa.
+- **`render_n2_panels()`** — gerava `<article id="X" class="mp-process-page">`. Template tem CSS `.mp-detail { display: none }` + JS que toggles `.active` no `<article id="detail-X">`. Como nada batia, o CSS hiding nunca aplicava e todos os panels apareciam empilhados.
+- **Primeira ativação faltava** — nenhum elemento recebia `.active` por default. Agora apenas o primeiro processo (overall) recebe `.mp-item.active` na sidebar e `.mp-detail.active` no painel, replicando o estado inicial do template.
+- **Headline + Owner reestruturados** — `<h2><span class="code-prefix">` → `<h2 class="mp-process-name"><span class="code">`; `<div class="mp-owner">OWNER · <span class="v">` → `.mp-owner > .label/.name` (estrutura esperada pelo CSS).
+- **Setas SIPOC ausentes** — adicionados 2 `<div class="sipoc-arrow"><svg>` entre as 3 colunas. Sem elas, as colunas ficavam coladas.
+- **Coluna do meio com classe errada** — `<div class="sipoc-col mp-mission">` → `<div class="sipoc-col mission">` (CSS hook é `.sipoc-col.mission`, não `.mp-mission` na coluna; `.mp-mission` é classe do `<p>` interno).
+- **Labels SIPOC em capslock literal** — "INPUTS"/"MISSAO"/"OUTPUTS" → "Inputs"/"Missão"/"Outputs". Template usa `text-transform: uppercase` no CSS — não escrever maiúsculas no HTML para manter acessibilidade do screen reader.
+- **Camada tag minúscula** — `{escape_html(camada.title())}` (gerava "Gerencial") → mapeamento dedicado: gerencial → "Camada gerencial", primário+núcleo → "Camada primária · Vertical", apoio → "Camada de apoio". Pixel-match com o template original.
+- **Aba "Política" não tratada no loop de tabs** — adicionado branch que reescreve href para `documento-oficial-{slug}.html` quando `n4-pdf` está em artefatos, ou converte para `<div>` não-navegável caso contrário.
+- **Fallback para processos sem SIPOC** — antes processos sem `sipoc.verbo` eram silenciosamente pulados (não apareciam no painel mas apareciam na sidebar — clique em órfão). Agora geram `<article class="mp-detail" id="detail-{codigo}">` com placeholder `<div class="mp-empty">`, mantendo a navegação coerente.
+
+### Migration
+
+Não-breaking. Quem gerou N2 com v2.0.0 deve regenerar via `python3 scripts/build_artifacts.py briefing.md output_dir/ --skip-pdf` (ou re-rodar a skill `/mapeamento-n1`) para receber o layout corrigido.
+
+Validado contra `examples/exemplo-briefing-m7.md` (18 processos): 18 botões `.mp-item`, 18 articles `.mp-detail`, 2 elementos `.active` (G1 sidebar + G1 panel), 36 setas SIPOC. JS de toggle e deep-linking via hash funcionais.
+
 ## [2.0.0] - 2026-05-13
 
 **MAJOR · skill mapeamento-n1** — N4 (Documento Oficial) re-arquitetado de server-rendered (Playwright/Jinja) para HTML standalone client-side com export PDF via `window.print()`. Promovido para "Política formal" — documento assinável com governança completa (código, vigência, aprovações, escopo, controle de versões). Nova 4ª aba "Política DOC" navega entre todos os 4 templates.

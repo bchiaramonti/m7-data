@@ -342,18 +342,28 @@ def build_n2(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path)
         for child in list(new_panels.contents):
             main_panel.append(child)
 
-    # Tabs
+    # Tabs — repointar hrefs para os arquivos slug-based.
+    # Tab ativa (Missao do processo) usa data-active="true" e fica intocada.
     for tab in soup.find_all(class_="tab"):
+        href = tab.get("href", "") or ""
         text = tab.get_text(strip=True).lower()
-        if "visao geral" in text or "visão geral" in text:
-            tab.name = "a"
-            tab.attrs["href"] = f"cadeia-de-valor-{slug}.html"
-            tab.attrs["class"] = ["tab"]
-        elif "mapa" in text:
+        if "exemplo-m7-preenchido" in href or "cadeia-de-valor" in href or "visão geral" in text or "visao geral" in text:
+            tab["href"] = f"cadeia-de-valor-{slug}.html"
+        elif "mapa-de-interdependencia" in href or "mapa" in text:
             if "n3" in artefatos:
-                tab.name = "a"
-                tab.attrs["href"] = f"mapa-de-interdependencia-{slug}.html"
-                tab.attrs["class"] = ["tab"]
+                tab["href"] = f"mapa-de-interdependencia-{slug}.html"
+            else:
+                # Sem N3 — converte <a> em <div> nao-navegavel
+                tab.name = "div"
+                if "href" in tab.attrs:
+                    del tab.attrs["href"]
+        elif "politica" in href or "política" in text:
+            if "n4-pdf" in artefatos:
+                tab["href"] = f"documento-oficial-{slug}.html"
+            else:
+                tab.name = "div"
+                if "href" in tab.attrs:
+                    del tab.attrs["href"]
 
     template = str(soup)
     output_path = output_dir / f"missao-do-processo-{slug}.html"
@@ -361,69 +371,179 @@ def build_n2(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path)
     return output_path
 
 
+def _camada_tag(camada: str, subcamada: str | None) -> str:
+    """Texto do .mp-layer-tag a partir de camada + subcamada."""
+    if camada == "gerencial":
+        return "Camada gerencial"
+    if camada == "apoio":
+        return "Camada de apoio"
+    if camada == "primario":
+        if subcamada == "front":
+            return "Camada primária · Front-end"
+        if subcamada == "nucleo":
+            return "Camada primária · Vertical"
+        if subcamada == "back":
+            return "Camada primária · Back-end"
+        return "Camada primária"
+    return ""
+
+
 def render_n2_sidebar(processos: list) -> str:
-    """HTML da sidebar do N2: 3 grupos (Gerenciais / Primarios / Apoio)."""
-    html = ['<header class="mp-sidebar-h">Processos</header>']
-    for camada, label in [("gerencial", "Gerenciais"), ("primario", "Primarios"), ("apoio", "Apoio")]:
+    """HTML da sidebar do N2 — botoes mp-item agrupados por camada.
+
+    Estrutura esperada pela CSS + JS do template-missao-do-processo.html:
+
+        <div class="mp-group">
+          <div class="mp-group-label">Gerenciais <span class="count">4</span></div>
+          <button class="mp-item active" data-process-id="G1">
+            <span class="code">G1</span><span>Planejamento Estrategico</span>
+          </button>
+          ...
+        </div>
+
+    Apenas o PRIMEIRO botao do PRIMEIRO grupo recebe `.active` (estado inicial
+    visivel). JS do template toggles `.active` no clique e via hash da URL.
+    """
+    parts = []
+    first = True
+    for camada, label in [("gerencial", "Gerenciais"),
+                          ("primario", "Primários"),
+                          ("apoio", "Apoio")]:
         items = [p for p in processos if p.get("camada") == camada]
         if not items:
             continue
-        html.append(f'<div class="mp-group"><h4>{escape_html(label)}</h4><ul>')
+        parts.append(f'    <div class="mp-group">')
+        parts.append(
+            f'      <div class="mp-group-label">{escape_html(label)} '
+            f'<span class="count">{len(items)}</span></div>'
+        )
         for p in items:
             codigo = p.get("codigo", "")
             nome = p.get("nome", "")
-            html.append(
-                f'<li data-code="{escape_html(codigo)}"><a href="#{escape_html(codigo)}">'
-                f'<span class="code">{escape_html(codigo)}</span> {escape_html(nome)}</a></li>'
+            active_cls = " active" if first else ""
+            first = False
+            parts.append(
+                f'      <button class="mp-item{active_cls}" data-process-id="{escape_html(codigo)}">'
+                f'<span class="code">{escape_html(codigo)}</span>'
+                f'<span>{escape_html(nome)}</span></button>'
             )
-        html.append("</ul></div>")
-    return "\n".join(html)
+        parts.append("    </div>")
+    return "\n" + "\n".join(parts) + "\n  "
+
+
+def _render_n2_panel_sipoc(codigo: str, nome: str, camada_tag: str,
+                            owner: str, verbo: str, objeto: str, finalidade: str,
+                            inputs: list, outputs: list, is_active: bool) -> str:
+    """Renderiza um <article class='mp-detail [active]' id='detail-{codigo}'> com SIPOC completo."""
+    active_cls = " active" if is_active else ""
+    # Limpa "para " inicial em finalidade — template ja tem "para" inline na missao
+    finalidade_clean = re.sub(r"^para\s+", "", finalidade, flags=re.IGNORECASE).strip()
+    chips_in = "\n            ".join(
+        f'<span class="mp-chip">{escape_html(c)}</span>'
+        for c in inputs
+    )
+    chips_out = "\n            ".join(
+        f'<span class="mp-chip">{escape_html(c)}</span>'
+        for c in outputs
+    )
+    arrow_svg = (
+        '<svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>'
+    )
+    # Constroi a missao no formato esperado: <span class="verb">VERBO</span> objeto <em>finalidade</em>
+    # Apenas a finalidade (sem o "para") fica em <em>. O "para" e literal no template.
+    if finalidade_clean:
+        missao_html = (
+            f'<span class="verb">{escape_html(verbo)}</span> {escape_html(objeto)} '
+            f'<em>para {escape_html(finalidade_clean)}.</em>'
+        )
+    else:
+        missao_html = (
+            f'<span class="verb">{escape_html(verbo)}</span> {escape_html(objeto)}.'
+        )
+    return f"""    <article class="mp-detail{active_cls}" id="detail-{escape_html(codigo)}">
+      <div class="mp-headline">
+        <div class="left">
+          <div class="mp-layer-tag">{escape_html(camada_tag)}</div>
+          <h2 class="mp-process-name"><span class="code">{escape_html(codigo)}</span>{escape_html(nome)}</h2>
+        </div>
+        <div class="mp-owner">
+          <span class="label">Owner</span>
+          <span class="name">{escape_html(owner)}</span>
+        </div>
+      </div>
+
+      <div class="sipoc">
+        <div class="sipoc-col">
+          <div class="sipoc-label">Inputs</div>
+          <div class="mp-chips">
+            {chips_in}
+          </div>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true">{arrow_svg}</div>
+
+        <div class="sipoc-col mission">
+          <div class="sipoc-label">Missão</div>
+          <p class="mp-mission">{missao_html}</p>
+        </div>
+        <div class="sipoc-arrow" aria-hidden="true">{arrow_svg}</div>
+
+        <div class="sipoc-col">
+          <div class="sipoc-label">Outputs</div>
+          <div class="mp-chips">
+            {chips_out}
+          </div>
+        </div>
+      </div>
+    </article>"""
+
+
+def _render_n2_panel_empty(codigo: str, nome: str, is_active: bool) -> str:
+    """Placeholder para processos sem SIPOC preenchido."""
+    active_cls = " active" if is_active else ""
+    return (
+        f'    <article class="mp-detail{active_cls}" id="detail-{escape_html(codigo)}">'
+        f'<div class="mp-empty"><div class="ic">{escape_html(codigo)}</div>'
+        f'<div>{escape_html(nome)} · A preencher.</div></div></article>'
+    )
 
 
 def render_n2_panels(processos: list) -> str:
-    """Cada processo vira um <article id='codigo' class='mp-process-page'>."""
+    """Cada processo vira <article class='mp-detail' id='detail-{codigo}'>.
+
+    Apenas o PRIMEIRO processo (overall) recebe `.active`. CSS `.mp-detail`
+    default e `display: none`; JS toggles `.active` no clique.
+
+    Processos sem SIPOC viram empty placeholder (mas continuam clicaveis pela
+    sidebar para preservar coerencia da navegacao).
+    """
     panels = []
+    first = True
     for p in processos:
-        sipoc = p.get("sipoc")
-        if not sipoc:
-            continue
         codigo = p.get("codigo", "")
         nome = p.get("nome", "")
         camada = p.get("camada", "")
-        owner = sipoc.get("owner", "")
-        verbo = sipoc.get("verbo", "")
-        objeto = sipoc.get("objeto", "")
-        finalidade = sipoc.get("finalidade", "")
-        finalidade_clean = re.sub(r"^para\s+", "", finalidade, flags=re.IGNORECASE).strip()
-        chips_in = "\n".join(f'<div class="mp-chip">{escape_html(c)}</div>' for c in sipoc.get("inputs") or [])
-        chips_out = "\n".join(f'<div class="mp-chip">{escape_html(c)}</div>' for c in sipoc.get("outputs") or [])
+        subcamada = p.get("subcamada")
+        camada_tag = _camada_tag(camada, subcamada)
 
-        panels.append(f"""<article id="{escape_html(codigo)}" class="mp-process-page">
-  <div class="mp-headline">
-    <h2><span class="code-prefix">{escape_html(codigo)}</span> {escape_html(nome)}</h2>
-    <span class="mp-camada-tag">{escape_html(camada.title())}</span>
-  </div>
-  <div class="mp-owner">OWNER · <span class="v">{escape_html(owner)}</span></div>
-  <div class="sipoc">
-    <div class="sipoc-col">
-      <div class="sipoc-label">INPUTS</div>
-      <div class="mp-chips">
-{chips_in}
-      </div>
-    </div>
-    <div class="sipoc-col mp-mission">
-      <div class="sipoc-label">MISSAO</div>
-      <p><span class="verb">{escape_html(verbo)}</span> {escape_html(objeto)} <em>para {escape_html(finalidade_clean)}</em>.</p>
-    </div>
-    <div class="sipoc-col">
-      <div class="sipoc-label">OUTPUTS</div>
-      <div class="mp-chips">
-{chips_out}
-      </div>
-    </div>
-  </div>
-</article>""")
-    return "\n\n".join(panels)
+        sipoc = p.get("sipoc") or {}
+        verbo = (sipoc.get("verbo") or "").strip()
+        objeto = (sipoc.get("objeto") or "").strip()
+        finalidade = (sipoc.get("finalidade") or "").strip()
+        inputs = [c for c in (sipoc.get("inputs") or []) if c]
+        outputs = [c for c in (sipoc.get("outputs") or []) if c]
+        owner = (sipoc.get("owner") or "").strip()
+
+        # Considera SIPOC "preenchido" se tem verbo (campo central)
+        if verbo and objeto:
+            panels.append(_render_n2_panel_sipoc(
+                codigo, nome, camada_tag, owner,
+                verbo, objeto, finalidade, inputs, outputs,
+                is_active=first,
+            ))
+        else:
+            panels.append(_render_n2_panel_empty(codigo, nome, is_active=first))
+        first = False
+    return "\n\n" + "\n\n".join(panels) + "\n  "
 
 
 # ============================================================================
