@@ -4,6 +4,36 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.0.4] - 2026-05-14
+
+Patch crítico em `build_artifacts.py` resolvendo 3 bugs identificados em teste real com BRIEFING M7 (12 primários, acentos em labels, re-runs). Os bugs afetavam produção: N3 crashava com regex em labels acentuados, N4 nem era gerado, N1/N4 truncavam silenciosamente primários além de P9.
+
+### Fixed
+
+- **Bug 1 · Truncação silenciosa de primários > P9** — `build_n1()` e `build_politica()` substituíam apenas placeholders hardcoded P1-P9 (verticais P3-P8 + front P1/P2 + back P9), descartando processos extras do BRIEFING sem aviso. Adicionados helpers de render dinâmico via BeautifulSoup:
+  - `_render_process_box(p, variante)` — renderiza `<div class="process-box">` para N1 respeitando `.highlight`/`.blue-accent`, tooltip 3-linhas (gerencial inclui "Freq: X")
+  - `_render_chainmini_box(p)` — versão miniaturizada para a página 4 do N4
+  - `_render_proc_card(p, camada_kind)` — card `.proc` para páginas 5/6/7 do N4 com meta-row específica (Freq · Meta/Camada · Tipo)
+  - `_inject_n1_processes(template, briefing)` — reconstrói `.front-end` / `.verticais-grid` / `.back-end` (variante A) ou `.lane-content` linear (variante B) + gerenciais + apoio a partir do briefing
+  - `_inject_politica_processes(template, briefing)` — reconstrói chain-mini (page 4) + proc-list de cada camada (pages 5/6/7)
+  - Bonus: respeita `subcamada` real do briefing. Antes P9 hardcoded no back-end era preenchido com a vertical que estivesse com código P9; agora P9 (nucleo) vai pro verticais-grid e P12 (back) ocupa o back-end corretamente.
+
+- **Bug 2 · `re.error: bad escape \u` em `build_n3()`** — `re.sub()` recebia string f-stringada como `repl`, que ao conter `\u` de escapes JSON unicode (gerados por labels acentuados tipo "Compliance Bacen câmbio") era interpretado como group reference inválido. Fix: usar lambda como `repl` (preserva literal sem interpretação de escapes). 1 linha funcional.
+
+- **Bug 3 · `PermissionError` em re-runs** — `copy_assets()` falhava ao sobrescrever CSS read-only em segunda execução no mesmo diretório (alguns sistemas como iCloud-synced volumes deixam arquivos copiados como `-r--`). Fix: `os.chmod(dst, 0o644)` antes de `shutil.copy2()` quando destino já existe. Pipeline agora idempotente.
+
+### Migration
+
+Não-breaking. Sem mudanças no schema do BRIEFING nem nos templates. Quem rodou v2.0.3 com BRIEFING M7 atual (12 primários ou outros casos com overflow) recebia output incompleto/quebrado; basta re-rodar `build_artifacts.py` em v2.0.4 para receber os 4 artefatos completos.
+
+Validado end-to-end com briefing teste (4 gerenciais, 12 primários incluindo P9 nucleo + P12 back, 5 apoio, label de relação acentuado "Compliance Bacen câmbio"):
+- N1: 21 códigos no diagrama (G1-G4, P1-P12, A1-A5); highlight/blue-accent preservados; P3 vertical (não back-end), P12 no back-end
+- N2: 18 cards no sidebar (na verdade 21 com 12 primários)
+- N3: gerado sem crash apesar dos acentos nas relações
+- N4 Política: chain-mini com 21 códigos; proc-lists com 4+12+5 cards corretamente classificados; verticais com "Meta", front/back com "Camada"
+- Re-run: idempotente, sem PermissionError
+- 0 placeholders `{{...}}` restantes em qualquer dos 4 artefatos
+
 ## [2.0.3] - 2026-05-14
 
 Sync de layout com a nova versão oficial dos 4 templates N1/N2/N3 (Política ficou byte-idêntica à v2.0.2). Mudança transversal: templates agora ocupam viewport inteiro em vez de cap em 1280px, com flex column vertical-fill. Sidebar do N2 redesenhada no padrão visual da Política.

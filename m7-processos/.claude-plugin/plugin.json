@@ -1,6 +1,6 @@
 {
   "name": "m7-processos",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Plugin M7 para mapeamento e gestão de processos com design system M7-2026. Inclui (1) skill mapeamento-n1: pipeline 4 níveis (N1 cadeia de valor, N2 SIPOC, N3 mapa de interdependência, N4 política formal A4-paginada com export PDF via window.print()) e (2) skill drawing-bpmn-flowcharts: construtor BPMN 2.0 com auto-layout determinístico, validação iterativa de legibilidade, paleta M7 diferenciada (lane warm + task esverdeada + gateway amarelo + end vermelho), suporte a AI agents (Camunda 8.8+ ad-hoc sub-process) e geração de .bpmn portátil compatível com Camunda Modeler / bpmn.io / Bizagi.",
   "author": {
     "name": "Bruno Chiaramonti"

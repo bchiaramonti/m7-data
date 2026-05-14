@@ -95,11 +95,24 @@ def extract_section(body: str, heading: str) -> str:
 
 
 def copy_assets(skill_dir: Path, output_dir: Path) -> None:
+    """Copia CSS + fonts/ + assets/ para o diretorio de output.
+
+    Idempotente: re-runs sobrescrevem CSS (preservando permissoes write)
+    e mantem fonts/assets ja copiados (sao estaticos).
+    """
+    import os
     templates_dir = skill_dir / "templates"
     for css in ["m7-tokens.css", "m7-header-dark.css", "m7-print.css"]:
         src = templates_dir / css
-        if src.is_file():
-            shutil.copy2(src, output_dir / css)
+        if not src.is_file():
+            continue
+        dst = output_dir / css
+        # Re-runs: shutil.copy2 falha se dst e read-only.
+        # Garantir write antes do overwrite. unlink() tambem funciona,
+        # mas chmod preserva o stat history pra debugging.
+        if dst.exists():
+            os.chmod(dst, 0o644)
+        shutil.copy2(src, dst)
     for sub in ["fonts", "assets"]:
         src = templates_dir / sub
         dst = output_dir / sub
@@ -156,6 +169,141 @@ def validate_briefing(briefing_path: Path, skill_dir: Path) -> bool:
 # ============================================================================
 # Build N1
 # ============================================================================
+
+
+def _render_process_box(p: dict, variante: str = "A") -> str:
+    """Renderiza um <div class='process-box [highlight|blue-accent]'> completo.
+
+    Usado para inserir processos extras alem do que o template hardcoded
+    suporta (P1-P9 + G1-G4 + A1-A5). Tooltip respeita formato gerencial
+    (3 linhas com 'Freq: X' na ultima) vs primario/apoio (ate 3 linhas).
+    """
+    codigo = escape_html(p.get("codigo", ""))
+    nome = escape_html(p.get("nome", ""))
+    tooltip = p.get("tooltip") or []
+
+    cls = "process-box"
+    if p.get("highlight"):
+        cls += " highlight"
+    elif p.get("blue_accent"):
+        cls += " blue-accent"
+
+    if variante == "B":
+        # Variante linear: tooltip e uma string unica
+        tooltip_html = "<br>".join(escape_html(l) for l in tooltip if l)
+    else:
+        # Variante A: tooltip e 3 linhas; gerencial inclui 'Freq: X'
+        if p.get("camada") == "gerencial":
+            freq = p.get("frequencia", "")
+            linhas = (tooltip + ["", "", ""])[:2]
+            tooltip_html = "<br>".join(
+                escape_html(l) for l in [*linhas, f"Freq: {freq}"] if l
+            )
+        else:
+            linhas = (tooltip + ["", "", ""])[:3]
+            tooltip_html = "<br>".join(escape_html(l) for l in linhas if l)
+
+    return (
+        f'<div class="{cls}">'
+        f'<div class="code">{codigo}</div>'
+        f'<div class="name">{nome}</div>'
+        f'<div class="tooltip">{tooltip_html}</div>'
+        f'</div>'
+    )
+
+
+def _layer_by_label(soup, text: str):
+    """Encontra <div class='layer'> cujo h3 contem o texto.
+
+    Tolera variacao de case + acento. Devolve o elemento layer ou None.
+    """
+    text_norm = text.lower()
+    for layer in soup.find_all("div", class_="layer"):
+        h3 = layer.find("h3")
+        if h3 and text_norm in h3.get_text(strip=True).lower():
+            return layer
+    return None
+
+
+def _rebuild_container(container, processos: list, variante: str) -> None:
+    """Limpa process-boxes do container e re-renderiza a partir do briefing.
+
+    Preserva outros elementos filhos (ex.: .verticais-label, flow-arrow svg).
+    """
+    if container is None:
+        return
+    # Remove apenas os .process-box (preserva .verticais-label etc.)
+    for pb in container.find_all("div", class_="process-box", recursive=False):
+        pb.decompose()
+    # Insere process-boxes do briefing na ordem
+    from bs4 import BeautifulSoup
+    for p in processos:
+        html = _render_process_box(p, variante)
+        new = BeautifulSoup(html, "html.parser")
+        for child in list(new.contents):
+            container.append(child)
+
+
+def _inject_n1_processes(template_str: str, briefing_fm: dict) -> str:
+    """Reconstroi dinamicamente os containers de processos no N1.
+
+    Trata overflow alem dos slots hardcoded (P1-P9, G1-G4, A1-A5) e
+    respeita as classificacoes camada/subcamada do briefing — fix do
+    Bug 1 do report v2.0.3 (BRIEFINGs com >9 primarios truncavam).
+
+    Para o BRIEFING M7 atual (12 primarios: P1,P2=front, P3-P11=nucleo,
+    P12=back) o render dinamico re-organiza P9 do back-end hardcoded
+    para o nucleo (subcamada correta) e injeta P12 no back-end.
+    """
+    from bs4 import BeautifulSoup
+    n1 = briefing_fm.get("n1", {})
+    variante = n1.get("variante", "A")
+    processos = briefing_fm.get("processos") or []
+
+    gerenciais = [p for p in processos if p.get("camada") == "gerencial"]
+    primarios = [p for p in processos if p.get("camada") == "primario"]
+    apoio = [p for p in processos if p.get("camada") == "apoio"]
+
+    soup = BeautifulSoup(template_str, "html.parser")
+
+    # Gerenciais — sempre flat
+    ger_layer = _layer_by_label(soup, "gerenciais")
+    if ger_layer:
+        ger_content = ger_layer.find("div", class_="lane-content")
+        _rebuild_container(ger_content, gerenciais, variante)
+
+    # Apoio — sempre flat
+    apoio_layer = _layer_by_label(soup, "apoio")
+    if apoio_layer:
+        apoio_content = apoio_layer.find("div", class_="lane-content")
+        _rebuild_container(apoio_content, apoio, variante)
+
+    # Primarios — variante A: front+nucleo+back; variante B: flat
+    prim_layer = _layer_by_label(soup, "primários") or _layer_by_label(soup, "primarios")
+    if not prim_layer:
+        return str(soup)
+
+    if variante == "A":
+        # Front-end: subcamada=front; Nucleo: subcamada=nucleo; Back: subcamada=back
+        front = [p for p in primarios if p.get("subcamada") == "front"]
+        nucleo = [p for p in primarios if p.get("subcamada") == "nucleo"]
+        back = [p for p in primarios if p.get("subcamada") == "back"]
+        # Fallback: primarios sem subcamada vao para nucleo (caso comum)
+        sem_sc = [p for p in primarios if not p.get("subcamada")]
+        nucleo = nucleo + sem_sc
+
+        front_div = prim_layer.find("div", class_="front-end")
+        _rebuild_container(front_div, front, variante)
+        grid_div = prim_layer.find("div", class_="verticais-grid")
+        _rebuild_container(grid_div, nucleo, variante)
+        back_div = prim_layer.find("div", class_="back-end")
+        _rebuild_container(back_div, back, variante)
+    else:
+        # Variante linear: tudo flat dentro de lane-content
+        prim_content = prim_layer.find("div", class_="lane-content")
+        _rebuild_container(prim_content, primarios, variante)
+
+    return str(soup)
 
 
 def build_n1(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path) -> Path:
@@ -256,24 +404,16 @@ def build_n1(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path)
     for k, v in replacements.items():
         template = template.replace(k, v)
 
-    # Aplicar classes CSS extra (highlight / blue-accent) — substituicao por regex
-    for p in processos:
-        codigo = p.get("codigo", "")
-        if not codigo:
-            continue
-        # Procurar `<div class="process-box">\n        <div class="code">{codigo}</div>` e ajustar classe
-        if p.get("highlight"):
-            template = re.sub(
-                rf'<div class="process-box">(\s*<div class="code">{re.escape(codigo)}</div>)',
-                rf'<div class="process-box highlight">\1',
-                template, count=1,
-            )
-        elif p.get("blue_accent"):
-            template = re.sub(
-                rf'<div class="process-box">(\s*<div class="code">{re.escape(codigo)}</div>)',
-                rf'<div class="process-box blue-accent">\1',
-                template, count=1,
-            )
+    # Render dinamico dos containers de processos: reconstroi front-end,
+    # verticais-grid, back-end (variante A) ou primarios linear (variante B)
+    # + gerenciais + apoio a partir do briefing. Resolve overflow (>9
+    # primarios, >4 gerenciais, >5 apoio) e respeita subcamada=front/nucleo/
+    # back declarada no BRIEFING (independente de qual placeholder foi usado
+    # nas substituicoes string-based acima).
+    #
+    # Tambem aplica classes .highlight e .blue-accent corretamente atraves
+    # de _render_process_box, dispensando o passo de regex pos-substituicao.
+    template = _inject_n1_processes(template, briefing_fm)
 
     # Salvar
     output_path = output_dir / f"cadeia-de-valor-{slug}.html"
@@ -622,9 +762,14 @@ def build_n3(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path)
             break
     if script_tag:
         new_relations = render_n3_relations_js(relacoes)
+        # Lambda como repl evita interpretar escape sequences (\u, \1, etc.)
+        # — JSON com acentos (â, ã, é) produz `â` etc., e `re.sub` com
+        # string como repl trataria isso como referencias de grupo invalidas
+        # (re.error: bad escape \u). Lambda preserva como literal.
+        new_relations_str = f"const RELATIONS = {new_relations};"
         new_script = re.sub(
             r"const RELATIONS = \[.*?\];",
-            f"const RELATIONS = {new_relations};",
+            lambda m: new_relations_str,
             script_tag.string, count=1, flags=re.DOTALL,
         )
         script_tag.string = new_script
@@ -731,6 +876,205 @@ def render_n3_relations_js(relacoes: list) -> str:
             f'label: {json.dumps(r.get("label", ""))} }}'
         )
     return "[\n" + ",\n".join(items) + "\n    ]"
+
+
+# ============================================================================
+# Politica helpers — render dinamico de chain-mini + proc-lists
+# ============================================================================
+
+
+# Mapeamento heuristico de A1..A5 → tipo (apenas usado como default quando
+# o BRIEFING nao especifica .tipo). M7-aligned mas generico o suficiente.
+APOIO_TIPO_DEFAULT = {
+    "A1": "Habilitador",
+    "A2": "Risco",
+    "A3": "Capital",
+    "A4": "Pessoas",
+    "A5": "Operação",
+}
+
+
+def _render_chainmini_box(p: dict) -> str:
+    """Card miniaturizado do chain-mini (page 4 da Politica)."""
+    codigo = escape_html(p.get("codigo", ""))
+    nome = escape_html(p.get("nome", ""))
+    cls = "cprocess"
+    if p.get("highlight"):
+        cls += " lime"
+    elif p.get("blue_accent"):
+        cls += " blue"
+    return (
+        f'<div class="{cls}">'
+        f'<div class="ccode">{codigo}</div>'
+        f'<div class="cname">{nome}</div>'
+        f'</div>'
+    )
+
+
+def _render_proc_card(p: dict, camada_kind: str) -> str:
+    """Card .proc do proc-list (pages 5/6/7).
+
+    camada_kind: 'gerencial' | 'primario' | 'apoio'
+    Define qual meta-row aparece a direita (Freq | Meta/Camada | Tipo).
+    """
+    codigo = escape_html(p.get("codigo", ""))
+    nome = escape_html(p.get("nome", ""))
+    missao = escape_html(_format_missao(p.get("sipoc") or {})) or "—"
+    owner = escape_html((p.get("sipoc") or {}).get("owner", "")) or "—"
+
+    cls = "proc"
+    # Page 6 (primarios): .highlight em verticais marcados; A1 blue ja
+    # esta em apoio (page 7) e nao em primarios. Page 7 (apoio): A1 com .blue.
+    if camada_kind == "primario" and p.get("highlight"):
+        cls += " highlight"
+    if camada_kind == "apoio" and p.get("blue_accent"):
+        cls += " blue"
+
+    # Meta-row depende da camada
+    if camada_kind == "gerencial":
+        freq = escape_html(p.get("frequencia", "")) or "—"
+        meta_row = (
+            f'<div class="m"><span class="k">Owner</span><span class="v">{owner}</span></div>'
+            f'<div class="m"><span class="k">Freq.</span><span class="v">{freq}</span></div>'
+        )
+    elif camada_kind == "primario":
+        sc = p.get("subcamada")
+        if sc == "front":
+            sub_label = ("Camada", "Front-end")
+        elif sc == "back":
+            sub_label = ("Camada", "Back-end")
+        else:
+            # vertical/nucleo: usa Meta
+            meta_val = escape_html(p.get("meta", "")) or "—"
+            sub_label = ("Meta", meta_val)
+        meta_row = (
+            f'<div class="m"><span class="k">Owner</span><span class="v">{owner}</span></div>'
+            f'<div class="m"><span class="k">{escape_html(sub_label[0])}</span>'
+            f'<span class="v">{sub_label[1]}</span></div>'
+        )
+    else:  # apoio
+        tipo = p.get("tipo") or APOIO_TIPO_DEFAULT.get(p.get("codigo", ""), "—")
+        meta_row = (
+            f'<div class="m"><span class="k">Owner</span><span class="v">{owner}</span></div>'
+            f'<div class="m"><span class="k">Tipo</span><span class="v">{escape_html(tipo)}</span></div>'
+        )
+
+    return (
+        f'<div class="{cls}">'
+        f'<div class="proc-code">{codigo}</div>'
+        f'<div class="proc-main">'
+        f'<div class="pname">{nome}</div>'
+        f'<div class="pmission">{missao}</div>'
+        f'</div>'
+        f'<div class="proc-meta">{meta_row}</div>'
+        f'</div>'
+    )
+
+
+def _inject_politica_processes(template_str: str, briefing_fm: dict) -> str:
+    """Reconstroi dinamicamente as 4 listas de processos da Politica.
+
+    Fix do Bug 1 do report v2.0.3 para a Politica (paralelo a `_inject_n1_processes`):
+    - Page 4 "Estrutura da cadeia": chain-mini com front+verticais+back+gerenciais+apoio
+    - Page 5 "Processos gerenciais": proc-list de gerenciais (Owner + Freq)
+    - Page 6 "Processos primarios": proc-list (Owner + Meta para verticais; Camada para front/back)
+    - Page 7 "Processos de apoio": proc-list (Owner + Tipo)
+    """
+    from bs4 import BeautifulSoup
+    processos = briefing_fm.get("processos") or []
+    gerenciais = [p for p in processos if p.get("camada") == "gerencial"]
+    primarios = [p for p in processos if p.get("camada") == "primario"]
+    apoio = [p for p in processos if p.get("camada") == "apoio"]
+
+    front = [p for p in primarios if p.get("subcamada") == "front"]
+    nucleo = [p for p in primarios if p.get("subcamada") == "nucleo" or not p.get("subcamada")]
+    back = [p for p in primarios if p.get("subcamada") == "back"]
+
+    soup = BeautifulSoup(template_str, "html.parser")
+
+    # ── Page 4: chain-mini ───────────────────────────────────
+    chain = soup.find("div", class_="chain-mini")
+    if chain:
+        clayers = chain.find_all("div", class_="clayer", recursive=False)
+        # Esperado: 3 clayers — gerenciais, primarios, apoio
+        for clayer in clayers:
+            h3 = clayer.find("h3")
+            if not h3:
+                continue
+            label = h3.get_text(strip=True).lower()
+            if "gerenciais" in label:
+                cc = clayer.find("div", class_="ccontent")
+                for box in cc.find_all("div", class_="cprocess", recursive=False):
+                    box.decompose()
+                for p in gerenciais:
+                    new = BeautifulSoup(_render_chainmini_box(p), "html.parser")
+                    for child in list(new.contents):
+                        cc.append(child)
+            elif "primários" in label or "primarios" in label:
+                cc = clayer.find("div", class_="ccontent")
+                # Front-end: col-fb (primeiro)
+                col_fbs = cc.find_all("div", class_="col-fb", recursive=False)
+                if len(col_fbs) >= 2:
+                    front_col, back_col = col_fbs[0], col_fbs[1]
+                    for box in front_col.find_all("div", class_="cprocess", recursive=False):
+                        box.decompose()
+                    for p in front:
+                        new = BeautifulSoup(_render_chainmini_box(p), "html.parser")
+                        for child in list(new.contents):
+                            front_col.append(child)
+                    for box in back_col.find_all("div", class_="cprocess", recursive=False):
+                        box.decompose()
+                    for p in back:
+                        new = BeautifulSoup(_render_chainmini_box(p), "html.parser")
+                        for child in list(new.contents):
+                            back_col.append(child)
+                # Verticais: cverticais > cvgrid
+                cvert = cc.find("div", class_="cverticais")
+                if cvert:
+                    cvgrid = cvert.find("div", class_="cvgrid")
+                    if cvgrid:
+                        for box in cvgrid.find_all("div", class_="cprocess", recursive=False):
+                            box.decompose()
+                        for p in nucleo:
+                            new = BeautifulSoup(_render_chainmini_box(p), "html.parser")
+                            for child in list(new.contents):
+                                cvgrid.append(child)
+            elif "apoio" in label:
+                cc = clayer.find("div", class_="ccontent")
+                for box in cc.find_all("div", class_="cprocess", recursive=False):
+                    box.decompose()
+                for p in apoio:
+                    new = BeautifulSoup(_render_chainmini_box(p), "html.parser")
+                    for child in list(new.contents):
+                        cc.append(child)
+
+    # ── Pages 5/6/7: proc-list por camada ────────────────────
+    # Identificamos cada page pelo data-page-label da <article>
+    page_to_camada = {
+        "Processos Gerenciais": ("gerencial", gerenciais),
+        "Processos Primários": ("primario", primarios),
+        "Processos Primarios": ("primario", primarios),
+        "Processos de Apoio": ("apoio", apoio),
+    }
+    for article in soup.find_all("article", class_="page"):
+        label = article.get("data-page-label", "")
+        spec = page_to_camada.get(label)
+        if not spec:
+            continue
+        camada_kind, items = spec
+        proc_list = article.find("div", class_="proc-list")
+        if not proc_list:
+            continue
+        # Limpa cards .proc existentes
+        for card in proc_list.find_all("div", class_="proc", recursive=False):
+            card.decompose()
+        # Rebuild
+        for p in items:
+            new = BeautifulSoup(_render_proc_card(p, camada_kind), "html.parser")
+            for child in list(new.contents):
+                proc_list.append(child)
+
+    return str(soup)
 
 
 # ============================================================================
@@ -904,12 +1248,10 @@ def build_politica(briefing_fm: dict, body_md: str,
     for k, v in replacements.items():
         template = template.replace(k, v)
 
-    # ── Tabs: repointar hrefs para os arquivos slug-based ──
-    # Tabs nao-ativas (cover-tabs sao <span> apenas visuais; main tabs ja foram
-    # subsbstituidos via texto). Mas o template politica usa <span class="ctab">
-    # como abas visuais da capa (nao navegaveis). Nada a fazer aqui.
-    # Apenas a tab principal "Politica" do header dark ja esta ativa (data-active).
-    # Como o template e standalone, nao ha tabs do header dark para repointar.
+    # Render dinamico das listas de processos (chain-mini p4, proc-lists p5/6/7).
+    # Resolve overflow (>9 primarios, >4 gerenciais, >5 apoio) e respeita
+    # camada/subcamada do BRIEFING. Bug 1 fix do report v2.0.3.
+    template = _inject_politica_processes(template, briefing_fm)
 
     # ── Salvar ──
     output_path = output_dir / f"politica-{slug}.html"
