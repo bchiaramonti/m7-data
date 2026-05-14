@@ -4,6 +4,34 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.0.2] - 2026-05-14
+
+Sync com a nova versão oficial do `template-politica.html` (1874 linhas, shell-header fixo + sidebar de sumário 280px + doc rolável) que substituiu a versão anterior de 1660 linhas. Filename do N4 alinhado entre design oficial e skill: agora `template-politica.html` (não mais `template-documento-oficial.html`).
+
+### Changed
+
+- **N4 template**: `template-documento-oficial.html` (1660 linhas) → `template-politica.html` (1874 linhas). Nova arquitetura visual: shell-header fixo no topo + grid de 280px sidebar com sumário navegável + área de doc rolável. Mantém 8 páginas A4 portrait com toolbar de export PDF.
+- **N4 output filename**: `documento-oficial-{slug}.html` → `politica-{slug}.html` (alinha com filename do template oficial).
+- **`scripts/build_artifacts.py`**: nova função `build_politica()` faz substituição direta de 129 placeholders no template standalone. Substitui `build_n4_html()` (que delegava para `build_n4.py` deprecated). Helpers internos: `_format_missao()` (concatena verbo+objeto+finalidade) e `_format_versao_completa()` (deriva "vX.Y · MM/AA" da versão vigente).
+- **Tabs em N1/N2/N3**: href do tab Política agora aponta para `politica-{slug}.html`. Inclui fallback `<div class="tab">` não-navegável quando `n4-pdf` não está em `artefatos_a_gerar`.
+- **`references/n4-documento-oficial.md`**: filename e linhas atualizadas no body. Adicionada nota sobre a nova arquitetura shell-header + sidebar.
+- **`SKILL.md`**: file tree atualizado para refletir `template-politica.html`; descrição do N4 menciona shell-header + sumário sidebar.
+
+### Fixed
+
+- **N1 linear · tab Mapa**: revertido para `<div class="tab">Mapa de interdependência</div>` (não-navegável), alinhando com o design oficial. A "correção" para `<a href>` aplicada em v2.0.0 estava em conflito com a decisão de design do template oficial — repensei como decisão intencional, não bug.
+- **N4 placeholder `{{VERSAO_CURTA}}`**: o template oficial introduziu este placeholder; `build_politica()` agora o substitui a partir de `versao` do BRIEFING (mesmo source usado por N1/N2/N3).
+
+### Migration
+
+Non-breaking conceitualmente — quem gera N4 com v2.0.1 deve regenerar via `python3 scripts/build_artifacts.py briefing.md output_dir/`. Mudanças observáveis:
+
+1. Output filename muda: `documento-oficial-{slug}.html` deixa de existir; `politica-{slug}.html` é o novo nome.
+2. Visual: shell-header fixo + sidebar de sumário 280px com 8 itens clicáveis (Capa, Controle, Objetivo, Estrutura, Gerenciais, Primários, Apoio, Missão+Interdep+Governança). Área de doc à direita continua sendo as 8 páginas A4 portrait empilhadas.
+3. Tabs do N1/N2/N3 apontam para o novo filename.
+
+Validado contra `examples/exemplo-briefing-m7.md` (18 processos): 4 artefatos gerados, 0 placeholders restantes no N4, 8 páginas A4 + 8 itens de sumário.
+
 ## [2.0.1] - 2026-05-14
 
 Patch crítico de geração: o `build_artifacts.py` (skill `mapeamento-n1`) produzia o N2 (Missão do Processo) com markup divergente do template interativo, resultando em layout achatado (todos os SIPOCs empilhados em scroll) em vez do shell sidebar + panel-com-toggle. Corrigido para casar exatamente com a estrutura esperada pelo CSS + JS do template.

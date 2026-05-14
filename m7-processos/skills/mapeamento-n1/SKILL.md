@@ -83,7 +83,7 @@ skills/mapeamento-n1/
 │   ├── n1-cadeia-de-valor.md                 ← regras N1
 │   ├── n2-missao-do-processo.md              ← regras N2 (SIPOC)
 │   ├── n3-mapa-interdependencia.md           ← regras N3 (grafo neural)
-│   ├── n4-documento-oficial.md               ← regras N4 (PDF paginado)
+│   ├── n4-documento-oficial.md               ← regras N4 / Política (HTML A4 + window.print())
 │   ├── design-system-m7.md                   ← tokens M7-2026
 │   ├── phase-a-entrevista-critica.md         ← Fase A: blocos + checkpoints
 │   ├── phase-b-briefing.md                   ← Fase B: schema canônico do SSOT
@@ -98,7 +98,7 @@ skills/mapeamento-n1/
 │   ├── template-cadeia-de-valor--linear.html ← N1 variante B (linear) · 4 abas
 │   ├── template-missao-do-processo.html      ← N2 (sidebar + SIPOC) · 4 abas
 │   ├── template-mapa-de-interdependencia.html← N3 (neural graph) · 4 abas
-│   ├── template-documento-oficial.html       ← N4 Política (A4 paginado standalone, 1660 linhas)
+│   ├── template-politica.html                ← N4 Política (A4 paginado standalone, shell-header + sumário sidebar, 1874 linhas)
 │   ├── m7-tokens.css                         ← tokens
 │   ├── m7-header-dark.css                    ← header escuro (compartilhado entre N1/N2/N3)
 │   ├── m7-print.css                          ← @page, page-break (legacy — N4 atual usa CSS inline)
@@ -175,12 +175,11 @@ Sequência **rígida** (cada artefato lê o BRIEFING):
 1. **N1** → `cadeia-de-valor-{slug}.html` (variante A ou B segundo `n1.variante`)
 2. **N2** → `missao-do-processo-{slug}.html` (sidebar + painel SIPOC por processo)
 3. **N3** → `mapa-de-interdependencia-{slug}.html` (posições % + RELATIONS)
-4. **N4 Política** → `documento-oficial-{slug}.html` (HTML standalone, 8 páginas A4, toolbar com botão "Exportar PDF")
+4. **N4 Política** → `politica-{slug}.html` (HTML standalone, 8 páginas A4 portrait + shell-header + sidebar de sumário 280px, toolbar com botão "Exportar PDF")
    - **Bloqueia** se N1/N2/N3 não estão prontos no diretório
    - **Bloqueia** se seção `politica:` do BRIEFING não está preenchida (regra `POLITICA-AUSENTE`)
-   - Substitui ~120 placeholders do template; sem Jinja includes (template é standalone)
+   - Substitui ~129 placeholders do template; sem Jinja includes (template é standalone)
    - **PDF**: usuário abre o HTML no navegador e clica em "Exportar PDF" → `window.print()` com `@page A4` (precisa marcar "Plano de fundo gráfico" no diálogo)
-   - 8 páginas portrait (sem landscape no MVP)
 
 Detalhes em [`references/phase-c-producao.md`](references/phase-c-producao.md) e [`references/n4-documento-oficial.md`](references/n4-documento-oficial.md).
 

@@ -128,7 +128,7 @@ P8     SIPOC sample (2 processos) + INTERDEPENDÊNCIAS + GOVERNANÇA/EXCEÇÕES
 
 ### Single-file standalone HTML
 
-O `template-documento-oficial.html` é **autocontido**: 1660 linhas com CSS embutido em `<style>`, sem Jinja includes, sem dependências externas além de:
+O `template-politica.html` é **autocontido**: 1874 linhas com CSS embutido em `<style>` + shell-header fixo + sidebar de sumário 280px + área de doc rolável. Sem Jinja includes, sem dependências externas além de:
 - `m7-tokens.css` (fontes + paleta)
 - `m7-header-dark.css` (não usado neste template, mantido para consistência da skill)
 - `assets/m7-logo-offwhite.png`, `assets/m7-logo-dark.png`
@@ -175,7 +175,7 @@ Cada `<article class="page">` tem `width: 210mm; height: 297mm; page-break-after
 
 ### Como o usuário exporta o PDF
 
-1. Abre `documento-oficial-{slug}.html` no Chrome/Safari/Firefox
+1. Abre `politica-{slug}.html` no Chrome/Safari/Firefox
 2. Clica em "Exportar PDF" no toolbar (ou `Cmd+P`)
 3. Diálogo nativo do navegador abre
 4. **CRÍTICO**: marca "Plano de fundo gráfico" (Chrome) / "Imprimir cabeçalhos e rodapés" desmarcado / "Salvar como PDF" no destino
@@ -338,13 +338,13 @@ O subagent abre o PDF gerado e roda checklist visual:
 ### O que mudou (2026-05)
 
 **Antes** (arquitetura legacy, deprecada):
-- `template-documento-oficial.html` usava Jinja2 `{% include 'fragments/...' %}`
+- `template-politica.html` usava Jinja2 `{% include 'fragments/...' %}`
 - `scripts/build_n4.py` orquestrava: lia N1.html, N2.html, N3.html, extraía fragmentos via BeautifulSoup, montava o template final
 - `scripts/render_pdf.py` renderizava via Playwright (chromium headless) com fallback WeasyPrint
 - Output: PDF direto (.pdf), sem HTML intermediário visível ao usuário
 
 **Agora** (arquitetura atual):
-- `template-documento-oficial.html` é standalone — 1660 linhas inline, sem includes
+- `template-politica.html` é standalone — 1660 linhas inline, sem includes
 - Conteúdo é replicado: a estrutura miniatura do N1 vive dentro do próprio template, igual para SIPOC, mapa, etc.
 - Geração: a skill substitui ~120 placeholders por strings no BRIEFING (sem parsing de outros HTMLs)
 - Export PDF: client-side, via `window.print()`, pelo navegador do usuário

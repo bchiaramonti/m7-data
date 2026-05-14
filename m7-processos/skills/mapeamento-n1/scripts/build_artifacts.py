@@ -14,8 +14,8 @@ Pipeline:
       ├─ N1 → cadeia-de-valor-{slug}.html
       ├─ N2 → missao-do-processo-{slug}.html       (se em artefatos)
       ├─ N3 → mapa-de-interdependencia-{slug}.html (se em artefatos)
-      └─ N4 → documento-oficial-{slug}.html
-              └─ render_pdf.py → documento-oficial-{slug}.pdf
+      └─ N4 → politica-{slug}.html                 (se em artefatos)
+              └─ usuario exporta PDF via window.print() no navegador
 
 Exit codes:
     0 = ok
@@ -176,12 +176,15 @@ def build_n1(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path)
 
     # Substituicoes globais
     artefatos = set(briefing_fm.get("artefatos_a_gerar") or [])
-    n2_link = (f'<a class="tab" href="missao-do-processo-{slug}.html">Missao do processo</a>'
+    n2_link = (f'<a class="tab" href="missao-do-processo-{slug}.html">Missão do processo</a>'
                if "n2" in artefatos else
-               '<div class="tab">Missao do processo</div>')
-    n3_link = (f'<a class="tab" href="mapa-de-interdependencia-{slug}.html">Mapa de interdependencia</a>'
+               '<div class="tab">Missão do processo</div>')
+    n3_link = (f'<a class="tab" href="mapa-de-interdependencia-{slug}.html">Mapa de interdependência</a>'
                if "n3" in artefatos else
-               '<div class="tab">Mapa de interdependencia</div>')
+               '<div class="tab">Mapa de interdependência</div>')
+    n4_link = (f'<a class="tab" href="politica-{slug}.html">Política <span class="num">DOC</span></a>'
+               if "n4-pdf" in artefatos else
+               '<div class="tab">Política <span class="num">DOC</span></div>')
 
     # Total de verticais (variante A: subcamada=nucleo, variante B: total primarios)
     if variante == "A":
@@ -216,7 +219,11 @@ def build_n1(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path)
         r'<a class="tab" href="template-mapa-de-interdependencia\.html">Mapa de interdependência</a>',
         n3_link, template,
     )
-    # Variante linear tem div ao inves de a
+    template = re.sub(
+        r'<a class="tab" href="template-politica\.html">Política <span class="num">DOC</span></a>',
+        n4_link, template,
+    )
+    # Variante linear tem div ao inves de a para Mapa (decisao do design oficial)
     template = re.sub(
         r'<div class="tab">Missão do processo</div>',
         n2_link if "n2" in artefatos else '<div class="tab">Missão do processo</div>',
@@ -353,13 +360,12 @@ def build_n2(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path)
             if "n3" in artefatos:
                 tab["href"] = f"mapa-de-interdependencia-{slug}.html"
             else:
-                # Sem N3 — converte <a> em <div> nao-navegavel
                 tab.name = "div"
                 if "href" in tab.attrs:
                     del tab.attrs["href"]
         elif "politica" in href or "política" in text:
             if "n4-pdf" in artefatos:
-                tab["href"] = f"documento-oficial-{slug}.html"
+                tab["href"] = f"politica-{slug}.html"
             else:
                 tab.name = "div"
                 if "href" in tab.attrs:
@@ -623,13 +629,26 @@ def build_n3(briefing_fm: dict, body_md: str, skill_dir: Path, output_dir: Path)
         )
         script_tag.string = new_script
 
-    # Tabs
+    # Tabs — repointar hrefs para os arquivos slug-based.
     for tab in soup.find_all(class_="tab"):
-        href = tab.get("href", "")
+        href = tab.get("href", "") or ""
+        text = tab.get_text(strip=True).lower()
         if "missao-do-processo" in href:
-            tab["href"] = f"missao-do-processo-{slug}.html"
+            if "n2" in artefatos:
+                tab["href"] = f"missao-do-processo-{slug}.html"
+            else:
+                tab.name = "div"
+                if "href" in tab.attrs:
+                    del tab.attrs["href"]
         elif "exemplo-m7-preenchido" in href or "cadeia-de-valor" in href:
             tab["href"] = f"cadeia-de-valor-{slug}.html"
+        elif "politica" in href or "política" in text:
+            if "n4-pdf" in artefatos:
+                tab["href"] = f"politica-{slug}.html"
+            else:
+                tab.name = "div"
+                if "href" in tab.attrs:
+                    del tab.attrs["href"]
 
     output_path = output_dir / f"mapa-de-interdependencia-{slug}.html"
     output_path.write_text(str(soup), encoding="utf-8")
@@ -715,43 +734,187 @@ def render_n3_relations_js(relacoes: list) -> str:
 
 
 # ============================================================================
-# Build N4 (delega para build_n4.py)
+# Build N4 (Politica) — HTML standalone com export PDF via window.print()
 # ============================================================================
 
 
-def build_n4_html(briefing_path: Path, output_dir: Path, skill_dir: Path) -> Path:
-    """Invoca build_n4.py para montar documento-oficial-{slug}.html."""
-    build_n4 = skill_dir / "scripts" / "build_n4.py"
-    result = subprocess.run(
-        [sys.executable, str(build_n4), str(briefing_path), str(output_dir),
-         "--skill-dir", str(skill_dir)],
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        sys.stderr.write(f"build_n4.py falhou (rc={result.returncode}):\n{result.stderr}\n")
-        raise RuntimeError("Falha em build_n4.py")
-    print(result.stdout.strip())
+def _format_missao(sipoc: dict) -> str:
+    """Concatena verbo + objeto + finalidade em uma sentenca."""
+    if not sipoc:
+        return ""
+    verbo = (sipoc.get("verbo") or "").strip()
+    objeto = (sipoc.get("objeto") or "").strip()
+    finalidade = (sipoc.get("finalidade") or "").strip()
+    finalidade_clean = re.sub(r"^para\s+", "", finalidade, flags=re.IGNORECASE).strip()
+    if not verbo and not objeto:
+        return ""
+    parts = []
+    if verbo:
+        parts.append(verbo)
+    if objeto:
+        parts.append(objeto)
+    base = " ".join(parts)
+    if finalidade_clean:
+        return f"{base} para {finalidade_clean}".strip()
+    return base
 
-    # Achar o output
-    fm, _ = parse_briefing(briefing_path)
-    slug = fm.get("empresa", {}).get("slug", "empresa")
-    return output_dir / f"documento-oficial-{slug}.html"
+
+def _format_versao_completa(politica: dict, fallback: str) -> str:
+    """Deriva 'vX.Y · MM/AA' da versao vigente, com fallback para versao simples."""
+    versoes = (politica.get("versoes") or []) if politica else []
+    vigente = next((v for v in versoes
+                    if isinstance(v, dict) and v.get("status") == "vigente"), None)
+    if vigente:
+        ver = (vigente.get("versao") or "").strip()
+        data = (vigente.get("data") or "").strip()
+        if ver and data:
+            return f"{ver} · {data}"
+        return ver or data or fallback
+    return fallback
 
 
-def render_n4_pdf(html_path: Path, skill_dir: Path) -> Path:
-    """Invoca render_pdf.py para gerar PDF a partir do HTML."""
-    render_script = skill_dir / "scripts" / "render_pdf.py"
-    pdf_path = html_path.with_suffix(".pdf")
+def build_politica(briefing_fm: dict, body_md: str,
+                   skill_dir: Path, output_dir: Path) -> Path:
+    """Gera politica-{slug}.html a partir do template-politica.html.
 
-    result = subprocess.run(
-        [sys.executable, str(render_script), str(html_path), str(pdf_path)],
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        sys.stderr.write(f"render_pdf.py falhou (rc={result.returncode}):\n{result.stderr}\n")
-        raise RuntimeError("Falha em render_pdf.py")
-    print(result.stdout.strip())
-    return pdf_path
+    Substituicao direta de placeholders — sem Jinja, sem includes. O template
+    e standalone (1874 linhas) com 8 paginas A4 portrait + toolbar de export
+    PDF via window.print(). Conteudo da politica vem da secao `politica:` do
+    BRIEFING; meta por vertical vem de `processos[].meta`; SIPOC sample vem
+    de `politica.sipoc_amostra` (2 codigos referenciando processos[]).
+    """
+    empresa = briefing_fm.get("empresa", {})
+    slug = empresa.get("slug", "empresa")
+    n1 = briefing_fm.get("n1", {})
+    contagens = n1.get("contagens", {})
+    processos = briefing_fm.get("processos") or []
+    artefatos = set(briefing_fm.get("artefatos_a_gerar") or [])
+    politica = briefing_fm.get("politica") or {}
+
+    template = (skill_dir / "templates" / "template-politica.html").read_text(encoding="utf-8")
+
+    # ── Identidade / cabecalho (compartilhado com N1/N2/N3) ──
+    replacements = {
+        "{{NOME_DA_EMPRESA}}": escape_html(empresa.get("nome", "")),
+        "{{AREA_DOCUMENTO}}": escape_html(briefing_fm.get("area_documento", "")),
+        "{{DATA_REFERENCIA}}": escape_html(briefing_fm.get("data_referencia", "")),
+        "{{LEDE_DOCUMENTO}}": escape_html(extract_section(body_md, "Lede do documento")),
+        "{{VERSAO_CURTA}}": escape_html(briefing_fm.get("versao", "")),
+        "{{TOTAL_PROCESSOS}}": str(n1.get("total_processos", len(processos))),
+        "{{N_GERENCIAIS}}": str(contagens.get("gerenciais", 0)),
+        "{{N_PRIMARIOS}}": str(contagens.get("primarios", 0)),
+        "{{N_APOIO}}": str(contagens.get("apoio", 0)),
+        "{{ROTULO_NUCLEO}}": escape_html(n1.get("rotulo_nucleo", "Verticais")),
+    }
+
+    # ── Metadata da politica ──
+    metadata = politica.get("metadata") or {}
+    replacements.update({
+        "{{CODIGO_DOCUMENTO}}": escape_html(metadata.get("codigo_documento", "")),
+        "{{DATA_VIGENCIA}}": escape_html(metadata.get("data_vigencia", "")),
+        "{{DATA_PROXIMA_REVISAO}}": escape_html(metadata.get("proxima_revisao", "")),
+        "{{AREA_RESPONSAVEL}}": escape_html(metadata.get("area_responsavel", "")),
+        "{{VERSAO_COMPLETA}}": escape_html(
+            _format_versao_completa(politica, briefing_fm.get("versao", ""))),
+    })
+
+    # ── Versoes (vigente + ate 2 anteriores; template tem 3 linhas fixas) ──
+    versoes = politica.get("versoes") or []
+    vigente = next((v for v in versoes
+                    if isinstance(v, dict) and v.get("status") == "vigente"), {})
+    anteriores = [v for v in versoes
+                  if isinstance(v, dict) and v.get("status") != "vigente"]
+    replacements["{{ALTERACOES_VERSAO_ATUAL}}"] = escape_html(vigente.get("alteracoes", "—"))
+
+    for i in (1, 2):
+        v = anteriores[i - 1] if len(anteriores) >= i else {}
+        replacements[f"{{{{VERSAO_ANTERIOR_{i}}}}}"] = escape_html(v.get("versao", "—"))
+        replacements[f"{{{{DATA_VERSAO_ANTERIOR_{i}}}}}"] = escape_html(v.get("data", "—"))
+        replacements[f"{{{{ALTERACOES_VERSAO_ANTERIOR_{i}}}}}"] = escape_html(v.get("alteracoes", "—"))
+        replacements[f"{{{{RESPONSAVEL_VERSAO_ANTERIOR_{i}}}}}"] = escape_html(v.get("responsavel", "—"))
+
+    # ── Aprovacoes (3 papeis) ──
+    aprov = politica.get("aprovacoes") or {}
+    for role_pt, role_key in [("ELABORADOR", "elaborador"),
+                               ("REVISOR", "revisor"),
+                               ("APROVADOR", "aprovador")]:
+        r = aprov.get(role_key) or {}
+        replacements[f"{{{{NOME_{role_pt}}}}}"] = escape_html(r.get("nome", ""))
+        replacements[f"{{{{CARGO_{role_pt}}}}}"] = escape_html(r.get("cargo", ""))
+        date_placeholder = {
+            "ELABORADOR": "DATA_ELABORACAO",
+            "REVISOR": "DATA_REVISAO",
+            "APROVADOR": "DATA_APROVACAO",
+        }[role_pt]
+        replacements[f"{{{{{date_placeholder}}}}}"] = escape_html(r.get("data", ""))
+
+    # ── Objetivo, escopo, doc relacionados ──
+    objetivo_txt = (politica.get("objetivo_texto") or "").strip()
+    replacements["{{TEXTO_OBJETIVO}}"] = escape_html(objetivo_txt)
+
+    escopo = politica.get("escopo") or {}
+    inclusoes = (escopo.get("inclusoes") or []) + ["", "", ""]
+    exclusoes = (escopo.get("exclusoes") or []) + ["", ""]
+    doc_rel = (escopo.get("doc_relacionados") or []) + ["", "", ""]
+    for i in (1, 2, 3):
+        replacements[f"{{{{ESCOPO_INCLUSAO_{i}}}}}"] = escape_html(inclusoes[i - 1] or "—")
+        replacements[f"{{{{DOC_RELACIONADO_{i}}}}}"] = escape_html(doc_rel[i - 1] or "—")
+    for i in (1, 2):
+        replacements[f"{{{{ESCOPO_EXCLUSAO_{i}}}}}"] = escape_html(exclusoes[i - 1] or "—")
+
+    # ── Governanca ──
+    gov = politica.get("governanca") or {}
+    replacements.update({
+        "{{COMITE_REVISOR}}": escape_html(gov.get("comite_revisor", "")),
+        "{{DOC_SLA}}": escape_html(gov.get("doc_sla", "")),
+        "{{AREA_COMPLIANCE}}": escape_html(gov.get("area_compliance", "")),
+    })
+
+    # ── Por processo: nome, missao, owner, frequencia (gerenciais), meta (verticais) ──
+    by_codigo = {p.get("codigo"): p for p in processos if p.get("codigo")}
+    for p in processos:
+        codigo = p.get("codigo", "")
+        sipoc = p.get("sipoc") or {}
+        replacements[f"{{{{NOME_PROCESSO_{codigo}}}}}"] = escape_html(p.get("nome", ""))
+        replacements[f"{{{{MISSAO_{codigo}}}}}"] = escape_html(_format_missao(sipoc))
+        replacements[f"{{{{OWNER_{codigo}}}}}"] = escape_html(sipoc.get("owner", ""))
+        if p.get("camada") == "gerencial":
+            replacements[f"{{{{FREQUENCIA_{codigo}}}}}"] = escape_html(p.get("frequencia", "—"))
+        # META so para verticais (primarios + subcamada=nucleo)
+        if p.get("camada") == "primario" and p.get("subcamada") == "nucleo":
+            replacements[f"{{{{META_{codigo}}}}}"] = escape_html(p.get("meta", "—"))
+
+    # ── SIPOC sample (2 processos featurados) ──
+    amostra = politica.get("sipoc_amostra") or [None, None]
+    for letra, idx in [("A", 0), ("B", 1)]:
+        codigo_amostra = amostra[idx] if idx < len(amostra) else None
+        p_amostra = by_codigo.get(codigo_amostra) if codigo_amostra else None
+        sipoc_amostra = (p_amostra or {}).get("sipoc") or {}
+        replacements[f"{{{{CODIGO_PROCESSO_SIPOC_{letra}}}}}"] = escape_html(codigo_amostra or "—")
+        replacements[f"{{{{NOME_PROCESSO_SIPOC_{letra}}}}}"] = escape_html((p_amostra or {}).get("nome", "—"))
+        replacements[f"{{{{OWNER_SIPOC_{letra}}}}}"] = escape_html(sipoc_amostra.get("owner", "—"))
+        replacements[f"{{{{MISSAO_SIPOC_{letra}}}}}"] = escape_html(_format_missao(sipoc_amostra) or "—")
+        inputs = (sipoc_amostra.get("inputs") or []) + ["", "", ""]
+        outputs = (sipoc_amostra.get("outputs") or []) + ["", "", ""]
+        for i in (1, 2, 3):
+            replacements[f"{{{{INPUT_{letra}_{i}}}}}"] = escape_html(inputs[i - 1] or "—")
+            replacements[f"{{{{OUTPUT_{letra}_{i}}}}}"] = escape_html(outputs[i - 1] or "—")
+
+    # Aplicar todas as substituicoes
+    for k, v in replacements.items():
+        template = template.replace(k, v)
+
+    # ── Tabs: repointar hrefs para os arquivos slug-based ──
+    # Tabs nao-ativas (cover-tabs sao <span> apenas visuais; main tabs ja foram
+    # subsbstituidos via texto). Mas o template politica usa <span class="ctab">
+    # como abas visuais da capa (nao navegaveis). Nada a fazer aqui.
+    # Apenas a tab principal "Politica" do header dark ja esta ativa (data-active).
+    # Como o template e standalone, nao ha tabs do header dark para repointar.
+
+    # ── Salvar ──
+    output_path = output_dir / f"politica-{slug}.html"
+    output_path.write_text(template, encoding="utf-8")
+    return output_path
 
 
 # ============================================================================
@@ -813,23 +976,19 @@ def main() -> int:
         print(f"OK · {n3_path} ({size_kb:.1f} KB)")
 
     if "n4-pdf" in artefatos:
-        # Pre-condicao
+        # Pre-condicao: N4 (Politica) requer N1+N2+N3 na sequencia rigida
         if not all(k in artefatos for k in ("n1", "n2", "n3")):
             sys.stderr.write("ERRO: n4-pdf requer n1, n2 e n3 em artefatos_a_gerar.\n")
             return 1
 
-        n4_html = build_n4_html(args.briefing, output_dir, skill_dir)
-
+        n4_path = build_politica(fm, body, skill_dir, output_dir)
+        size_kb = n4_path.stat().st_size / 1024
+        print(f"OK · {n4_path} ({size_kb:.1f} KB)")
         if not args.skip_pdf:
-            try:
-                pdf = render_n4_pdf(n4_html, skill_dir)
-                size_mb = pdf.stat().st_size / 1024 / 1024
-                print(f"OK · {pdf} ({size_mb:.2f} MB)")
-            except RuntimeError:
-                sys.stderr.write("AVISO: PDF nao gerado. HTML do N4 esta disponivel.\n")
-                return 1
-        else:
-            print(f"SKIP PDF (use sem --skip-pdf para gerar)")
+            # Nota: a partir de v2.0.0 o PDF e gerado client-side via window.print()
+            # no navegador do usuario. Abrir o HTML, clicar em "Exportar PDF" no
+            # toolbar e marcar "Plano de fundo grafico" para preservar cores.
+            print(f"     PDF: abra {n4_path.name} no navegador e clique 'Exportar PDF'")
 
     return 0
 
