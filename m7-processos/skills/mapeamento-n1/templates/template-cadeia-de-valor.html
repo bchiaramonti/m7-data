@@ -46,8 +46,9 @@
     background: var(--off-white);
     color: var(--vc-500);
     line-height: 1.5;
-    min-height: 100vh;
+    height: 100vh;
     padding: 32px;
+    display: flex; flex-direction: column;
   }
 
   /* === HEADER === */
@@ -95,11 +96,13 @@
 
   /* === MAIN CONTAINER === */
   .chain-container {
-    max-width: 1280px;
-    margin: 0 auto;
+    width: 100%;
+    margin: 0;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    flex: 1;
+    min-height: 0;
   }
 
   /* === LAYER === */
@@ -108,8 +111,11 @@
     grid-template-columns: 160px 1fr;
     gap: 0;
     min-height: 80px;
+    flex: 1;
     transition: var(--transition);
   }
+  /* Prámários cresce 2x para acomodar o núcleo de verticais */
+  .layer.primarios { flex: 2.4; min-height: 240px; }
 
   /* === LANE LABELS === */
   .lane-label {
@@ -318,15 +324,16 @@
 
   /* === FOOTER === */
   .footer-note {
-    max-width: 1280px;
-    margin: 32px auto 0;
+    width: 100%;
+    margin: 16px 0 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 16px 0;
+    padding: 12px 0 0;
     border-top: 1px solid var(--vc-100);
     flex-wrap: wrap;
+    flex-shrink: 0;
   }
   .footer-note p {
     font-size: 12px;
@@ -434,7 +441,7 @@
   </div>
 
   <!-- ─── CAMADA 2: PRIMÁRIOS (Front → Verticais → Back) ────── -->
-  <div class="layer" style="min-height: 240px;">
+  <div class="layer primarios">
     <div class="lane-label">
       <h3>Primários</h3>
       <span class="count">{{N_PRIMARIOS}} macro</span>

@@ -4,6 +4,28 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.0.3] - 2026-05-14
+
+Sync de layout com a nova versão oficial dos 4 templates N1/N2/N3 (Política ficou byte-idêntica à v2.0.2). Mudança transversal: templates agora ocupam viewport inteiro em vez de cap em 1280px, com flex column vertical-fill. Sidebar do N2 redesenhada no padrão visual da Política.
+
+### Changed
+
+- **Layout fluido em todos os templates de tela** — removido `max-width: 1280px; margin: 0 auto` dos containers principais (`.chain-container`, `.mp-shell`, `.map-shell`, `.footer-note`, `.mp-footer`, `.map-footer`). Substituído por `width: 100%; margin: 0`. Body ganha `height: 100vh` + `display: flex; flex-direction: column` para preencher viewport.
+- **N1 master (`template-cadeia-de-valor.html`)** — adiciona `.layer { flex: 1 }` e `.layer.primarios { flex: 2.4; min-height: 240px }`. HTML migra de `<div class="layer" style="min-height: 240px;">` (inline style) para `<div class="layer primarios">` (classe semântica). +7 linhas.
+- **N1 linear (`template-cadeia-de-valor--linear.html`)** — adiciona `.layer { flex: 1 }` e `.layer.primarios { flex: 1.8; min-height: 160px }`. +1 linha.
+- **N2 sidebar (`template-missao-do-processo.html`)** — adotada o padrão visual da sidebar de sumário da Política: width 180→**220px**, background white→**off-white**, padding 6px→**16px 12px**, group spacing 2→**14px**. Group label ganha `::before` linha lime de 16px + count badge mono-font em chip cinza. Items: 32px col-code, 10px gap, 8px padding, **border 1px transparent** que vira `vc-100` ao hover e `lime` ao active (+ box-shadow lime glow 3px). Item active passa de `vc-500` dark-fill para `white` com border lime — mais aderente ao design system. +15 linhas.
+- **N3 mapa (`template-mapa-de-interdependencia.html`)** — `.map-shell` e `.map-footer` ajustados ao layout fluido. 0 linhas (substituições in-place).
+
+### Migration
+
+Não-breaking. Quem gerou HTMLs com v2.0.2 deve regenerar via `python3 scripts/build_artifacts.py briefing.md output_dir/` para receber o layout fluido (templates antigos ainda funcionam, só não usam o viewport todo).
+
+Validado contra `examples/exemplo-briefing-m7.md` (18 processos): 4 HTMLs regenerados, 0 placeholders restantes, classe `.layer.primarios` corretamente aplicada no N1 master, sidebar do N2 confirma novo padrão (220px + "padrão Política").
+
+### Note
+
+`template-politica.html` ficou byte-idêntica à v2.0.2 — apenas os 4 templates de tela mudaram.
+
 ## [2.0.2] - 2026-05-14
 
 Sync com a nova versão oficial do `template-politica.html` (1874 linhas, shell-header fixo + sidebar de sumário 280px + doc rolável) que substituiu a versão anterior de 1660 linhas. Filename do N4 alinhado entre design oficial e skill: agora `template-politica.html` (não mais `template-documento-oficial.html`).
