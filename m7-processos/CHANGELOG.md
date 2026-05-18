@@ -4,6 +4,25 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.1.1] - 2026-05-18
+
+Sync: template-politica.html simplificou as páginas de Diretrizes e removeu a página de Hierarquia normativa.
+
+### Changed
+
+- **`template-politica.html`** (1728 → 1676 linhas): consolidação das diretrizes.
+  - **Páginas Diretrizes 5.1-5.3 + 5.4-5.7 → 1 página "Diretrizes" única**: o template antes tinha 2 páginas A4 com 7 blocos de diretrizes (5.1, 5.2, ..., 5.7), cada um com 4-5 placeholders individuais (`DIRETRIZ_5_X_TITULO/INTRO/REGRA_1/2/3`). Agora 1 página agregada com **3 placeholders genéricos**: `LEDE_DIRETRIZES`, `SUMARIO_DIRETRIZES`, `CONTEUDO_DIRETRIZES`. O `CONTEUDO_DIRETRIZES` é HTML rich (pode receber blocos `<h3>`, `<ol>`, etc.) — mais flexível pra Markdown→HTML conversion no briefing futuro.
+  - **Página Hierarquia normativa removida** (junto com 12 placeholders `HIERARQUIA_NIVEL/DOC/COB_1..4`). O template agora tem 9 páginas (vs 10 anteriores).
+  - Líquido: −38 placeholders únicos (de 194 → 156 no template), −35 únicos no output (de 139 → 101 restantes para preenchimento manual).
+
+### Migration
+
+Não-breaking. Briefings v2.1.0 continuam validando. Output do N4:
+- Antes: 98 ocorrências de `{{...}}` (139 únicos)
+- Agora: **69 ocorrências (101 únicos)** — todos ainda conteúdo normativo extenso esperando schema extension.
+
+Validado com `examples/exemplo-briefing-m7.md`: 4 artefatos gerados, N1/N2/N3 com 0 placeholders, N4 com 69 ocorrências restantes em 8 categorias (Princípios 14, Diretrizes agregado 3, Papéis 24, Indicadores 20, Escala 12, Gatilhos 4, Definições 24 — Hierarquia 0).
+
 ## [2.1.0] - 2026-05-18
 
 **MINOR · Política reestruturada como documento normativo formal.** Os templates oficiais (export Claude Design 18/Mai/2026) reescreveram a `template-politica.html` removendo as 4 páginas de "sumário de processos" (Estrutura, Gerenciais, Primários, Apoio) e adicionando 10 páginas de governança formal: Capa, Controle & sumário, Objetivo & Escopo, Definições, Princípios, Diretrizes 5.1-5.7, Papéis & responsabilidades, Governança, Disposições finais.

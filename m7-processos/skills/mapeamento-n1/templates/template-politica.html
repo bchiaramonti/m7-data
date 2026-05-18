@@ -986,11 +986,10 @@
       <button class="item" data-target="3" type="button"><span class="pgnum">03</span><span class="lbl">1. Objetivo &amp; 2. Escopo</span></button>
       <button class="item" data-target="4" type="button"><span class="pgnum">04</span><span class="lbl">3. Definições</span></button>
       <button class="item" data-target="5" type="button"><span class="pgnum">05</span><span class="lbl">4. Princípios</span></button>
-      <button class="item" data-target="6" type="button"><span class="pgnum">06</span><span class="lbl">5. Diretrizes · 5.1–5.3</span></button>
-      <button class="item" data-target="7" type="button"><span class="pgnum">07</span><span class="lbl">5. Diretrizes · 5.4–5.7</span></button>
-      <button class="item" data-target="8" type="button"><span class="pgnum">08</span><span class="lbl">6. Papéis &amp; responsabilidades</span></button>
-      <button class="item" data-target="9" type="button"><span class="pgnum">09</span><span class="lbl">7. Governança</span></button>
-      <button class="item" data-target="10" type="button"><span class="pgnum">10</span><span class="lbl">8. Disposições finais</span></button>
+      <button class="item" data-target="6" type="button"><span class="pgnum">06</span><span class="lbl">5. Diretrizes</span></button>
+      <button class="item" data-target="7" type="button"><span class="pgnum">07</span><span class="lbl">6. Papéis &amp; responsabilidades</span></button>
+      <button class="item" data-target="8" type="button"><span class="pgnum">08</span><span class="lbl">7. Governança</span></button>
+      <button class="item" data-target="9" type="button"><span class="pgnum">09</span><span class="lbl">8. Disposições finais</span></button>
     </nav>
     <div class="side-meta">
       <div class="row"><span class="k">Código</span><span class="v">{{CODIGO_DOCUMENTO}}</span></div>
@@ -1096,22 +1095,21 @@
         <div class="toc-item"><span class="num">3</span><span class="label">Definições</span><span class="pg">p. 4</span></div>
         <div class="toc-item"><span class="num">4</span><span class="label">Princípios</span><span class="pg">p. 5</span></div>
         <div class="toc-item"><span class="num">5</span><span class="label">Diretrizes</span><span class="pg">p. 6</span></div>
-        <div class="toc-item h2"><span class="num">5.1</span><span class="label">Cadeia de Valor como referência única</span><span class="pg">p. 6</span></div>
-        <div class="toc-item h2"><span class="num">5.2</span><span class="label">Hierarquia normativa por processo primário</span><span class="pg">p. 6</span></div>
-        <div class="toc-item h2"><span class="num">5.3</span><span class="label">Ownership e cadência</span><span class="pg">p. 6</span></div>
-        <div class="toc-item h2"><span class="num">5.4</span><span class="label">Pontos de contato com o cliente</span><span class="pg">p. 7</span></div>
-        <div class="toc-item h2"><span class="num">5.5</span><span class="label">Dado único e integrações</span><span class="pg">p. 7</span></div>
-        <div class="toc-item h2"><span class="num">5.6</span><span class="label">Cross-sell e handoff entre verticais</span><span class="pg">p. 7</span></div>
-        <div class="toc-item h2"><span class="num">5.7</span><span class="label">Aderência, exceções e auditoria</span><span class="pg">p. 7</span></div>
-        <div class="toc-item"><span class="num">6</span><span class="label">Papéis e responsabilidades</span><span class="pg">p. 8</span></div>
-        <div class="toc-item"><span class="num">7</span><span class="label">Governança</span><span class="pg">p. 9</span></div>
-        <div class="toc-item"><span class="num">8</span><span class="label">Disposições finais</span><span class="pg">p. 10</span></div>
+        <!--
+          Sub-itens da seção 5 — repita o bloco abaixo para cada diretriz
+          presente no documento. Os números (5.N) e títulos espelham os
+          <h3 class="sub"> usados em CONTEUDO_DIRETRIZES.
+        -->
+        {{SUMARIO_DIRETRIZES}}
+        <div class="toc-item"><span class="num">6</span><span class="label">Papéis e responsabilidades</span><span class="pg">p. 7</span></div>
+        <div class="toc-item"><span class="num">7</span><span class="label">Governança</span><span class="pg">p. 8</span></div>
+        <div class="toc-item"><span class="num">8</span><span class="label">Disposições finais</span><span class="pg">p. 9</span></div>
       </div>
     </div>
 
     <footer class="page-foot">
       <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>2</strong> de <span class="total-pg">10</span></span>
+      <span class="pf-page">Página <strong>2</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
     </footer>
   </article>
 
@@ -1160,7 +1158,7 @@
 
     <footer class="page-foot">
       <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>3</strong> de <span class="total-pg">10</span></span>
+      <span class="pf-page">Página <strong>3</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
     </footer>
   </article>
 
@@ -1207,7 +1205,7 @@
 
     <footer class="page-foot">
       <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>4</strong> de <span class="total-pg">10</span></span>
+      <span class="pf-page">Página <strong>4</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
     </footer>
   </article>
 
@@ -1269,14 +1267,26 @@
 
     <footer class="page-foot">
       <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>5</strong> de <span class="total-pg">10</span></span>
+      <span class="pf-page">Página <strong>5</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
     </footer>
   </article>
 
   <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 6 — Diretrizes 5.1–5.3
+       PÁGINA 6 — Diretrizes
+       ════════════════════════════════════════════════════════════
+       Esta é a página de diretrizes. Se o conteúdo NÃO COUBER em uma
+       única página A4, DUPLIQUE o <article class="page"> inteiro,
+       trocando o <h2> da continuação por:
+
+         <h2 class="section"><span class="num">05</span> Diretrizes
+           <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação)</span>
+         </h2>
+
+       Renumere o footer (Página N de TOTAL) e ajuste TOTAL_PAGINAS no
+       header da capa. O sumário da página 2 ({{SUMARIO_DIRETRIZES}})
+       espelha automaticamente os <h3 class="sub"> usados aqui.
        ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.1–5.3">
+  <article class="page" data-page-label="Diretrizes">
     <header class="page-head">
       <div class="ph-left">
         <img src="assets/m7-logo-dark.png" alt="M7">
@@ -1288,99 +1298,37 @@
 
     <div class="page-body">
       <h2 class="section"><span class="num">05</span> Diretrizes</h2>
+      <p class="section-lede">{{LEDE_DIRETRIZES}}</p>
 
-      <h3 class="sub">5.1 · {{DIRETRIZ_5_1_TITULO}}</h3>
-      <p>{{DIRETRIZ_5_1_INTRO}}</p>
-      <ul>
-        <li>{{DIRETRIZ_5_1_REGRA_1}}</li>
-        <li>{{DIRETRIZ_5_1_REGRA_2}}</li>
-        <li>{{DIRETRIZ_5_1_REGRA_3}}</li>
-      </ul>
+      <!--
+        ============================================================
+        BLOCO DE DIRETRIZ — repita conforme necessário
+        ============================================================
+        Recipe básica:
+          <h3 class="sub">5.N · TÍTULO</h3>
+          <p>Introdução opcional.</p>
+          <ul>
+            <li>Regra 1</li>
+            <li>Regra 2</li>
+          </ul>
 
-      <h3 class="sub">5.2 · {{DIRETRIZ_5_2_TITULO}}</h3>
-      <p>{{DIRETRIZ_5_2_INTRO}}</p>
-      <table class="doc-table">
-        <thead>
-          <tr>
-            <th style="width:18%">Nível</th>
-            <th style="width:32%">Documento mínimo</th>
-            <th>Cobertura esperada</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>{{HIERARQUIA_NIVEL_1}}</td><td>{{HIERARQUIA_DOC_1}}</td><td>{{HIERARQUIA_COB_1}}</td></tr>
-          <tr><td>{{HIERARQUIA_NIVEL_2}}</td><td>{{HIERARQUIA_DOC_2}}</td><td>{{HIERARQUIA_COB_2}}</td></tr>
-          <tr><td>{{HIERARQUIA_NIVEL_3}}</td><td>{{HIERARQUIA_DOC_3}}</td><td>{{HIERARQUIA_COB_3}}</td></tr>
-          <tr><td>{{HIERARQUIA_NIVEL_4}}</td><td>{{HIERARQUIA_DOC_4}}</td><td>{{HIERARQUIA_COB_4}}</td></tr>
-        </tbody>
-      </table>
-      <ul>
-        <li>{{DIRETRIZ_5_2_REGRA_1}}</li>
-        <li>{{DIRETRIZ_5_2_REGRA_2}}</li>
-      </ul>
+        Variante com tabela:
+          <h3 class="sub">5.N · TÍTULO</h3>
+          <p>Introdução.</p>
+          <table class="doc-table">
+            <thead><tr><th>Coluna A</th><th>Coluna B</th></tr></thead>
+            <tbody><tr><td>...</td><td>...</td></tr></tbody>
+          </table>
+          <ul><li>Regra adicional</li></ul>
+        ============================================================
+      -->
 
-      <h3 class="sub">5.3 · {{DIRETRIZ_5_3_TITULO}}</h3>
-      <ul>
-        <li>{{DIRETRIZ_5_3_REGRA_1}}</li>
-        <li>{{DIRETRIZ_5_3_REGRA_2}}</li>
-        <li>{{DIRETRIZ_5_3_REGRA_3}}</li>
-      </ul>
+      {{CONTEUDO_DIRETRIZES}}
     </div>
 
     <footer class="page-foot">
       <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>6</strong> de <span class="total-pg">10</span></span>
-    </footer>
-  </article>
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 7 — Diretrizes 5.4–5.7
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.4–5.7">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
-      </div>
-      <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação)</span></h2>
-
-      <h3 class="sub">5.4 · {{DIRETRIZ_5_4_TITULO}}</h3>
-      <ul>
-        <li>{{DIRETRIZ_5_4_REGRA_1}}</li>
-        <li>{{DIRETRIZ_5_4_REGRA_2}}</li>
-        <li>{{DIRETRIZ_5_4_REGRA_3}}</li>
-      </ul>
-
-      <h3 class="sub">5.5 · {{DIRETRIZ_5_5_TITULO}}</h3>
-      <ul>
-        <li>{{DIRETRIZ_5_5_REGRA_1}}</li>
-        <li>{{DIRETRIZ_5_5_REGRA_2}}</li>
-        <li>{{DIRETRIZ_5_5_REGRA_3}}</li>
-      </ul>
-
-      <h3 class="sub">5.6 · {{DIRETRIZ_5_6_TITULO}}</h3>
-      <ul>
-        <li>{{DIRETRIZ_5_6_REGRA_1}}</li>
-        <li>{{DIRETRIZ_5_6_REGRA_2}}</li>
-        <li>{{DIRETRIZ_5_6_REGRA_3}}</li>
-      </ul>
-
-      <h3 class="sub">5.7 · {{DIRETRIZ_5_7_TITULO}}</h3>
-      <ul>
-        <li>{{DIRETRIZ_5_7_REGRA_1}}</li>
-        <li>{{DIRETRIZ_5_7_REGRA_2}}</li>
-        <li>{{DIRETRIZ_5_7_REGRA_3}}</li>
-      </ul>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>7</strong> de <span class="total-pg">10</span></span>
+      <span class="pf-page">Página <strong>6</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
     </footer>
   </article>
 
@@ -1456,7 +1404,7 @@
 
     <footer class="page-foot">
       <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>8</strong> de <span class="total-pg">10</span></span>
+      <span class="pf-page">Página <strong>7</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
     </footer>
   </article>
 
@@ -1526,7 +1474,7 @@
 
     <footer class="page-foot">
       <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>9</strong> de <span class="total-pg">10</span></span>
+      <span class="pf-page">Página <strong>8</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
     </footer>
   </article>
 
@@ -1616,7 +1564,7 @@
 
     <footer class="page-foot">
       <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>10</strong> de <span class="total-pg">10</span></span>
+      <span class="pf-page">Página <strong>9</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
     </footer>
   </article>
 
