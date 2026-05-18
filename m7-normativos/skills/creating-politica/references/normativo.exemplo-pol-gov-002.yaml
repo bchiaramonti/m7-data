@@ -1,0 +1,118 @@
+# =============================================================================
+# Exemplo preenchido: POL-GOV-002
+# =============================================================================
+# Extraído integralmente do HTML real:
+#   ../../artefatos/politica-m7-investimentos.html
+#
+# Cada campo foi cruzado com os 7-10 pontos do HTML onde o mesmo valor
+# aparece. Se for usar este YAML para regenerar o HTML, todos os pontos
+# devem ficar consistentes — esse é exatamente o propósito do sidecar.
+# =============================================================================
+
+schema_version: "1.0"
+
+identity:
+  code:          "POL-GOV-002"
+  tipo:          "POL"
+  tipo_label:    "Política"
+  area:          "GOV"
+  area_label:    "Governança"
+  version:       "v1.0"
+  version_label: "v1.0 · Mai / 2026"
+  status:        "vigente"
+  pages:         15
+  classif:       "Interno"
+  classif_label: "Uso interno · Confidencial"
+
+lifecycle:
+  date:              "2026-05-18"
+  date_label:        "18/05/2026"
+  nextReview:        "2027-05-18"
+  nextReview_label:  "18/05/2027"
+  revisaoFreq:       "Anual"
+
+governance:
+  owner:           "Estratégia & Governança"
+  elaboradoPor:    "Bruno Chiaramonti · Head de Desempenho · M7 Investimentos"
+  aprovadoPor:     "Diretoria Executiva · M7 Investimentos"
+  aprovador_role:  "Diretoria"
+  revisor:         "Comitê de Processos"
+  parent:
+    code:   "POL-GOV-001"
+    title:  "Política de Gestão por Processos e Padronização"
+  processos:
+    - P1
+    - P2
+    - P3
+    - P4
+    - P5
+    - P6
+    - P7
+    - P8
+    - P9
+    - P10
+    - P11
+    - P12
+
+presentation:
+  title_short: "Política Geral de Governança Corporativa"
+  title_full:
+    # Compõe:
+    #   Shell: "Política <span class='accent'>geral de governança</span> corporativa"
+    #   Cover: "Política<br>geral de <em>governança</em> corporativa"
+    #
+    # Atenção: no HTML real, o <br> e o <em> ficam em pontos diferentes — o
+    # title_full.parts captura esse layout. Se a skill precisa replicar
+    # exatamente, ela monta o cover a partir das partes com break_before e
+    # accent, e o shell a partir das mesmas partes mas com accent virando
+    # <span class="accent">.
+    parts:
+      - text: "Política "
+      - text: "geral de governança"
+        accent: true
+      - text: " corporativa"
+  subtitle: >-
+    Princípios, limites e responsabilidades que regem a operação dos
+    12 processos primários da Holding M7 Investimentos, dos pontos
+    de contato com o cliente à arquitetura de aderência e exceções.
+  lede: >-
+    Documento normativo POL-GOV-002. Estabelece princípios, limites e
+    responsabilidades para a operação dos 12 processos primários da
+    Cadeia de Valor M7.
+  eyebrow_categoria: "Documento de governança"
+  page_label_section: "Governança"
+
+structure:
+  toc:
+    - { page:  1, label: "Capa" }
+    - { page:  2, label: "Controle & sumário" }
+    - { page:  3, label: "1. Objetivo & 2. Escopo",            section: "1. Objetivo" }
+    - { page:  4, label: "3. Definições",                       section: "3. Definições" }
+    - { page:  5, label: "4. Princípios",                       section: "4. Princípios" }
+    - { page:  6, label: "5.1 Cadeia de valor",                 section: "5. Diretrizes" }
+    - { page:  7, label: "5.1.2 · Gerencial",                   subsection: true }
+    - { page:  8, label: "5.1.2 · Primária P1-P5",              subsection: true }
+    - { page:  9, label: "5.1.2 · Primária P6-P10",             subsection: true }
+    - { page: 10, label: "5.1.2 · P11-P12 e Apoio A1-A3",       subsection: true }
+    - { page: 11, label: "5.1.2 · Apoio A4-A5 e 5.2",           subsection: true }
+    - { page: 12, label: "5.3 a 5.7 Diretrizes",                subsection: true }
+    - { page: 13, label: "6. Papéis & responsabilidades",       section: "6. Papéis e responsabilidades" }
+    - { page: 14, label: "7. Governança",                       section: "7. Governança" }
+    - { page: 15, label: "8. Disposições finais",               section: "8. Disposições finais" }
+
+links:
+  # Caminho relativo a partir da raiz do cockpit.
+  artifact_html: "../artefatos/politica-m7-investimentos.html"
+
+  siblings:
+    - label:  "Visão geral"
+      badge:  "N1"
+      href:   "cadeia-de-valor-m7-investimentos.html"
+    - label:  "Missão do processo"
+      href:   "missao-do-processo-m7-investimentos.html"
+    - label:  "Mapa de interdependência"
+      href:   "mapa-de-interdependencia-m7-investimentos.html"
+    - label:  "Política"
+      badge:  "DOC"
+      href:   "politica-m7-investimentos.html"
+      active: true

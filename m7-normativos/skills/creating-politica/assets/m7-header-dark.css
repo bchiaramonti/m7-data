@@ -1,0 +1,79 @@
+/* ====================================================================
+   M7 Header Dark — "Documento com abas"
+   Faixa escura full-bleed: metadata · título · stats · tabs
+   Usa tokens em m7-tokens.css (verde-caqui --vc-700, --lime, --off-white)
+   ==================================================================== */
+
+.m7-header-dark {
+  background: var(--vc-700);
+  color: var(--off-white);
+  margin: -32px -32px 24px;       /* full-bleed dentro de body com padding 32px */
+  padding: 18px 32px 0;
+}
+
+.m7-header-dark .doc-meta {
+  /* Full-width: usa todo o espaco horizontal disponivel (alinhado com
+     a Politica, que ja fazia override via .shell-header). Templates N1/
+     N2/N3 herdam esse comportamento por default agora. */
+  width: 100%; margin: 0 0 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 12px; border-bottom: 1px solid rgba(255,253,239,0.12);
+}
+.m7-header-dark .doc-meta img { height: 28px; }
+.m7-header-dark .doc-meta .meta {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,253,239,0.5); display: flex; gap: 16px; align-items: center;
+}
+.m7-header-dark .doc-meta .meta .dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,253,239,0.35); }
+
+.m7-header-dark .h-e { width: 100%; margin: 0; }
+
+.m7-header-dark .h-e .body {
+  display: grid; grid-template-columns: 1fr auto; gap: 32px;
+  align-items: end; margin-bottom: 16px;
+}
+.m7-header-dark .h-e h1 {
+  font-size: 32px; font-weight: 300; letter-spacing: -0.8px; line-height: 1.05;
+  color: var(--off-white);
+}
+.m7-header-dark .h-e h1 .accent { color: var(--lime); font-weight: 500; }
+.m7-header-dark .h-e .lede {
+  font-size: 14px; color: rgba(255,253,239,0.6); margin-top: 10px; max-width: 580px;
+}
+
+.m7-header-dark .h-e .strip {
+  display: flex; gap: 0;
+  border: 1px solid rgba(255,253,239,0.12); border-radius: 8px;
+  overflow: hidden; background: rgba(255,253,239,0.04);
+}
+.m7-header-dark .h-e .cell { padding: 12px 20px; border-right: 1px solid rgba(255,253,239,0.12); }
+.m7-header-dark .h-e .cell:last-child { border-right: 0; }
+.m7-header-dark .h-e .cell .v { font-size: 18px; font-weight: 500; color: var(--off-white); line-height: 1; }
+.m7-header-dark .h-e .cell .l {
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,253,239,0.5); margin-top: 4px;
+}
+
+/* Tabs */
+.m7-header-dark .h-e .tabs {
+  display: flex; gap: 4px; border-bottom: 1px solid rgba(255,253,239,0.12);
+}
+.m7-header-dark .h-e .tab {
+  padding: 10px 16px; font-size: 12px; color: rgba(255,253,239,0.5);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: 0.15s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.m7-header-dark .h-e .tab:hover { color: var(--off-white); }
+.m7-header-dark .h-e .tab.active {
+  color: var(--lime); border-bottom-color: var(--lime); font-weight: 500;
+}
+.m7-header-dark .h-e .tab .num {
+  font-size: 10px; padding: 2px 6px; border-radius: 3px;
+  background: rgba(255,253,239,0.08); color: rgba(255,253,239,0.5);
+}
+.m7-header-dark .h-e .tab.active .num { background: var(--lime); color: var(--vc-700); }
+
+@media print {
+  .m7-header-dark { background: var(--vc-700) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

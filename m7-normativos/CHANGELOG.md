@@ -1,0 +1,71 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.0.0] - 2026-05-18
+
+### Breaking changes
+
+- **`creating-politica` agora emite par `{slug}.html` + `{slug}.yaml` em vez de `.docx`.** O sidecar YAML é a fonte canônica de identidade consumida pelo Cockpit de Normativos M7; o HTML replica EXATAMENTE o template oficial `politica-m7-investimentos.html` (estrutura invariante). MAN, INS e ESP ainda emitem DOCX — migração pendente.
+- **Plugin movido do marketplace `m7-creative` para `m7-data`** (alinhamento de domínio: governança documental fica junto com data/processos, não com presentations/design).
+
+### Added (creating-politica)
+
+- Workflow em 3 fases nomeadas com gates explícitos:
+  - **Fase 1 (Discovery)** — entrevista guiada pelo schema YAML; output `BRIEFING-{CODE}.md`
+  - **Fase 2 (Redação MD)** — produz `politica-{slug}.md` com as 8 seções narrativas
+  - **Fase 3 (Produção HTML+YAML)** — script determinístico valida + renderiza
+- `scripts/generate-html-yaml.py` — pipeline da Fase 3:
+  - Validação custom contra `normativo.schema.yaml` (patterns, enums, required, required_when)
+  - Renderização do `title_full.parts` em 2 variantes (shell `<span class="accent">` + cover `<em>` com auto-`<br>`)
+  - Geração dinâmica de tabs, sumário lateral, sumário formal, KV-table, cover-grid
+  - Substituição global de ph-meta, ph-title, pf-classif, total-pg em todas as páginas
+- Assets oficiais incorporados: `politica-m7-template.html` (template invariante), `m7-tokens.css`, `m7-header-dark.css`, `m7-print.css`, `fonts/`
+- References novas:
+  - `normativo.schema.yaml` (schema canônico do sidecar)
+  - `normativo.exemplo-pol-gov-002.yaml` (exemplo preenchido para golden test)
+  - `normativo-schema.md` (guia anchor → campo, defaults POL)
+- Golden test reproduzível: regenerar POL-GOV-002 a partir do exemplo YAML resulta em HTML quase byte-idêntico ao template (~131 linhas de diff, todas explicáveis por diferenças no próprio YAML exemplo — `pages: 15` vs template 16, ausência de entrada "Escopo" no toc — ou pela policy de `<em>` na cover-title definida no handoff §4).
+
+### Changed (creating-politica)
+
+- `references/normative-standards.md` reescrito: removidas seções de formatação DOCX (capa Word, headings, estilos python-docx, cores antigas Navy/Cream). Mantidas hierarquia normativa, codificação, ciclo de vida, frequências, status, conteúdo POL, indicadores e exceções.
+- `SKILL.md` reescrito com 3 fases agrupadas em "Parte A · Discovery" e "Parte B · Produção", gates explícitos e tabela campo→anchor.
+
+### Removed (creating-politica)
+
+- `assets/TPL-POL-Template-de-Politica.docx` (template Word)
+- `assets/m7-logo-*.png.b64` (base64 não usado pelo HTML)
+- `scripts/generate-docx.py` (geração via clonagem do template Word)
+
+### Migration notes
+
+- Limitação atual: o script da Fase 3 espelha identidade/metadata em todos os anchors, mas **não injeta conteúdo das 8 seções narrativas** (pages 3-15). Após gerar o HTML, edite manualmente o corpo das seções usando o MD da Fase 2 como referência. Próxima iteração: injeção automática a partir do MD.
+- Skills `creating-manual`, `creating-instrucao`, `creating-especificacao-tecnica` permanecem na geração DOCX antiga. Migração para HTML+YAML é o próximo passo.
+
+## [1.0.2] - 2026-04-06
+
+### Added
+- Base64 (.b64) companions for all PNG assets across 4 skills (creating-especificacao-tecnica, creating-instrucao, creating-manual, creating-politica) — enables self-contained HTML generation
+
+## [1.0.1] - 2026-03-13
+
+### Fixed
+- Cover code placeholder mismatch: template uses `[ÁREA]` (with accent), script searched for `[AREA]` (without accent)
+- Document Control table placeholders: template uses descriptive text (`[Área responsável]`, `[Nome, Cargo]`, `[Código do documento de nível acima, se aplicável]`), script searched for short tokens (`[area]`, `[elaborado_por]`, `[documento_superior]`) that didn't exist in the template
+- `[Nome, Cargo]` ambiguity: both "Elaborado por" and "Aprovado por" rows had identical placeholder text, causing both to receive the same value — now replaced by row index
+- Footer not replaced: `TPL-MAN`/`TPL-POL`/`TPL-INS`/`TPL-ESP` remained in generated documents instead of the actual document code
+- "Como usar este template" instructional section was not removed from generated documents
+- Version Control table: `[DD/MM/AAAA]` and `[Autor]` placeholders were not replaced
+
+## [1.0.0] - 2026-02-26
+
+### Added
+- Initial release with 4 document creation skills (POL, MAN, INS, ESP)
+- QA compliance review skill (reviewing-normativo)
+- Governance writer agent (Opus)
+- Official DOCX templates with M7 branding
+- Template-cloning approach preserving all formatting

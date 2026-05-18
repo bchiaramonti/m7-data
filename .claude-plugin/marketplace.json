@@ -5,7 +5,7 @@
     "name": "Bruno Chiaramonti"
   },
   "metadata": {
-    "description": "Claude Code marketplace for M7 data: analysis, executive reports, and business process mapping."
+    "description": "Claude Code marketplace for M7 data: analysis, executive reports, business process mapping, and corporate governance documents."
   },
   "plugins": [
     {
@@ -79,6 +79,31 @@
         "gestao-processos",
         "xml",
         "camunda"
+      ]
+    },
+    {
+      "name": "m7-normativos",
+      "description": "Create and review M7 corporate normative documents (POL/MAN/INS/ESP) following POL-M7-001 standards. The creating-politica skill emits a {slug}.html + {slug}.yaml pair (HTML structure invariante from official template; YAML sidecar canônico for the M7 Cockpit de Normativos) in a 3-phase workflow: Discovery → Redação MD → Produção HTML+YAML. MAN/INS/ESP skills still emit DOCX (migration pending). Includes governance-writer agent and QA compliance review skill.",
+      "version": "2.0.0",
+      "author": {
+        "name": "Bruno Chiaramonti"
+      },
+      "source": "./m7-normativos",
+      "category": "governance",
+      "homepage": "https://github.com/bchiaramonti/claude-plugins",
+      "keywords": [
+        "normativos",
+        "governance",
+        "policies",
+        "manuals",
+        "instructions",
+        "specifications",
+        "m7",
+        "compliance",
+        "html",
+        "yaml-sidecar",
+        "cockpit-normativos",
+        "padronizacao"
       ]
     }
   ]
