@@ -422,6 +422,55 @@
     display: flex; justify-content: space-between;
   }
 
+  /* ───── approval-card: alinhamento horizontal dos 3 cards (#8) ───── */
+  .approval-grid { align-items: stretch; }
+  .approval-card { display: flex; flex-direction: column; min-height: 110px; }
+  .approval-card .what { min-height: 14px; }
+  .approval-card .sig-line { margin-top: auto; }
+
+  /* ───── h4 hierárquico (sub-subtítulo, ex.: 5.1.1, 5.1.2) (#12) ───── */
+  .doc h4.subsub {
+    font-size: 11px; font-weight: 500; color: var(--vc-600);
+    margin: 10px 0 4px;
+    letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .doc h4.subsub::before {
+    content: ''; width: 8px; height: 1px;
+    background: var(--lime); opacity: 0.7;
+  }
+
+  /* ───── cards de inventário de processos (#4) ───── */
+  .proc-block {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin: 8px 0;
+  }
+  .proc-card {
+    flex: 1 1 calc(25% - 6px);
+    min-width: 110px;
+    border: 1px solid var(--lime); border-radius: 4px;
+    padding: 6px 8px; background: rgba(238, 247, 124, 0.05);
+  }
+  .proc-title {
+    font-size: 10px; font-weight: 500;
+    color: var(--vc-700); margin: 0 0 2px;
+  }
+  .proc-owner { font-size: 8.5px; color: var(--vc-400); }
+  .camada-sep {
+    margin: 10px 0 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--vc-100);
+  }
+  .camada-title {
+    font-size: 11px; font-weight: 500;
+    color: var(--vc-600); margin: 0;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .camada-sep p {
+    font-size: 9.5px; color: var(--verde-claro);
+    margin: 4px 0 0; font-style: italic;
+  }
+
   /* Sumário */
   .toc { margin-top: 6px; }
   .toc-item {
@@ -816,6 +865,7 @@
         <span class="pf-page">Página <strong>6</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
       </footer>
     </article>
+{{EXTRA_DIRETRIZES_PAGES}}
 
     <!-- ════════════════════════════════════════════════════════════
          PÁGINA 7 — Papéis e Responsabilidades
@@ -1089,6 +1139,13 @@
 
     totalEl.textContent = total;
     document.querySelectorAll('.total-pg').forEach(el => el.textContent = total);
+
+    // Auto-numera Página X em cada .pf-page strong (suporta páginas extras
+    // de Diretrizes geradas pelo script via marker <!-- /page-break -->).
+    pages.forEach((page, idx) => {
+      const pgStrong = page.querySelector('.pf-page strong');
+      if (pgStrong) pgStrong.textContent = String(idx + 1);
+    });
 
     let current = 1;
     const setCurrent = (n) => {

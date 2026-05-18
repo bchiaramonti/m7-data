@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-05-18
+
+### Fixed (creating-politica)
+
+- **Bug `DATA_REVISAO=""` hardcoded** (anomalia #6 do POL-GOV-002.PATCHES): trocado para `date_label` igual `DATA_ELABORACAO`/`DATA_APROVACAO`. Caixa do Revisor agora recebe data correta.
+- **Bullets do markdown fallback não aplicavam inline bold/italic** (anomalia #1): fallback de `markdown_to_html` agora processa `**bold**`, `*italic*`, `` `code` ``, `[link](url)` dentro de bullet items, headings e parágrafos.
+
+### Added (creating-politica)
+
+- **Marker `<!-- /page-break -->` na seção 5 do MD** (anomalia #7): divide Diretrizes em múltiplas páginas A4. Chunk 0 → CONTEUDO_DIRETRIZES (página existente); chunks 1..N → `<article class="page">` extras inseridos via novo `{{EXTRA_DIRETRIZES_PAGES}}`. Compatível com docs sem markers (vira 1 página).
+- **Auto-numeração de páginas via JS**: cada `<article class="page">` recebe seu número em `.pf-page strong` baseado na posição no DOM. Páginas extras geradas pelo script herdam numeração correta sem precisar hardcode.
+- **Função `inline_markdown(text)`**: processa bold/italic/code/link em campos de texto que vão diretamente para o template (não só em CONTEUDO_DIRETRIZES). Aplica-se a 30+ placeholders: TEXTO_OBJETIVO_*, LEDE_ESCOPO, ESCOPO_INCLUSAO_*, ESCOPO_EXCLUSAO_*, DEF_TEXTO_*, LEDE_PRINCIPIOS, PRINCIPIO_*_DESCRICAO, LEDE_DIRETRIZES, LEDE_PAPEIS, PAPEL_*_RESPONSABILIDADES, REVISAO_PERIODICA_INTRO, GATILHO_REVISAO_*, TEXTO_VIGENCIA, DOC_REL_1_RELACAO.
+- **Função `inject_m7_classes(html)`**: pós-processa o HTML rendered injetando `.doc-table` em `<table>`, `.sub` em `<h3>`, `.subsub` em `<h4>` (anomalias #10/#11/#12). Lookahead negativo preserva elementos com classe já declarada (`.proc-title`, `.camada-title`, `.kv-table`).
+- **Função `inline_external_images(html, base_dir)`** (anomalia #3): converte `<img src="<path-relativo>">` em `data:image/{ext};base64,...`. Suporta svg/png/jpg/webp/gif. Path relativo ao MD da Fase 2. URLs http/https e data: URIs já existentes são preservadas.
+- **CSS no template** (anomalias #4, #8, #12):
+  - `.approval-card` flex-column + `min-height: 110px` + `.what min-height: 14px` + `.sig-line margin-top: auto` — alinhamento horizontal robusto entre os 3 cards mesmo com `.what` vazio
+  - `.doc h4.subsub` (11px + lime accent) — hierarquia visual abaixo de `.sub` (h3 = 12px)
+  - `.proc-card` / `.proc-title` / `.proc-owner` / `.proc-block` / `.camada-sep` / `.camada-title` — padrão de inventário de processos reutilizável
+
+### Changed (creating-politica)
+
+- **Parser leniente**:
+  - Bloco Escopo aceita `**Aplica-se a**` (bold) OU `### Aplica-se a` (h3). Idem "Não se aplica a" (anomalia #2).
+  - Bloco Revisão/Vigência aceita prefixo numérico opcional: `### 7.1 · Revisão periódica` ou `### Revisão periódica` (anomalia #5).
+- **Ordem de operações no main**: `inline_assets` agora roda DEPOIS da substituição de placeholders, garantindo que logos das páginas extras (geradas via `{{EXTRA_DIRETRIZES_PAGES}}`) também sejam base64-inlinados.
+- **`references/normativo-schema.md`** ganhou 5 novas seções documentando o comportamento da v2.3: page-break, marcação leniente, injeção de classes M7, cards de inventário, imagens externas.
+- **SKILL.md** Fase 2 menciona explicitamente as variações lenientes aceitas.
+
+### Notes
+
+- A v2.3 incorpora **9 dos 12 fixes** documentados em `POL-GOV-002.PATCHES.md`. As outras 3 anomalias são decisões do autor (não da skill): #9 (bucketing) desaparece com markers explícitos; "Decisão A" (escopo: holding) já foi entregue na v2.2.0; "Decisão B" (revisor com separador `·`) é uma escolha YAML, complementada pelo CSS flex-column que torna o alinhamento robusto mesmo se o autor esquecer o separador.
+- POLs gerados pelas v2.0–2.2 continuam válidos. Para aproveitar os fixes upstream, regere com `python3 generate-html-yaml.py --briefing <yaml> --content <md> --output-dir <dir>`.
+
 ## [2.2.0] - 2026-05-18
 
 ### Added (creating-politica)

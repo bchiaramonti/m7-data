@@ -248,3 +248,74 @@ Falha em qualquer item aborta a geração com mensagem clara.
 
 Se você editar o HTML manualmente e divergir do YAML, **vence o YAML**: regere o
 HTML rodando o script de novo. Nunca tente "sincronizar manualmente".
+
+## Page-break em Diretrizes (v2.3+)
+
+Para documentos com seção 5 (Diretrizes) extensa, use o marker
+`<!-- /page-break -->` no MD da Fase 2 para quebrar em múltiplas páginas A4:
+
+```markdown
+## 5. Diretrizes
+
+(lede)
+
+**Sumário:**
+- 5.1 Bloco A
+- 5.2 Bloco B
+
+### 5.1 · Bloco A
+
+(conteúdo da página 6)
+
+<!-- /page-break -->
+
+### 5.2 · Bloco B
+
+(conteúdo da página 7 — nova <article>)
+```
+
+- Sem markers → 1 página de Diretrizes (comportamento padrão).
+- Com N markers → N+1 páginas (chunk 0 fica em CONTEUDO_DIRETRIZES; chunks 1..N viram `<article>` extras inseridos via `{{EXTRA_DIRETRIZES_PAGES}}`).
+- A numeração das páginas é atualizada pelo JS do template em runtime — todos os "Página X" são derivados da posição da `.page` no DOM.
+
+## Marcação leniente no MD (v2.3+)
+
+A partir da v2.3, o parser aceita variações:
+
+- **Escopo "Aplica-se a"**: tanto `**Aplica-se a:**` (bold) quanto `### Aplica-se a` (heading h3). Idem "Não se aplica a".
+- **Revisão/Vigência (seção 7/8)**: aceita prefixo numérico opcional, ex.: `### 7.1 · Revisão periódica` ou `### Revisão periódica`.
+- **Bold/itálico/code/link em campos de texto**: `**bold**`, `*itálico*`, `` `code` ``, `[texto](url)` funcionam em TODOS os campos (não só CONTEUDO_DIRETRIZES). Anteriormente apenas o conteúdo de Diretrizes processava markdown — agora Objetivo, Escopo, Princípios, Papéis, Governança, Disposições também.
+
+## Classes M7 em conteúdo livre (v2.3+)
+
+Quando o autor inclui tabelas, h3 ou h4 dentro de `## 5. Diretrizes` (que vira HTML rico via markdown lib), o script aplica automaticamente as classes M7:
+
+- `<table>` → `<table class="doc-table">` (header dark + spacing M7)
+- `<h3>` → `<h3 class="sub">` (12px, lime accent)
+- `<h4>` → `<h4 class="subsub">` (11px, lime accent menor)
+
+Elementos que já tenham classe (ex.: `<h4 class="proc-title">` em cards de processo) **não** são tocados — preserva customizações do autor.
+
+## Cards de inventário de processos (v2.3+)
+
+Para listar processos macro (P1-P12, G1-G4, A1-A5), o template oficial agora embute CSS para:
+
+```html
+<div class="camada-sep">
+  <h4 class="camada-title">Camada Primária</h4>
+  <p>Doze processos que geram receita direta.</p>
+</div>
+<div class="proc-block">
+  <div class="proc-card">
+    <h4 class="proc-title">P1 · Geração de Demanda</h4>
+    <p class="proc-owner">Head de Marketing</p>
+  </div>
+  <!-- ... -->
+</div>
+```
+
+Renderiza como cartões `lime-bordered` 4 colunas com separadores discretos por camada. Padrão reutilizável em qualquer POL/MAN que liste processos.
+
+## Imagens externas (v2.3+)
+
+`<img src="path/relativo/img.svg">` (ou .png/.jpg/.webp) no MD é automaticamente inlinado como `data:image/...;base64`. Path é relativo ao diretório do MD. Imagens com `src="data:..."`, `http://`, `https://` são preservadas. Se o arquivo não existir, o script emite warning no stderr mas continua.

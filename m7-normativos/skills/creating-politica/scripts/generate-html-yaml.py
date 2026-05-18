@@ -30,6 +30,7 @@ import argparse
 import base64
 import re
 import sys
+from html import escape
 from pathlib import Path
 
 try:
@@ -235,8 +236,14 @@ def parse_content_md(path: Path) -> dict:
     body = sections.get("2.", "")
     lede_m = re.match(r"^(.+?)(?=\n\s*\*\*|\n\s*-\s)", body, re.DOTALL)
     out["LEDE_ESCOPO"] = lede_m.group(1).strip() if lede_m else (body.strip().split("\n\n")[0] if body else "")
-    incl_block_m = re.search(r"\*\*Aplica-se a[^*]*\*\*\s*\n((?:\s*[-*]\s+.+\n?)+)", body)
-    excl_block_m = re.search(r"\*\*N[aã]o se aplica[^*]*\*\*\s*\n((?:\s*[-*]\s+.+\n?)+)", body)
+    incl_block_m = re.search(
+        r"(?:\*\*Aplica-se a[^*\n]*\*\*|###+\s+Aplica-se a[^\n]*)\s*\n((?:\s*[-*]\s+.+\n?)+)",
+        body,
+    )
+    excl_block_m = re.search(
+        r"(?:\*\*N[aã]o se aplica[^*\n]*\*\*|###+\s+N[aã]o se aplica[^\n]*)\s*\n((?:\s*[-*]\s+.+\n?)+)",
+        body,
+    )
     incl_items = extract_bullets(incl_block_m.group(1)) if incl_block_m else []
     excl_items = extract_bullets(excl_block_m.group(1)) if excl_block_m else []
     if not incl_items and not excl_items:
@@ -274,7 +281,7 @@ def parse_content_md(path: Path) -> dict:
             out[f"PRINCIPIO_{n+1}_TITULO"] = ""
             out[f"PRINCIPIO_{n+1}_DESCRICAO"] = ""
 
-    # 5. Diretrizes — lede + sumário (lista) + conteúdo livre
+    # 5. Diretrizes — lede + sumário (lista) + conteúdo livre + page-breaks
     body = sections.get("5.", "")
     sumario_m = re.search(r"\*\*Sum[áa]rio[^*]*\*\*\s*\n((?:\s*[-*]\s+.+\n?)+)", body)
     if sumario_m:
@@ -282,12 +289,21 @@ def parse_content_md(path: Path) -> dict:
         sumario_html = "<ul>\n" + "\n".join(f"  <li>{s}</li>" for s in sumario_items) + "\n</ul>"
         out["LEDE_DIRETRIZES"] = body[: sumario_m.start()].strip()
         out["SUMARIO_DIRETRIZES"] = sumario_html
-        out["CONTEUDO_DIRETRIZES"] = markdown_to_html(body[sumario_m.end():].strip())
+        after_sumario = body[sumario_m.end():].strip()
     else:
         ps = re.split(r"\n\s*\n", body, maxsplit=1)
         out["LEDE_DIRETRIZES"] = ps[0].strip() if ps else ""
         out["SUMARIO_DIRETRIZES"] = ""
-        out["CONTEUDO_DIRETRIZES"] = markdown_to_html(ps[1].strip()) if len(ps) > 1 else ""
+        after_sumario = ps[1].strip() if len(ps) > 1 else ""
+
+    # Split conteúdo de Diretrizes por marker <!-- /page-break --> (#7).
+    # Chunk 0 vai para CONTEUDO_DIRETRIZES (página existente); chunks 1..N
+    # ficam armazenados como _diretrizes_extra_chunks_md para o
+    # build_extra_diretrizes_pages renderizar como <article> adicionais.
+    raw_chunks = re.split(r"<!--\s*/?page-break\s*-->", after_sumario)
+    raw_chunks = [c.strip() for c in raw_chunks if c.strip()]
+    out["CONTEUDO_DIRETRIZES"] = markdown_to_html(raw_chunks[0]) if raw_chunks else ""
+    out["_diretrizes_extra_chunks_md"] = raw_chunks[1:] if len(raw_chunks) > 1 else []
 
     # 6. Papéis — lede + tabela 3 col
     body = sections.get("6.", "")
@@ -306,7 +322,10 @@ def parse_content_md(path: Path) -> dict:
 
     # 7. Governança — Revisão (intro + gatilhos) + Indicadores + Exceções
     body = sections.get("7.", "")
-    rev_m = re.search(r"###\s*Revis[aã]o[^\n]*\n(.+?)(?=^###|\Z)", body, re.DOTALL | re.MULTILINE)
+    rev_m = re.search(
+        r"###+\s*(?:\d+(?:\.\d+)?\s*[·\-.]\s*)?Revis[aã]o[^\n]*\n(.+?)(?=^###|\Z)",
+        body, re.DOTALL | re.MULTILINE,
+    )
     if rev_m:
         rev_block = rev_m.group(1)
         rev_ps = re.split(r"\n\s*\n", rev_block, maxsplit=1)
@@ -359,7 +378,10 @@ def parse_content_md(path: Path) -> dict:
 
     # 8. Disposições finais — Vigência + tabela doc relacionado
     body = sections.get("8.", "")
-    vig_m = re.search(r"###\s*Vig[eê]ncia[^\n]*\n(.+?)(?=^###|\Z)", body, re.DOTALL | re.MULTILINE)
+    vig_m = re.search(
+        r"###+\s*(?:\d+(?:\.\d+)?\s*[·\-.]\s*)?Vig[eê]ncia[^\n]*\n(.+?)(?=^###|\Z)",
+        body, re.DOTALL | re.MULTILINE,
+    )
     out["TEXTO_VIGENCIA"] = vig_m.group(1).strip() if vig_m else ""
     rows = extract_md_table(body)
     if rows and len(rows[0]) >= 3:
@@ -374,8 +396,24 @@ def parse_content_md(path: Path) -> dict:
     return out
 
 
+def _md_inline_lite(text: str) -> str:
+    """Helper local de inline markdown — definido aqui para evitar forward-ref
+    no fallback de markdown_to_html. inline_markdown() (mais abaixo) é o
+    nome público; este é só uma cópia evitando dependência circular."""
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"(?<!\*)\*(?!\s)(.+?)(?<!\s)\*(?!\*)", r"<em>\1</em>", text)
+    text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
+    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', text)
+    return text
+
+
 def markdown_to_html(text: str) -> str:
-    """Conversor markdown→HTML usado apenas para CONTEUDO_DIRETRIZES."""
+    """Conversor markdown→HTML para blocos ricos (CONTEUDO_DIRETRIZES).
+
+    Tenta usar a lib `markdown` (mais completa); se não disponível, usa um
+    fallback inline que cobre: parágrafos, listas, h3/h4, bold, italic,
+    code, links. NÃO suporta tabelas no fallback — use a lib para isso.
+    """
     if not text.strip():
         return ""
     try:
@@ -389,16 +427,15 @@ def markdown_to_html(text: str) -> str:
         if not block:
             continue
         if block.startswith("### "):
-            parts.append(f"<h3>{block[4:].strip()}</h3>")
+            parts.append(f"<h3>{_md_inline_lite(block[4:].strip())}</h3>")
         elif block.startswith("#### "):
-            parts.append(f"<h4>{block[5:].strip()}</h4>")
+            parts.append(f"<h4>{_md_inline_lite(block[5:].strip())}</h4>")
         elif re.match(r"^\s*[-*]\s", block):
             items = extract_bullets(block)
-            parts.append("<ul>\n" + "\n".join(f"  <li>{i}</li>" for i in items) + "\n</ul>")
+            items_inline = [_md_inline_lite(i) for i in items]
+            parts.append("<ul>\n" + "\n".join(f"  <li>{i}</li>" for i in items_inline) + "\n</ul>")
         else:
-            inline = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", block)
-            inline = re.sub(r"\*(.+?)\*", r"<em>\1</em>", inline)
-            parts.append(f"<p>{inline}</p>")
+            parts.append(f"<p>{_md_inline_lite(block)}</p>")
     return "\n".join(parts)
 
 
@@ -486,7 +523,7 @@ def build_placeholders(data: dict, content_md) -> dict:
         "DATA_VIGENCIA": date_label,
         "DATA_PROXIMA_REVISAO": next_label,
         "DATA_ELABORACAO": date_label,
-        "DATA_REVISAO": "",
+        "DATA_REVISAO": date_label,
         "DATA_APROVACAO": date_label,
         "CADENCIA_REVISAO": l["revisaoFreq"],
         "COVER_SUBTITULO": p["subtitle"],
@@ -530,7 +567,43 @@ def build_placeholders(data: dict, content_md) -> dict:
     if content_md and content_md.exists():
         out.update(parse_content_md(content_md))
 
+    # Aplicar markdown inline (bold/italic/link) nos campos de texto que vão
+    # para o HTML mas NÃO são placeholders de bloco rico. CONTEUDO_DIRETRIZES /
+    # SUMARIO_DIRETRIZES já vêm como HTML do markdown_to_html().
+    inline_md_fields = (
+        ["TEXTO_OBJETIVO_P1", "TEXTO_OBJETIVO_P2", "LEDE_ESCOPO"]
+        + [f"ESCOPO_INCLUSAO_{n}" for n in range(1, 4)]
+        + [f"ESCOPO_EXCLUSAO_{n}" for n in range(1, 4)]
+        + [f"DEF_TEXTO_{n}" for n in range(1, 13)]
+        + ["LEDE_PRINCIPIOS"]
+        + [f"PRINCIPIO_{n}_DESCRICAO" for n in range(1, 8)]
+        + ["LEDE_DIRETRIZES", "LEDE_PAPEIS"]
+        + [f"PAPEL_{n}_RESPONSABILIDADES" for n in range(1, 9)]
+        + ["REVISAO_PERIODICA_INTRO"]
+        + [f"GATILHO_REVISAO_{n}" for n in range(1, 5)]
+        + ["TEXTO_VIGENCIA", "DOC_REL_1_RELACAO"]
+    )
+    for k in inline_md_fields:
+        if k in out and out[k]:
+            out[k] = inline_markdown(out[k])
+
     return out
+
+
+def inline_markdown(text: str) -> str:
+    """Conversor inline-only: **bold**, *italic*, [link](url), `code`.
+
+    Não toca blocos (parágrafos, listas, headings) — o template já tem
+    estrutura HTML; processar blocos seria invasivo. Para conteúdo rico
+    use markdown_to_html().
+    """
+    if not text:
+        return text
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"(?<!\*)\*(?!\s)(.+?)(?<!\s)\*(?!\*)", r"<em>\1</em>", text)
+    text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
+    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', text)
+    return text
 
 
 # =============================================================================
@@ -575,6 +648,100 @@ def inline_assets(html: str, assets_dir: Path) -> str:
             html = html.replace(f"assets/{logo_name}", data_uri)
 
     return html
+
+
+# =============================================================================
+# Pós-processamento do HTML renderizado
+# =============================================================================
+
+def inject_m7_classes(html: str) -> str:
+    """Adiciona classes M7 em <table>, <h3>, <h4> sem classe.
+
+    A markdown lib emite tags semânticas sem aplicar classes M7. Esta função
+    injeta `.doc-table`, `.sub`, `.subsub` via lookahead negativo — preserva
+    elementos que já têm classe (ex.: `.proc-title`, `.camada-title`, `.kv-table`).
+    """
+    html = re.sub(r'<table(?![^>]*class=)', '<table class="doc-table"', html)
+    html = re.sub(r'<h3(?![^>]*class=)', '<h3 class="sub"', html)
+    html = re.sub(r'<h4(?![^>]*class=)', '<h4 class="subsub"', html)
+    return html
+
+
+def build_extra_diretrizes_pages(content_md, placeholders: dict) -> str:
+    """Renderiza os chunks 1..N de Diretrizes como <article class="page">.
+
+    O chunk 0 já está em CONTEUDO_DIRETRIZES (página existente do template).
+    Os chunks adicionais (gerados por <!-- /page-break --> no MD) viram páginas
+    extras inseridas via {{EXTRA_DIRETRIZES_PAGES}}.
+
+    O JS do template auto-numera todas as `.page` no load, então
+    `Página ? de ?` aqui é só placeholder visual antes do JS rodar.
+    """
+    chunks = placeholders.get("_diretrizes_extra_chunks_md") or []
+    if not chunks:
+        return ""
+
+    code = placeholders.get("CODIGO_DOCUMENTO", "")
+    version = placeholders.get("VERSAO_CURTA", "")
+    title = placeholders.get("TITULO_DOCUMENTO", "")
+    classif = placeholders.get("CLASSIFICACAO_DOCUMENTO", "")
+
+    parts: list = []
+    for chunk_md in chunks:
+        chunk_html = markdown_to_html(chunk_md)
+        parts.append(
+            '\n  <!-- ════════════════════════════════════════════════════════════\n'
+            '       Diretrizes (continuação) — auto-paginação\n'
+            '       ════════════════════════════════════════════════════════════ -->\n'
+            '  <article class="page" data-page-label="Diretrizes (cont.)">\n'
+            '    <header class="page-head">\n'
+            '      <div class="ph-left">\n'
+            '        <img src="assets/m7-logo-dark.png" alt="M7">\n'
+            '        <div class="ph-sep"></div>\n'
+            f'        <span class="ph-title">{escape(title)}</span>\n'
+            '      </div>\n'
+            f'      <span class="ph-meta">{escape(code)} · {escape(version)}</span>\n'
+            '    </header>\n'
+            '    <div class="page-body">\n'
+            f'      {chunk_html}\n'
+            '    </div>\n'
+            '    <footer class="page-foot">\n'
+            f'      <span class="pf-classif">{escape(classif)}</span>\n'
+            '      <span class="pf-page">Página <strong>?</strong> de <span class="total-pg">?</span></span>\n'
+            '    </footer>\n'
+            '  </article>\n'
+        )
+    return "".join(parts)
+
+
+def inline_external_images(html: str, base_dir: Path) -> str:
+    """Inlina <img src="<path-relativo>"> como data: URI.
+
+    Escaneia tags <img src="..."> e, se o src for path relativo a um arquivo
+    local existente em base_dir, converte para base64. Preserva data: URIs
+    e URLs http(s) inalteradas. Útil para imagens externas referenciadas no
+    MD da Fase 2 (ex.: SVG de cadeia de valor).
+    """
+    SUPPORTED = {"svg": "image/svg+xml", "png": "image/png",
+                 "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                 "gif": "image/gif", "webp": "image/webp"}
+
+    def repl(m: "re.Match") -> str:
+        prefix = m.group(1)
+        src = m.group(2)
+        suffix = m.group(3)
+        if src.startswith(("data:", "http://", "https://", "//")):
+            return m.group(0)
+        img_path = (base_dir / src).resolve()
+        if not img_path.exists() or not img_path.is_file():
+            sys.stderr.write(f"⚠  imagem não encontrada: {src} (relativo a {base_dir})\n")
+            return m.group(0)
+        ext = img_path.suffix.lstrip(".").lower()
+        mime = SUPPORTED.get(ext, "application/octet-stream")
+        b64 = base64.b64encode(img_path.read_bytes()).decode("ascii")
+        return f'{prefix}data:{mime};base64,{b64}{suffix}'
+
+    return re.sub(r'(<img\s+[^>]*?src=")([^"]+)(")', repl, html)
 
 
 # =============================================================================
@@ -642,12 +809,32 @@ def main() -> int:
     content_md = Path(args.content) if args.content else None
     placeholders = build_placeholders(data, content_md)
 
+    # Extra Diretrizes pages (#7): se MD tem <!-- /page-break --> na seção 5,
+    # build_extra_diretrizes_pages retorna o HTML das páginas adicionais; o
+    # primeiro chunk já está em CONTEUDO_DIRETRIZES.
+    placeholders["EXTRA_DIRETRIZES_PAGES"] = build_extra_diretrizes_pages(
+        content_md, placeholders
+    )
+
     html = template_path.read_text(encoding="utf-8")
+
+    for key, val in placeholders.items():
+        # Skip chaves internas (prefixo _) e valores não-string.
+        if key.startswith("_") or not isinstance(val, str):
+            continue
+        html = html.replace("{{" + key + "}}", val)
+
+    # inline_assets DEPOIS da substituição: assim os <img src="assets/m7-logo-*.png">
+    # das páginas extras de Diretrizes (geradas via {{EXTRA_DIRETRIZES_PAGES}})
+    # também viram base64.
     if not args.no_inline:
         html = inline_assets(html, skill_dir / "assets")
 
-    for key, val in placeholders.items():
-        html = html.replace("{{" + key + "}}", val)
+    # Pós-processamento: injetar classes M7 em tags da markdown lib + inline
+    # imagens externas referenciadas no MD do autor.
+    html = inject_m7_classes(html)
+    if content_md and content_md.exists():
+        html = inline_external_images(html, content_md.parent)
 
     residuals = set(re.findall(r"\{\{([A-Z_0-9]+)\}\}", html))
     warnings: list = []

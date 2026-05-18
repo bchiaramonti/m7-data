@@ -137,7 +137,14 @@ mapeia 1:1 para os ~110 placeholders de conteúdo do template.
 **Input**: `BRIEFING-{CODE}.md`
 **Output persistido**: `politica-{slug}.md` (editável, parser-friendly).
 
-O MD segue **estrutura estrita** — h2 numerados, blocos específicos por seção:
+O MD segue **estrutura estrita** — h2 numerados, blocos específicos por seção. A partir da v2.3 o parser aceita variações lenientes (vide [normativo-schema.md → Marcação leniente](references/normativo-schema.md#marcação-leniente-no-md-v23)):
+
+- `**Aplica-se a:**` (bold) OU `### Aplica-se a` (h3) — ambos casam para Escopo
+- `### 7.1 · Revisão periódica` (com prefixo) OU `### Revisão periódica` — idem para Vigência
+- `**bold**`, `*itálico*`, `` `code` ``, `[texto](url)` funcionam em **todos** os campos de texto, não só Diretrizes
+- `<!-- /page-break -->` na seção 5 quebra Diretrizes em múltiplas páginas A4
+
+Estrutura canônica:
 
 ```markdown
 # {{Título da Política}}
