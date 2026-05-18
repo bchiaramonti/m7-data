@@ -85,8 +85,12 @@ properties:
 
       area:
         type: string
-        controlled: [GOV, PERF, INV, CRE, SEG, UNI, TEC, PES, M7]
-        description: "Sigla da área (segundo bloco do code). Vide M7DATA.AREAS no cockpit."
+        controlled: [GOV, PERF, INV, CRE, SEG, UNI, TEC, PES]
+        description: |
+          Sigla da área (segundo bloco do code). Vide M7DATA.AREAS no cockpit.
+          Para políticas institucionais da holding (escopo cross-cutting), use
+          GOV (Governança) — não existe código separado "M7". A holding inteira
+          é representada pelo conjunto de áreas + nível de aprovação (Diretoria).
 
       area_label:
         type: string

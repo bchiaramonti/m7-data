@@ -44,7 +44,7 @@ except ImportError:
 # =============================================================================
 
 ALLOWED_TIPO = {"POL", "MAN", "INS", "ESP"}
-ALLOWED_AREA = {"GOV", "PERF", "INV", "CRE", "SEG", "UNI", "TEC", "PES", "M7"}
+ALLOWED_AREA = {"GOV", "PERF", "INV", "CRE", "SEG", "UNI", "TEC", "PES"}
 ALLOWED_STATUS = {"vigente", "revisao", "rascunho", "pendente", "vencido"}
 ALLOWED_CLASSIF = {"Público", "Interno", "Confidencial", "Restrito"}
 ALLOWED_REVISAO = {"Anual", "Semestral", "Trimestral", "Mensal", "Sob demanda"}

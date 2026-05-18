@@ -25,12 +25,17 @@ Formato: `[TIPO]-[AREA]-[NNN]`
 | Componente | Descrição | Valores Válidos |
 |------------|-----------|-----------------|
 | TIPO | Tipo de documento | `POL`, `MAN`, `INS`, `ESP` |
-| AREA | Área ou processo | `GOV`, `PERF`, `INV`, `CRE`, `SEG`, `UNI`, `TEC`, `PES`, `M7` |
+| AREA | Área funcional | `GOV`, `PERF`, `INV`, `CRE`, `SEG`, `UNI`, `TEC`, `PES` |
 | NNN | Número sequencial (3 dígitos, zero-padded) | `001`, `002`, `003`... |
 
+**Importante**: políticas institucionais da holding (escopo cross-cutting que
+toca todas as áreas/processos) usam **`GOV`** como AREA — não existe código
+separado "M7". A holding inteira é representada pela combinação de
+`area: GOV` + `aprovador: Diretoria` + `governance.processos: [todos]`.
+
 Exemplos:
-- `POL-GOV-002`: Política Geral de Governança Corporativa
-- `POL-M7-001`: Política de Gestão por Processos
+- `POL-GOV-001`: Política de Gestão por Processos (mãe da hierarquia, escopo holding)
+- `POL-GOV-002`: Política Geral de Governança Corporativa (escopo holding, cobre P1-P12)
 - `MAN-INV-001`: Manual de Operação do Funil Investimentos
 - `INS-PERF-001`: Instrução de Fechamento Mensal de Performance
 - `ESP-PERF-001`: Especificação de Cálculo de Indicadores

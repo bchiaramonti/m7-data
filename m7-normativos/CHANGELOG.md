@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2026-05-18
+
+### Changed (creating-politica)
+
+- **Removido `M7` do enum de `identity.area`** no `normativo.schema.yaml`. O enum agora é `[GOV, PERF, INV, CRE, SEG, UNI, TEC, PES]` (8 áreas funcionais). Políticas institucionais da holding (escopo cross-cutting) usam `area: GOV` — não há código separado.
+- **Motivo da consolidação**: o code pattern `^(POL|MAN|INS|ESP)-[A-Z]{2,4}-[0-9]{3}$` exige letras puras no bloco AREA, então `POL-M7-001` (com dígito) já era inválido por regex. A entrada `M7` no enum de área era inconsistente e enganosa.
+- **Sincronizado** validador no `generate-html-yaml.py` (`ALLOWED_AREA`) com o novo enum.
+- Atualizado `references/normative-standards.md` removendo `M7` da tabela de AREA e o exemplo `POL-M7-001` (que era inválido).
+
+### Migration
+
+- POLs existentes que usavam `area: M7` (caso houvesse) precisam migrar para `area: GOV`. O code já não casava com regex, então provavelmente nenhuma POL real está afetada.
+
 ## [2.1.1] - 2026-05-18
 
 ### Fixed (creating-politica)
