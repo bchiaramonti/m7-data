@@ -105,10 +105,18 @@ Estrutura da entrevista — uma pergunta por vez, infira defaults inteligentes:
 |------------|------------------|--------------|
 | `identity` | code, area, version, status, classif, pages (inicial) | tipo=POL; tipo_label=Política; version=v1.0; status=rascunho; classif=Interno; classif_label="Uso interno · Confidencial" |
 | `lifecycle` | date, nextReview, revisaoFreq | nextReview = date + 1 ano; revisaoFreq=Anual (fixo) |
-| `governance` | owner, elaboradoPor, aprovadoPor, revisor, parent{code,title}, processos | aprovador_role=Diretoria (fixo) |
+| `governance` | **escopo**, owner, elaboradoPor, aprovadoPor, revisor, parent{code,title}, processos | aprovador_role=Diretoria (fixo); escopo auto-deriva quando ausente |
 | `presentation` | title_short, title_full.parts (com `accent`), subtitle, lede, eyebrow_categoria, page_label_section | eyebrow_categoria="Documento de governança"; page_label_section ← area_label |
 | `structure.toc` | lista inicial de páginas (mín 10: Capa, Controle, 8 seções) | — |
 | `links.siblings` | irmãos do mesmo projeto/processo (tabs do shell) | opcional |
+
+**`governance.escopo`** controla onde o documento é alocado na Matriz do Cockpit (`holding | transversal | processo`):
+
+- Para POL institucional da holding → pergunte `escopo: holding` **explicitamente** (nunca auto-derivado por proteção).
+- 1 processo único → o script auto-deriva `escopo: processo`.
+- 2+ processos sem ser holding → auto-deriva `escopo: transversal`.
+
+Detalhes e os 4 jeitos de alinhar à Holding em [normativo-schema.md](references/normativo-schema.md#governanceescopo-—-alocação-na-matriz-do-cockpit).
 
 **Formato do BRIEFING.md**: bloco único de YAML em fence ```yaml ... ```
 ou frontmatter `--- ... ---` no topo. Aceita-se também arquivo `.yaml` puro.

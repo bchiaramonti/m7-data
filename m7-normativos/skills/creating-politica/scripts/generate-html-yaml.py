@@ -48,6 +48,7 @@ ALLOWED_AREA = {"GOV", "PERF", "INV", "CRE", "SEG", "UNI", "TEC", "PES"}
 ALLOWED_STATUS = {"vigente", "revisao", "rascunho", "pendente", "vencido"}
 ALLOWED_CLASSIF = {"Público", "Interno", "Confidencial", "Restrito"}
 ALLOWED_REVISAO = {"Anual", "Semestral", "Trimestral", "Mensal", "Sob demanda"}
+ALLOWED_ESCOPO = {"holding", "transversal", "processo"}
 
 CODE_PATTERN = re.compile(r"^(POL|MAN|INS|ESP)-[A-Z]{2,4}-[0-9]{3}$")
 VERSION_PATTERN = re.compile(r"^v?[0-9]+\.[0-9]+$")
@@ -56,6 +57,23 @@ PROC_PATTERN = re.compile(r"^(G[1-4]|P[1-9]|P1[0-2]|A[1-5])$")
 
 def _err(path: str, msg: str) -> str:
     return f"  · {path}: {msg}"
+
+
+def normalize_governance(data: dict) -> None:
+    """Auto-deriva governance.escopo quando ausente. Muta `data` in-place.
+
+    Regras (vide handoff §3.6):
+      - 0 ou 1 processo → "processo"
+      - múltiplos       → "transversal"
+      - "holding" NUNCA é auto-derivado — exige declaração explícita
+        (proteção contra docs que cobrem P1-P12 mas são semanticamente
+        transversais e não holding).
+    """
+    g = data.get("governance")
+    if not isinstance(g, dict) or "escopo" in g:
+        return
+    procs = g.get("processos") or []
+    g["escopo"] = "processo" if len(procs) <= 1 else "transversal"
 
 
 def validate(data: dict) -> list:
@@ -102,7 +120,7 @@ def validate(data: dict) -> list:
     if not isinstance(g, dict):
         errs.append(_err("governance", "objeto obrigatório"))
     else:
-        for f in ("owner", "parent", "processos"):
+        for f in ("owner", "parent", "processos", "escopo"):
             if f not in g:
                 errs.append(_err(f"governance.{f}", "obrigatório"))
         parent = g.get("parent")
@@ -115,6 +133,8 @@ def validate(data: dict) -> list:
             for p in procs:
                 if not PROC_PATTERN.match(str(p)):
                     errs.append(_err("governance.processos", f"item inválido: {p}"))
+        if "escopo" in g and g["escopo"] not in ALLOWED_ESCOPO:
+            errs.append(_err("governance.escopo", f"deve ser um de {sorted(ALLOWED_ESCOPO)}"))
 
     p = data.get("presentation") or {}
     if not isinstance(p, dict):
@@ -594,6 +614,8 @@ def main() -> int:
     except Exception as e:
         sys.stderr.write(f"ERRO ao parsear briefing: {e}\n")
         return 2
+
+    normalize_governance(data)
 
     errs = validate(data)
     if errs:

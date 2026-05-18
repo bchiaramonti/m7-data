@@ -2,15 +2,18 @@
 # Schema: Normativo M7 (sidecar YAML)
 # =============================================================================
 # Cada documento normativo da M7 (POL/MAN/INS/ESP) tem:
-#   - 1 arquivo HTML autocontido (estrutura EXATAMENTE como o template oficial)
-#   - 1 arquivo YAML sidecar com o mesmo basename, descrevendo seus metadados
+#   - 1 arquivo HTML autocontido em  01-fundacao-2.1/artefatos/
+#       (estrutura EXATAMENTE como o template oficial)
+#   - 1 arquivo YAML no catálogo em  01-fundacao-2.1/normativos/catalogo/
+#       (nome canônico = {CODE}.yaml; vínculo ao HTML via links.artifact_html)
 #
 # Exemplo:
 #   artefatos/politica-m7-investimentos.html
-#   artefatos/politica-m7-investimentos.yaml
+#   normativos/catalogo/POL-GOV-002.yaml          ← aponta para o HTML acima
+#   normativos/catalogo/manifest.json             ← lista todos os YAMLs
 #
 # Quem consome:
-#   1. O Cockpit de Normativos lê todos os YAMLs (via manifest) e monta
+#   1. O Cockpit de Normativos lê o manifest e todos os YAMLs e monta
 #      a matriz, lista, hierarquia e cadeia — sem nunca abrir o HTML.
 #   2. A skill que gera o documento usa o YAML como FONTE DE VERDADE
 #      dos metadados: cada um dos ~10 pontos do HTML onde o mesmo dado
@@ -87,10 +90,12 @@ properties:
         type: string
         controlled: [GOV, PERF, INV, CRE, SEG, UNI, TEC, PES]
         description: |
-          Sigla da área (segundo bloco do code). Vide M7DATA.AREAS no cockpit.
-          Para políticas institucionais da holding (escopo cross-cutting), use
-          GOV (Governança) — não existe código separado "M7". A holding inteira
-          é representada pelo conjunto de áreas + nível de aprovação (Diretoria).
+          Sigla da área funcional (segundo bloco do code). Vide M7DATA.AREAS
+          no cockpit. Para documentos institucionais da holding, use GOV +
+          `governance.escopo: holding` — não existe código separado "M7" na
+          área (o cockpit usa "M7" só internamente como célula-destino da
+          lane Holding na Matriz). O code pattern `[A-Z]{2,4}` exige letras
+          puras, então "M7" (com dígito) nunca foi um valor válido.
 
       area_label:
         type: string
@@ -203,8 +208,34 @@ properties:
   # ===========================================================================
   governance:
     type: object
-    required: [owner, parent, processos]
+    required: [owner, parent, processos, escopo]
     properties:
+
+      escopo:
+        type: string
+        controlled: [holding, transversal, processo]
+        description: |
+          Onde este documento se posiciona na arquitetura M7:
+
+          - holding:     rege a Holding M7 inteira (políticas-mãe, manuais
+                         da holding). Renderiza na lane "Holding M7" da
+                         Matriz — uma única célula, não 12 réplicas
+                         (mesmo que `processos` liste P1..P12).
+                         Ex.: POL-GOV-001, POL-GOV-002.
+
+          - transversal: cobre múltiplos processos, mas não a holding inteira.
+                         Renderiza em CADA processo do array `processos`.
+                         Ex.: uma INS que vale para P1 e P12, ou um MAN
+                         que cobre P3+P4+P5.
+
+          - processo:    pertence a um processo específico. Renderiza só
+                         na célula daquele processo.
+                         Ex.: MAN-CRE-001 (Crédito), INS-INV-001 (Investimentos).
+
+          Auto-derivação quando ausente:
+            - 0 ou 1 processo → "processo"
+            - múltiplos       → "transversal"
+            - "holding" NUNCA é auto-derivado, sempre explícito.
 
       owner:
         type: string
@@ -411,9 +442,12 @@ properties:
       artifact_html:
         type: string
         description: |
-          Caminho relativo (a partir da raiz do cockpit) do HTML autocontido.
-          Ex.: "../artefatos/politica-m7-investimentos.html".
-          É o que o cockpit abre em iframe quando o usuário clica "Abrir documento".
+          Caminho relativo (a partir do próprio YAML) do HTML autocontido.
+          Como os YAMLs vivem em normativos/catalogo/ e os HTMLs em
+          01-fundacao-2.1/artefatos/, o caminho típico é:
+            "../../artefatos/{slug-humano}.html"
+          O cockpit resolve via `new URL(artifact_html, yamlUrl)` e abre
+          em iframe quando o usuário clica "Abrir documento".
 
       siblings:
         type: array
@@ -464,10 +498,19 @@ properties:
 #      EXATAMENTE pela skill. O YAML não controla forma; controla apenas
 #      conteúdo de identidade.
 #
-# IV.  Cada normativo = 1 par {.html, .yaml} com mesmo basename. Sem
-#      par YAML, o documento não aparece no cockpit. Sem par HTML, o
-#      cockpit mostra o card mas desativa "Abrir documento".
+# IV.  Cada normativo = 1 par {.html em artefatos/, .yaml em catalogo/}.
+#      O vínculo é via links.artifact_html (e não via basename compartilhado,
+#      porque os arquivos vivem em pastas diferentes). Sem entrada no
+#      manifest.json + YAML correspondente, o documento não aparece no
+#      cockpit. Sem links.artifact_html (ou HTML inexistente), o cockpit
+#      mostra o card mas desativa "Abrir documento".
 #
-# V.   Caminhos relativos sempre a partir da raiz do cockpit
-#      (normativos-cockpit/). Nunca usar caminhos absolutos ou URLs
-#      OneDrive — quebrarão fora do contexto do projeto.
+# V.   Convenção de caminhos relativos:
+#        - manifest.json → entries[].path:  relativo ao próprio manifest
+#          (manifest e YAMLs vivem em catalogo/, então só o nome)
+#        - YAML → links.artifact_html:      relativo ao próprio YAML
+#          (típico: "../../artefatos/{slug}.html")
+#        - YAML → links.siblings[].href:    relativo ao HTML do normativo
+#          (típico: outros HTMLs no mesmo diretório artefatos/)
+#      Nunca usar caminhos absolutos ou URLs OneDrive — quebrarão fora do
+#      contexto do projeto.

@@ -58,6 +58,75 @@ links:        {siblings, artifact_html}  # opcional
 | `lifecycle.nextReview` | `lifecycle.date + 1 ano` |
 | `governance.aprovador_role` | `Diretoria` (fixo para POL) |
 
+## `governance.escopo` — alocação na Matriz do Cockpit
+
+Campo **obrigatório** (com auto-derivação): controla **onde** o documento é alocado na lane da Matriz do Cockpit. Valores permitidos: `holding | transversal | processo`.
+
+| escopo | O que faz | Quantas células |
+|--------|-----------|------------------|
+| `holding` | aloca na lane "Holding M7" (célula única M7::tipo) | 1 |
+| `transversal` | aloca em cada processo do array `processos` | N (= tamanho do array) |
+| `processo` | aloca no único processo do array | 1 |
+
+### Auto-derivação quando ausente
+
+A skill (script `generate-html-yaml.py`) preenche o campo se ausente:
+- `processos` com 0 ou 1 item → `escopo: processo`
+- `processos` com 2 ou mais itens → `escopo: transversal`
+- **`holding` NUNCA é auto-derivado**, sempre explícito (proteção contra docs que cobrem P1-P12 mas semanticamente são transversais, não holding).
+
+### 4 jeitos de alinhar à Holding
+
+**1. Doc da Holding (rege todos os primários ou a M7 como entidade)**
+
+```yaml
+governance:
+  escopo: holding
+  processos: [P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12]
+  # ↑ informativo: aparece no drawer "Processos cobertos".
+  # A Matriz IGNORA esta lista quando escopo=holding e aloca só em M7::POL.
+```
+Resultado: 1 célula na lane Holding M7, coluna POL.
+
+**2. Manual/Instrução de 1 processo (típico de MAN/INS/ESP)**
+
+```yaml
+governance:
+  # escopo omitido → auto-derivado para "processo"
+  processos: [P3]   # P3 = Operação Crédito
+```
+Resultado: 1 célula em P3 × MAN (lane Primários).
+
+**3. Instrução transversal (cruza 2+ processos sem ser holding)**
+
+```yaml
+governance:
+  # escopo omitido → auto-derivado para "transversal"
+  processos: [P1, P12]   # vale para Geração de Demanda e Retenção
+```
+Resultado: 2 células — P1 × INS e P12 × INS.
+
+**4. Doc de camada Gerencial ou Apoio**
+
+```yaml
+governance:
+  processos: [G2]   # G2 = Gestão de Performance (Gerencial)
+# ou
+  processos: [A1]   # A1 = Tecnologia & Dados (Apoio)
+```
+Aparece na lane respectiva (Gerenciais / Apoio).
+
+### Vocabulário de códigos válidos
+
+| Lane | Códigos no array `processos` | Exemplo |
+|------|------------------------------|---------|
+| **Holding M7** | (use `escopo: holding` — não use "M7" no array) | POL-GOV-002 |
+| Gerenciais | `G1` / `G2` / `G3` / `G4` | INS-PERF-001 (G2) |
+| Primários | `P1` ... `P12` | MAN-CRE-001 (P3) |
+| Apoio | `A1` / `A2` / `A3` / `A4` / `A5` | MAN-TEC-001 (A1) |
+
+**Regra de ouro**: "Holding" é o **escopo**, não um item do array. "M7" existe no vocabulário interno do cockpit como célula-destino da lane Holding, mas você nunca escreve `processos: [M7]` — escreve `escopo: holding` e lista os processos regidos em `processos` (informativo).
+
 ## Mapeamento YAML → 145 placeholders do template
 
 ### Identidade (12 placeholders)

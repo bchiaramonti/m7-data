@@ -83,8 +83,8 @@
     },
     {
       "name": "m7-normativos",
-      "description": "Create and review M7 corporate normative documents (POL/MAN/INS/ESP) following POL-M7-001 standards. The creating-politica skill emits an autocontido {slug}.html + {slug}.yaml pair — HTML ~1.4MB with CSS, TWK Everett fonts and logos inlined as base64 (works from file:// or HTTP); YAML sidecar canônico for the M7 Cockpit de Normativos. Template-based pipeline with 145 placeholders covering identity + content of 8 sections, mapped from BRIEFING.md (YAML) + politica-{slug}.md (structured markdown). 3-phase workflow: Discovery → Redação MD → Produção HTML+YAML. MAN/INS/ESP skills still emit DOCX (migration pending). Includes governance-writer agent and QA compliance review skill.",
-      "version": "2.1.2",
+      "description": "Create and review M7 corporate normative documents (POL/MAN/INS/ESP) following POL-M7-001 standards. The creating-politica skill emits an autocontido {slug}.html + {slug}.yaml pair — HTML ~1.4MB with CSS, TWK Everett fonts and logos inlined as base64 (works from file:// or HTTP); YAML sidecar canônico for the M7 Cockpit de Normativos. Template-based pipeline with 145 placeholders covering identity + content of 8 sections, mapped from BRIEFING.md (YAML) + politica-{slug}.md (structured markdown). 3-phase workflow: Discovery → Redação MD → Produção HTML+YAML. Includes governance.escopo for cockpit matrix allocation (holding/transversal/processo with auto-derivation). MAN/INS/ESP skills still emit DOCX (migration pending). Includes governance-writer agent and QA compliance review skill.",
+      "version": "2.2.0",
       "author": {
         "name": "Bruno Chiaramonti"
       },

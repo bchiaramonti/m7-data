@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-05-18
+
+### Added (creating-politica)
+
+- **Campo `governance.escopo`** no schema YAML (sincronizado com schema canônico do cockpit). Enum: `holding | transversal | processo`. Controla alocação na Matriz do Cockpit:
+  - `holding` → 1 célula na lane "Holding M7" (col POL/MAN/INS/ESP)
+  - `transversal` → N células, uma por processo no array `processos`
+  - `processo` → 1 célula no único processo do array
+- **Auto-derivação no validador**: quando `escopo` é omitido, o script (`normalize_governance`) preenche:
+  - 0 ou 1 processo → `processo`
+  - 2+ processos → `transversal`
+  - `holding` **nunca** é auto-derivado (sempre explícito) — proteção contra docs que cobrem P1-P12 mas semanticamente são transversais, não holding.
+- O valor derivado é serializado no YAML de saída — leitor (cockpit) sempre vê o campo preenchido.
+
+### Changed
+
+- `governance` agora exige `escopo` na validação (`required: [owner, parent, processos, escopo]`).
+- Exemplo POL-GOV-002 atualizado com `escopo: holding` explícito.
+- `references/normativo-schema.md` ganhou seção dedicada com **4 jeitos de alinhar à Holding**, tabela de regras de alocação e vocabulário de códigos por lane (Holding/Gerencial/Primário/Apoio).
+- SKILL.md Fase 1: campo `escopo` adicionado à entrevista de discovery (governance row).
+
+### Notes
+
+- "M7" continua removido do enum `identity.area` (consolidado para GOV na v2.1.2). O canônico do cockpit ainda lista `M7` por compatibilidade, mas o code pattern já rejeita códigos com dígitos no bloco AREA — a remoção local mantém o validador estritamente consistente.
+- "M7" agora existe **apenas** no vocabulário interno do cockpit como célula-destino da lane Holding, acessível via `escopo: holding`. Nunca aparece no array `processos`.
+
 ## [2.1.2] - 2026-05-18
 
 ### Changed (creating-politica)
