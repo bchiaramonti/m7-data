@@ -45,19 +45,18 @@
     --radius-sm: 8px;
   }
 
+  html, body { height: 100vh; overflow: hidden; }
   body {
     background: var(--off-white);
     color: var(--vc-500);
     line-height: 1.5;
-    /* Fit-to-viewport: SIPOC nao deve gerar scroll vertical. O shell
-       usa flex column + flex:1 nos containers internos pra preencher
-       exatamente o espaco entre header e footer. */
-    height: 100vh;
-    overflow: hidden;
     padding: 32px;
     display: flex;
     flex-direction: column;
   }
+  /* Header e rodapé mantêm tamanho intrínseco; o shell consome o restante */
+  .m7-header-dark { flex-shrink: 0; }
+  .mp-footer { flex-shrink: 0; }
 
   /* Sobrescreve a tab ativa do header — agora "Missão do processo" */
   .m7-header-dark .h-e .tab.active { color: rgba(255,253,239,0.5); border-bottom-color: transparent; font-weight: 400; }
@@ -66,6 +65,15 @@
     color: var(--lime); border-bottom-color: var(--lime); font-weight: 500;
   }
   .m7-header-dark .h-e .tab[data-active="true"] .num { background: var(--lime); color: var(--vc-700); }
+
+  /* Header compacto para deixar mais espaço vertical ao SIPOC */
+  .m7-header-dark { margin: -32px -32px 16px !important; padding: 14px 32px 0 !important; }
+  .m7-header-dark .h-e h1 { font-size: 26px !important; white-space: nowrap; }
+  .m7-header-dark .h-e .lede { font-size: 12.5px !important; margin-top: 6px !important; max-width: 520px; }
+  .m7-header-dark .h-e .body { margin-bottom: 12px !important; align-items: end; }
+  .m7-header-dark .h-e .cell { padding: 8px 14px !important; }
+  .m7-header-dark .h-e .cell .v { font-size: 16px !important; }
+  .m7-header-dark .h-e .tab { padding: 8px 14px !important; }
 
   /* === LAYOUT DE 2 COLUNAS === */
   .mp-shell {
@@ -215,10 +223,12 @@
     background: var(--white);
     border: 1px solid var(--vc-100);
     border-radius: var(--radius);
-    padding: 24px;
+    padding: 18px;
     min-width: 0;
+    min-height: 0;
     display: grid;
     grid-template-rows: auto 1fr;
+    overflow: hidden;
   }
 
   .sipoc-col.mission {

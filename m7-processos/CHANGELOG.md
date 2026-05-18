@@ -4,6 +4,53 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.1.0] - 2026-05-18
+
+**MINOR · Política reestruturada como documento normativo formal.** Os templates oficiais (export Claude Design 18/Mai/2026) reescreveram a `template-politica.html` removendo as 4 páginas de "sumário de processos" (Estrutura, Gerenciais, Primários, Apoio) e adicionando 10 páginas de governança formal: Capa, Controle & sumário, Objetivo & Escopo, Definições, Princípios, Diretrizes 5.1-5.7, Papéis & responsabilidades, Governança, Disposições finais.
+
+Conceitualmente: a Política deixa de ser "consolidação do que foi mapeado nos níveis N1/N2/N3" e passa a ser "documento normativo formal independente" — coexiste com os outros artefatos sem replicá-los.
+
+### Changed
+
+- **`template-politica.html`** (1874 → 1728 linhas, byte-identical com oficial): 10 páginas formais. 194 placeholders únicos (vs 129 antes). Listas hardcoded de processos removidas (`.chain-mini`, `.proc-list`) — o `_inject_politica_processes()` da skill se torna no-op (os seletores não encontram nada).
+- **`template-missao-do-processo.html`** (640 → 650 linhas): header compacto dedicado ao N2 (h1 26px, padding reduzido) + `html,body { height:100vh; overflow:hidden }` no nível html (em vez de só body) + `.m7-header-dark { flex-shrink:0 }` + `.mp-footer { flex-shrink:0 }` para garantir que shell preenche viewport sem rolar. `.sipoc-col` com `padding: 18px` (era 24px) e `min-height: 0` + `overflow: hidden` para chips longos.
+- **`template-mapa-de-interdependencia.html`** (696 → 689 linhas): removido `:root { --radius: 12px }` que a v2.0.6 tinha adicionado (regressão visual do Bug C — cantos do `.neural` voltam a ficar quadrados). Mantido conforme oficial.
+- **`m7-header-dark.css`** (79 → 76 linhas): user simplificou removendo `width: 100%` explícito (redundante para `<div>` block-level).
+- **`build_politica()` em `scripts/build_artifacts.py`**: bloco novo de substituições v2.1 cobrindo ~30 placeholders mapeáveis do briefing atual:
+  - Identidade do documento: `TIPO_DOCUMENTO` ("Política"), `TIPO_DOCUMENTO_SIGLA` ("POL"), `NIVEL_DOCUMENTO`, `CLASSIFICACAO_DOCUMENTO`, `CODIGO_DOC_SUPERIOR`, `TITULO_DOC_SUPERIOR`
+  - Título e capa: `TITULO_DOCUMENTO`, `TITULO_LINHA1/LINHA2/ACENTO`, `COVER_TITULO_PREFIXO/SUFIXO/LINHA1/ACENTO`, `COVER_SUBTITULO`
+  - Datas curtas: `DATA_VIGENCIA_CURTA`, `DATA_PROXIMA_REVISAO_CURTA` (DD/MM/AAAA → DD/MM/AA)
+  - Versão: `ALTERACOES_VERSAO` (alias para versão vigente)
+  - Texto objetivo dividido em P1/P2 (split por `\n\n`)
+  - Escopo: `ESCOPO_EXCLUSAO_3` (novo slot do template oficial)
+  - Doc relacionado: `DOC_REL_1_CODIGO/TITULO/RELACAO` (parsing heurístico de `escopo.doc_relacionados[0]`)
+  - Vigência/cadência: `TEXTO_VIGENCIA`, `CADENCIA_REVISAO` ("Anual"), `REVISAO_PERIODICA_INTRO`
+  - Ledes seções: `LEDE_ESCOPO`, `LEDE_PRINCIPIOS`, `LEDE_PAPEIS` (defaults M7)
+  - `TOTAL_PAGINAS`: contagem dinâmica de `<article class="page">`
+
+### Added
+
+- **`examples/exemplo-politica-preenchido.html`** (75KB) — exemplo M7 totalmente preenchido com os 194 placeholders resolvidos. Pode ser usado como referência para preenchimento manual dos campos não-cobertos pelo `build_politica`.
+
+### Known limitations
+
+A v2.1.0 cobre cerca de **30 dos 194 placeholders** do novo template-politica.html. Os **139 placeholders restantes** são de conteúdo normativo extenso (Princípios 1-7, Diretrizes 5.1-5.7, Papéis 1-8, Indicadores 1-5, Hierarquia 1-4, Escala 1-6, Gatilhos 1-4, Definições 1-12) que requerem **extensão do schema do BRIEFING** (não cabem nesta release).
+
+Quando o `build_politica` gera o N4, esses 139 placeholders permanecem como `{{...}}` no output. O usuário pode:
+
+1. **Preenchimento manual**: abrir `politica-{slug}.html` no editor e substituir os 98 ocorrências de `{{...}}` (139 únicos com algumas repetições) por texto real. Use `examples/exemplo-politica-preenchido.html` como referência.
+2. **Aguardar v2.2.0**: roadmap para estender BRIEFING schema com `politica.principios[]`, `politica.diretrizes[]`, `politica.papeis[]`, `politica.indicadores[]`, `politica.hierarquia_normativa[]`, `politica.escala_aprovacao[]`, `politica.gatilhos_revisao[]`, `politica.definicoes[]`.
+
+### Migration
+
+Não-breaking para N1/N2/N3 (continuam gerando 0 placeholders). Para N4:
+
+- Briefings v2.0.x continuam validando e gerando o N4 — apenas com 139 `{{...}}` restantes pra preenchimento manual.
+- `_inject_politica_processes()` da skill continua sendo invocado mas é no-op (seletores `.chain-mini` e `.proc-list` não existem mais no template).
+- Output do N4 muda visualmente: 10 páginas de governança formal em vez das 8 páginas de sumário de processos.
+
+Validado com `examples/exemplo-briefing-m7.md`: 4 artefatos gerados, N1/N2/N3 com 0 placeholders, N4 com 98 ocorrências restantes (139 únicos) — todas de conteúdo normativo.
+
 ## [2.0.6] - 2026-05-14
 
 Patch visual resolvendo 3 bugs reportados em revisão pixel-perfect dos artefatos M7 gerados em produção:

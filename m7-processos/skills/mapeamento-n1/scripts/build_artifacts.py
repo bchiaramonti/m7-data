@@ -1214,6 +1214,136 @@ def build_politica(briefing_fm: dict, body_md: str,
         "{{AREA_COMPLIANCE}}": escape_html(gov.get("area_compliance", "")),
     })
 
+    # ─────────────────────────────────────────────────────────────────────
+    # v2.1 placeholders — Politica formal de governanca (templates oficiais
+    # v18/Mai/2026 reestruturaram o template-politica.html, removendo as
+    # listas de processos e adicionando 10 paginas formais: Capa, Controle,
+    # Objetivo, Definicoes, Principios, Diretrizes 5.1-5.7, Papeis,
+    # Governanca, Disposicoes Finais).
+    #
+    # Mapeaveis do briefing atual: ~30 (metadata + datas curtas + texto
+    # objetivo dividido em P1/P2 + doc relacionado expandido + defaults M7
+    # para tipo/nivel/classificacao/cadencia/leds).
+    #
+    # NAO mapeaveis sem schema extension (~140): Principios 1-7, Diretrizes
+    # 5.1-5.7 (titulos+intros+regras), Papeis 1-8, Indicadores 1-5,
+    # Hierarquia normativa 1-4, Escala aprovacao 1-6, Gatilhos revisao 1-4,
+    # Definicoes 1-12. Esses permanecem como {{...}} no output ate uma
+    # futura release que estenda BRIEFING schema com politica.principios[],
+    # politica.diretrizes[], politica.papeis[], etc.
+    # ─────────────────────────────────────────────────────────────────────
+
+    # Tipo de documento / hierarquia normativa (defaults M7 — politica
+    # corporativa nivel 1, dentro de POL > NORM > SOP > INSTR)
+    replacements["{{TIPO_DOCUMENTO}}"] = "Política"
+    replacements["{{TIPO_DOCUMENTO_SIGLA}}"] = "POL"
+    replacements["{{NIVEL_DOCUMENTO}}"] = "N1 · Política"
+    replacements["{{CLASSIFICACAO_DOCUMENTO}}"] = "Uso interno · Confidencial"
+    # Documento superior na hierarquia (defaults M7: ate aprovado, nao tem)
+    replacements["{{CODIGO_DOC_SUPERIOR}}"] = "—"
+    replacements["{{TITULO_DOC_SUPERIOR}}"] = "Esta política é o topo da hierarquia normativa"
+
+    # Capa / titulo (derivam de empresa + tipo)
+    empresa_nome = empresa.get("nome", "")
+    titulo_completo = f"Política de processos · {empresa_nome}" if empresa_nome else "Política de processos"
+    replacements["{{TITULO_DOCUMENTO}}"] = escape_html(titulo_completo)
+    replacements["{{TITULO_LINHA1}}"] = "Política"
+    replacements["{{TITULO_LINHA2}}"] = "de processos"
+    replacements["{{TITULO_ACENTO}}"] = "processos"
+    # Cover-specific (algumas variantes do template usam prefixos diferentes)
+    replacements["{{COVER_TITULO_PREFIXO}}"] = "Política"
+    replacements["{{COVER_TITULO_LINHA1}}"] = "Política"
+    replacements["{{COVER_TITULO_SUFIXO}}"] = "de processos"
+    replacements["{{COVER_TITULO_ACENTO}}"] = "de processos"
+    cover_subtitulo = (
+        extract_section(body_md, "Lede do documento")
+        or f"Política formal de governança dos processos macro de {empresa_nome}."
+    )
+    replacements["{{COVER_SUBTITULO}}"] = escape_html(cover_subtitulo)
+
+    # Datas curtas (DD/MM/AAAA -> DD/MM/AA)
+    def _short_date(d: str) -> str:
+        if not isinstance(d, str) or not d:
+            return "—"
+        # Tenta DD/MM/AAAA -> DD/MM/AA; senao devolve original
+        m = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", d.strip())
+        if m:
+            return f"{m.group(1)}/{m.group(2)}/{m.group(3)[2:]}"
+        return d
+    replacements["{{DATA_VIGENCIA_CURTA}}"] = escape_html(_short_date(metadata.get("data_vigencia", "")))
+    replacements["{{DATA_PROXIMA_REVISAO_CURTA}}"] = escape_html(_short_date(metadata.get("proxima_revisao", "")))
+
+    # Alteracoes da versao vigente (alias mais curto que ALTERACOES_VERSAO_ATUAL)
+    replacements["{{ALTERACOES_VERSAO}}"] = escape_html(vigente.get("alteracoes", "—"))
+
+    # Texto do objetivo: template novo divide em P1 e P2. Se o briefing
+    # tiver objetivo multi-paragrafo, separa pelo primeiro \n\n; senao P2
+    # fica vazio (fallback texto generico).
+    if "\n\n" in objetivo_txt:
+        p1, p2 = objetivo_txt.split("\n\n", 1)
+    else:
+        p1 = objetivo_txt
+        p2 = ""
+    replacements["{{TEXTO_OBJETIVO_P1}}"] = escape_html(p1)
+    replacements["{{TEXTO_OBJETIVO_P2}}"] = escape_html(p2 or "—")
+
+    # Escopo: oficial pede 3 inclusoes + 3 exclusoes (skill ja gerava
+    # ESCOPO_INCLUSAO_1/2/3; ESCOPO_EXCLUSAO_1/2 mas template agora pede
+    # tambem ESCOPO_EXCLUSAO_3).
+    replacements["{{ESCOPO_EXCLUSAO_3}}"] = escape_html(exclusoes[2] or "—")
+
+    # Documento relacionado expandido (oficial novo: DOC_REL_1_CODIGO,
+    # _TITULO, _RELACAO). Skill antiga so tinha string flat — derivamos
+    # heuristicamente.
+    primeiro_doc = (escopo.get("doc_relacionados") or [""])[0]
+    if " — " in primeiro_doc:
+        cod, rest = primeiro_doc.split(" — ", 1)
+        rel_tipo = "Referência"
+    elif "(" in primeiro_doc and ")" in primeiro_doc:
+        cod = primeiro_doc.split("(")[-1].rstrip(")")
+        rest = primeiro_doc.split(" (")[0]
+        rel_tipo = "Referência"
+    else:
+        cod = "—"
+        rest = primeiro_doc or "—"
+        rel_tipo = "Referência"
+    replacements["{{DOC_REL_1_CODIGO}}"] = escape_html(cod)
+    replacements["{{DOC_REL_1_TITULO}}"] = escape_html(rest)
+    replacements["{{DOC_REL_1_RELACAO}}"] = escape_html(rel_tipo)
+
+    # Vigencia + cadencia (defaults M7)
+    replacements["{{TEXTO_VIGENCIA}}"] = escape_html(
+        "Esta política entra em vigor na data de sua aprovação pela Diretoria "
+        "Executiva e permanece vigente até substituição ou revogação formal "
+        "por documento de mesmo nível ou superior. A revisão anual obrigatória "
+        "não interrompe sua vigência."
+    )
+    replacements["{{CADENCIA_REVISAO}}"] = "Anual"
+    replacements["{{REVISAO_PERIODICA_INTRO}}"] = escape_html(
+        "A revisão periódica desta política segue cadência anual obrigatória, "
+        "conduzida pelo comitê revisor designado em 8."
+    )
+
+    # Ledes das paginas (defaults M7 — texto introdutorio das secoes)
+    replacements["{{LEDE_ESCOPO}}"] = escape_html(
+        "Esta política aplica-se a todos os processos macro da cadeia de "
+        "valor da empresa, com responsabilidades distribuídas conforme "
+        "definido em 6."
+    )
+    replacements["{{LEDE_PRINCIPIOS}}"] = escape_html(
+        "Os princípios abaixo orientam a interpretação e aplicação de "
+        "todas as diretrizes desta política. Em caso de conflito entre "
+        "diretrizes operacionais, prevalecem os princípios."
+    )
+    replacements["{{LEDE_PAPEIS}}"] = escape_html(
+        "Esta política atribui responsabilidades a 8 papéis institucionais. "
+        "Acúmulo de papéis é permitido desde que documentado."
+    )
+
+    # Total de paginas — conta <article class="page"> no template
+    total_paginas = template.count('<article class="page')
+    replacements["{{TOTAL_PAGINAS}}"] = str(total_paginas) if total_paginas else "10"
+
     # ── Por processo: nome, missao, owner, frequencia (gerenciais), meta (verticais) ──
     by_codigo = {p.get("codigo"): p for p in processos if p.get("codigo")}
     for p in processos:
