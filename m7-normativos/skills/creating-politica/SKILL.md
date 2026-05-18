@@ -64,24 +64,28 @@ creating-politica/
 ├── SKILL.md                                    ← este arquivo
 ├── references/
 │   ├── normative-standards.md                  ← hierarquia normativa, codificação, ciclo de vida
-│   ├── normativo-schema.md                     ← guia do schema YAML + tabela anchor→campo
+│   ├── normativo-schema.md                     ← guia do schema YAML + tabela placeholder→campo
 │   ├── normativo.schema.yaml                   ← schema canônico do sidecar
 │   └── normativo.exemplo-pol-gov-002.yaml      ← exemplo preenchido (POL-GOV-002)
 ├── assets/
-│   ├── politica-m7-template.html               ← template oficial (estrutura invariante)
-│   ├── m7-tokens.css                           ← design tokens M7-2026
-│   ├── m7-header-dark.css                      ← shell header
-│   ├── m7-print.css                            ← regras @media print
-│   ├── fonts/                                  ← TWK Everett + fallbacks
-│   ├── m7-logo-dark.png                        ← logo para fundo claro
-│   └── m7-logo-offwhite.png                    ← logo para fundo escuro
+│   ├── politica-m7-template.html               ← template oficial (145 placeholders {{...}})
+│   ├── m7-tokens.css                           ← design tokens M7-2026 (inlinado pelo script)
+│   ├── fonts/                                  ← 6 TWK Everett OTF (inlinados base64)
+│   ├── m7-logo-dark.png                        ← logo fundo claro (inlinado base64)
+│   ├── m7-logo-offwhite.png                    ← logo fundo escuro (inlinado base64)
+│   └── m7-logo-favicon.png                     ← favicon (inlinado base64)
 └── scripts/
-    └── generate-html-yaml.py                   ← pipeline da Fase 3 (validação + render)
+    └── generate-html-yaml.py                   ← pipeline da Fase 3 (validação + inline + render)
 ```
 
 **REGRA CRÍTICA**: NUNCA recrie o template do zero. SEMPRE use `politica-m7-template.html`
-como base. As 16 páginas A4 (Capa, Controle, 8 seções, controle de versões, aprovações),
-classes CSS e tags semânticas são INVARIANTES.
+como base — ele tem 145 placeholders `{{...}}` explícitos cobrindo identidade + conteúdo.
+A estrutura (16 páginas A4 — Capa, Controle, 8 seções, versões, aprovações), classes CSS
+e tags semânticas são INVARIANTES.
+
+**Geração autocontida** (v2.1): o script inlina CSS, fonts (base64) e logos (base64) no
+HTML, produzindo arquivo único de ~1.4MB que funciona em `file://`, HTTP e anexo de email
+sem dependência de paths relativos.
 
 ---
 
@@ -120,29 +124,122 @@ ou frontmatter `--- ... ---` no topo. Aceita-se também arquivo `.yaml` puro.
 
 ### Fase 2 — Redação MD (conteúdo das 8 seções)
 
-**Objetivo**: produzir o conteúdo narrativo das 8 seções do documento.
+**Objetivo**: produzir o conteúdo narrativo das 8 seções no formato estruturado que
+mapeia 1:1 para os ~110 placeholders de conteúdo do template.
 **Input**: `BRIEFING-{CODE}.md`
-**Output persistido**: `politica-{slug}.md` (editável, fonte de verdade do conteúdo).
+**Output persistido**: `politica-{slug}.md` (editável, parser-friendly).
 
-O MD segue a estrutura semântica do template (ordem invariante):
+O MD segue **estrutura estrita** — h2 numerados, blocos específicos por seção:
 
-1. **Objetivo** — máx 2 parágrafos. "Esta política estabelece..."
-2. **Escopo** — "aplica-se a..." + "não se aplica a..."
-3. **Definições** — tabela alfabética, mín 5 termos
-4. **Princípios** — 3-8 itens; cada um com título h3 + parágrafo explicativo
-5. **Diretrizes** — subseções 5.1, 5.2... ; cada subseção pode virar uma página do TOC
-6. **Papéis & Responsabilidades** — tabela 3+ papéis cobrindo Estratégico/Tático/Operacional
-7. **Governança** — 7.1 Revisão (frequência+gatilhos); 7.2 Indicadores (tabela Indicador/Fórmula/Frequência/Meta); 7.3 Escalonamento de exceções (Tipo/Aprovador)
-8. **Disposições Finais** — 8.1 Vigência; 8.2 Documentos relacionados (tabela Código/Título/Relação)
+```markdown
+# {{Título da Política}}
 
-**Retroalimentação do BRIEFING**: quando emergem subseções em Diretrizes,
-atualize `structure.toc` no BRIEFING (`subsection: true`) e atualize
-`identity.pages` para refletir o total final.
+## 1. Objetivo
+
+Esta política estabelece... (1º parágrafo → TEXTO_OBJETIVO_P1)
+
+Continua... (2º parágrafo → TEXTO_OBJETIVO_P2)
+
+## 2. Escopo
+
+Esta política aplica-se a... (lede → LEDE_ESCOPO)
+
+**Aplica-se a:**
+- Item 1 → ESCOPO_INCLUSAO_1
+- Item 2 → ESCOPO_INCLUSAO_2
+- Item 3 → ESCOPO_INCLUSAO_3
+
+**Não se aplica a:**
+- Item 1 → ESCOPO_EXCLUSAO_1
+- ...
+
+## 3. Definições
+
+| Termo | Definição |
+|-------|-----------|
+| Compliance | ... → DEF_TERMO_1 / DEF_TEXTO_1
+| Governança | ... → DEF_TERMO_2 / DEF_TEXTO_2
+(até 12 linhas → DEF_TERMO_12 / DEF_TEXTO_12)
+
+## 4. Princípios
+
+(lede opcional → LEDE_PRINCIPIOS)
+
+### Transparência
+Descrição... → PRINCIPIO_1_TITULO + PRINCIPIO_1_DESCRICAO
+
+### Accountability
+... → PRINCIPIO_2_*
+(até 7 → PRINCIPIO_7_*)
+
+## 5. Diretrizes
+
+(lede opcional → LEDE_DIRETRIZES)
+
+**Sumário:**
+- 5.1 ...
+- 5.2 ...
+(→ SUMARIO_DIRETRIZES, renderizado como <ul>)
+
+### 5.1 ...
+(conteúdo livre — markdown rico → CONTEUDO_DIRETRIZES)
+
+## 6. Papéis & Responsabilidades
+
+(lede opcional → LEDE_PAPEIS)
+
+| Nível | Papel | Responsabilidades |
+|-------|-------|-------------------|
+| Estratégico | Diretoria | ... → PAPEL_1_*
+| Tático | Heads | ... → PAPEL_2_*
+(até 8 → PAPEL_8_*)
+
+## 7. Governança
+
+### Revisão periódica
+
+(intro → REVISAO_PERIODICA_INTRO)
+
+- Gatilho 1 → GATILHO_REVISAO_1
+- ...
+(até 4 → GATILHO_REVISAO_4)
+
+### Indicadores de aderência
+
+| Indicador | Fórmula | Frequência | Meta |
+|-----------|---------|------------|------|
+| ... | ... | ... | ... → INDICADOR_1_NOME/FORMULA/FREQ/META
+(até 5)
+
+### Escalonamento de exceções
+
+| Tipo | Aprovador |
+|------|-----------|
+| ... | ... → ESCALA_TIPO_1 / ESCALA_APROVADOR_1
+(até 6)
+
+## 8. Disposições Finais
+
+### Vigência
+
+(parágrafo → TEXTO_VIGENCIA)
+
+### Documentos relacionados
+
+| Código | Título | Relação |
+|--------|--------|---------|
+| POL-GOV-001 | ... | ... → DOC_REL_1_*
+(somente 1 linha — o template tem slot para apenas 1 doc relacionado)
+```
+
+**Limites de slot do template**:
+- 12 definições · 7 princípios · 8 papéis · 5 indicadores · 6 exceções · 1 doc relacionado
+- Se o autor exceder qualquer limite, conteúdo extra é silenciosamente ignorado pelo script. Avise-o ao revisar o BRIEFING/MD.
 
 **Gate de saída (Fase 2 → Fase 3)**:
 - MD revisado pelo usuário
-- TOC final consolidado no BRIEFING
-- `identity.pages` atualizado
+- Estrutura conforme — h2 numerados, blocos identificáveis
+- `identity.pages` no BRIEFING atualizado (16 default)
 
 ### Fase 3 — Produção HTML + YAML
 
@@ -167,25 +264,16 @@ Pergunte ao usuário onde salvar (sugestões abaixo) e passe via `--output-dir`.
 1. Parseia o BRIEFING como YAML
 2. **Valida** contra `normativo.schema.yaml` (aborta com mensagem clara se faltar campo required, status inválido, código fora do padrão, etc.)
 3. Serializa o YAML canônico em `{slug}.yaml`
-4. Carrega `assets/politica-m7-template.html`
-5. **Espelha** o YAML em todos os anchors (vide [normativo-schema.md](references/normativo-schema.md)):
-   - identity → `<title>`, shell-meta, side-meta, cover-eyebrow, cover-foot, ph-meta (×N), kv-table
-   - lifecycle → shell-meta date, .strip vigência/próx., cover-grid, kv-table
-   - governance → side-meta owner, cover-grid responsável, kv-table elaboradoPor/aprovadoPor/parent
-   - presentation → shell h1 (`<span class="accent">`), cover-title (`<em>` com auto-`<br>`), .lede, .cover-subtitle, cover-eyebrow
-   - structure.toc → sumário lateral (×N páginas) + sumário formal da p.2
-   - links.siblings → tabs do shell
-   - identity.pages → .strip, .total-pg (×N), #total-pages
-   - identity.classif_label → .cover-foot .conf, .pf-classif (×N)
-6. Salva `{slug}.html`
-
-**Limitação atual (importante)**: o script **não injeta conteúdo das 8 seções
-narrativas**. As páginas 3-15 preservam o conteúdo do template (que vem do
-exemplo POL-GOV-002). Edite manualmente o HTML após a geração, usando o MD
-da Fase 2 como referência. Próxima iteração: injeção automática.
+4. Parseia `politica-{slug}.md` extraindo blocos das 8 seções para placeholders de conteúdo
+5. Constrói dicionário de **145 placeholders** → valores (identidade + datas + governança + cover título + 8 seções)
+6. Carrega `assets/politica-m7-template.html` (versão isolada, com `{{...}}` explícitos)
+7. **Inlinea CSS + 6 fonts + 3 logos** como base64 dentro do HTML
+8. Aplica `html.replace("{{KEY}}", value)` para cada um dos 145 placeholders
+9. Valida zero placeholders residuais e zero paths relativos
+10. Salva `{slug}.html` autocontido (~1.4MB)
 
 **Locais sugeridos para output**:
-- `01-fundacao-2.1/artefatos/` (alinhado com cockpit — Bruno padrão)
+- `01-fundacao-2.1/normativos/catalogo/` (alinhado com Cockpit de Normativos)
 - `2-areas/m7/policies/normativos/` (repositório oficial vault)
 - `1-projects/<projeto>/` (vinculado a projeto ativo)
 

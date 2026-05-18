@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-05-18
+
+### Changed (creating-politica)
+
+- **Template substituído** por `politica-isolada.html` (1142 linhas, versão enxuta sem shell-header global / sidebar TOC / tabs) com **145 placeholders `{{...}}`** explícitos cobrindo identidade + conteúdo das 8 seções.
+- **Pipeline reescrito** (`generate-html-yaml.py` v2.1): substitui regex em HTML renderizado por simples `str.replace("{{KEY}}", value)` — muito mais robusto e legível.
+- **Conteúdo das 8 seções agora é injetado** a partir de `politica-{slug}.md`. A limitação anterior (conteúdo das pages 3-15 preservava o exemplo POL-GOV-002) foi resolvida. O parser MD extrai blocos estruturados de cada h2 numerado:
+  - 1. Objetivo: 2 parágrafos
+  - 2. Escopo: lede + listas `**Aplica-se a:**` e `**Não se aplica a:**`
+  - 3. Definições: tabela 2 col (até 12 linhas)
+  - 4. Princípios: lede + h3+parágrafo (até 7)
+  - 5. Diretrizes: lede + lista `**Sumário:**` + conteúdo livre (markdown→HTML)
+  - 6. Papéis: lede + tabela 3 col (até 8)
+  - 7. Governança: bloco "Revisão periódica" + tabelas Indicadores (até 5) + Exceções (até 6)
+  - 8. Disposições: vigência + tabela doc relacionado (1)
+
+### Added (creating-politica)
+
+- **HTML autocontido (~1.4MB)** — script inlina CSS + 6 fonts TWK Everett OTF (base64) + 3 logos (base64). Output funciona em `file://`, HTTP server, anexo de email — sem depender de paths relativos. Resolve o problema reportado: ao salvar em `catalogo/` (sibling de `normativos-cockpit/`), o HTML antigo perdia identidade visual porque o CSS não estava lá.
+- Flag `--no-inline` no script para debug (gera HTML que depende de paths relativos).
+- `assets/m7-logo-favicon.png` adicionado.
+
+### Removed (creating-politica)
+
+- `assets/m7-header-dark.css` (template novo não usa)
+- `assets/m7-print.css` (idem)
+- Toda a lógica de renderização de shell-header, side-toc, formal-toc, tabs, kv-table, cover-grid — substituída pelo template com placeholders.
+
+### Cockpit completude
+
+- Copiados `m7-header-dark.css` e `m7-print.css` para `01-fundacao-2.1/normativos/normativos-cockpit/`, completando a fonte de design do projeto (decisão à parte do template isolado — visa robustez de longo prazo).
+
 ## [2.0.0] - 2026-05-18
 
 ### Breaking changes

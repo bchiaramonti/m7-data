@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
 """
-generate-html-yaml.py — Pipeline da Fase 3 de creating-politica.
+generate-html-yaml.py — Pipeline da Fase 3 de creating-politica (v2.1).
 
-Lê BRIEFING.md (YAML estruturado), valida contra normativo.schema.yaml,
-e emite o par {slug}.yaml + {slug}.html (HTML montado a partir do template
-oficial com todos os anchors de identidade/metadata espelhados).
+Estratégia: o template oficial `politica-m7-template.html` (versão isolada)
+tem 145 placeholders `{{...}}` explícitos. O script:
+
+1. Parseia BRIEFING.md (YAML) e valida contra normativo.schema.yaml
+2. Opcionalmente parseia politica-{slug}.md para extrair conteúdo das 8 seções
+3. Constrói dicionário de 145 placeholders → valores
+4. INLINEIA CSS + fonts (base64) + logos (base64) no HTML — output autocontido
+5. Substitui todos os placeholders via str.replace
+6. Valida zero placeholders residuais e zero paths relativos
+7. Escreve par {slug}.html + {slug}.yaml
+
+Output: HTML standalone (~1.4MB) que abre em qualquer browser sem precisar
+de HTTP server ou paths relativos.
 
 CLI:
     python generate-html-yaml.py \\
@@ -13,25 +23,13 @@ CLI:
         [--content politica-foo.md] \\
         [--basename politica-foo] \\
         [--template <path>] \\
-        [--schema <path>] \\
-        [--validate-only]
-
-Comportamento de conteúdo de seções (pages 3-15):
-- Sem --content: mantém o conteúdo do template (que vem do exemplo POL-GOV-002).
-  O usuário edita manualmente o HTML após a geração.
-- Com --content: parsing simples por seção (## N. Nome) e injeção crua de
-  HTML renderizado dentro de cada <main class="page-body">. Limitação atual:
-  styling avançado (.principle-card, .doc-table) precisa de ajuste manual.
-
-A regra inegociável (handoff §2): a estrutura/classes do HTML é INVARIANTE.
-O script SÓ mexe nos valores espelhados — nunca em ordem de páginas, tags ou
-classes.
+        [--validate-only] \\
+        [--no-inline]
 """
 import argparse
+import base64
 import re
 import sys
-from datetime import date, datetime
-from html import escape
 from pathlib import Path
 
 try:
@@ -42,7 +40,7 @@ except ImportError:
 
 
 # =============================================================================
-# Validation (custom, leve — schema usa keywords não-JSON-Schema)
+# Schema validation (custom — schema usa keywords não-JSON-Schema)
 # =============================================================================
 
 ALLOWED_TIPO = {"POL", "MAN", "INS", "ESP"}
@@ -61,13 +59,10 @@ def _err(path: str, msg: str) -> str:
 
 
 def validate(data: dict) -> list:
-    """Retorna lista de erros (vazia = válido)."""
     errs: list = []
-
     if data.get("schema_version") != "1.0":
         errs.append(_err("schema_version", "deve ser '1.0'"))
 
-    # identity
     i = data.get("identity") or {}
     if not isinstance(i, dict):
         errs.append(_err("identity", "objeto obrigatório"))
@@ -90,7 +85,6 @@ def validate(data: dict) -> list:
         if "pages" in i and not isinstance(i["pages"], int):
             errs.append(_err("identity.pages", "deve ser inteiro"))
 
-    # lifecycle
     l = data.get("lifecycle") or {}
     if not isinstance(l, dict):
         errs.append(_err("lifecycle", "objeto obrigatório"))
@@ -104,7 +98,6 @@ def validate(data: dict) -> list:
         elif l["revisaoFreq"] not in ALLOWED_REVISAO:
             errs.append(_err("lifecycle.revisaoFreq", f"deve ser um de {sorted(ALLOWED_REVISAO)}"))
 
-    # governance
     g = data.get("governance") or {}
     if not isinstance(g, dict):
         errs.append(_err("governance", "objeto obrigatório"))
@@ -113,9 +106,7 @@ def validate(data: dict) -> list:
             if f not in g:
                 errs.append(_err(f"governance.{f}", "obrigatório"))
         parent = g.get("parent")
-        if parent is not None and not isinstance(parent, dict):
-            errs.append(_err("governance.parent", "deve ser null ou objeto com {code, title}"))
-        elif isinstance(parent, dict) and not CODE_PATTERN.match(parent.get("code", "")):
+        if isinstance(parent, dict) and not CODE_PATTERN.match(parent.get("code", "")):
             errs.append(_err("governance.parent.code", f"deve casar {CODE_PATTERN.pattern}"))
         procs = g.get("processos") or []
         if not isinstance(procs, list):
@@ -125,7 +116,6 @@ def validate(data: dict) -> list:
                 if not PROC_PATTERN.match(str(p)):
                     errs.append(_err("governance.processos", f"item inválido: {p}"))
 
-    # presentation
     p = data.get("presentation") or {}
     if not isinstance(p, dict):
         errs.append(_err("presentation", "objeto obrigatório"))
@@ -147,16 +137,10 @@ def validate(data: dict) -> list:
 
 
 # =============================================================================
-# Briefing parser
+# Briefing & content MD parsers
 # =============================================================================
 
 def parse_briefing(path: Path) -> dict:
-    """
-    Lê BRIEFING.md. Aceita três formatos:
-    1. Pure YAML (.yaml ou .md sem markdown wrapping)
-    2. Markdown com YAML em ```yaml ... ``` (primeiro bloco)
-    3. Markdown com YAML frontmatter (---...---)
-    """
     text = path.read_text(encoding="utf-8")
     if text.startswith("---"):
         end = text.find("\n---", 3)
@@ -169,486 +153,408 @@ def parse_briefing(path: Path) -> dict:
     return yaml.safe_load(text)
 
 
-# =============================================================================
-# Render helpers
-# =============================================================================
+def split_by_h2(text: str) -> dict:
+    """Quebra MD em {section_key: body} onde key é '1.', '2.', etc."""
+    sections: dict = {}
+    current_key = None
+    current_body: list = []
+    for line in text.split("\n"):
+        m = re.match(r"^##\s+(\d+)\.\s", line)
+        if m:
+            if current_key is not None:
+                sections[current_key] = "\n".join(current_body).strip()
+            current_key = m.group(1) + "."
+            current_body = []
+        elif current_key is not None:
+            current_body.append(line)
+    if current_key is not None:
+        sections[current_key] = "\n".join(current_body).strip()
+    return sections
 
-def short_date(date_label: str) -> str:
-    """'18/05/2026' → '18/05/26'."""
-    if not date_label or len(date_label) < 8:
-        return date_label or ""
-    return date_label[:6] + date_label[-2:]
+
+def extract_md_table(text: str) -> list:
+    """Extrai linhas da primeira tabela markdown (skip header + separador)."""
+    rows: list = []
+    seen_header = False
+    seen_separator = False
+    for line in text.split("\n"):
+        s = line.strip()
+        if s.startswith("|") and s.endswith("|"):
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            if not seen_header:
+                seen_header = True
+                continue
+            if not seen_separator and all(re.match(r"^[\s\-:]*$", c) for c in cells):
+                seen_separator = True
+                continue
+            if seen_separator:
+                rows.append(cells)
+        elif seen_header and seen_separator:
+            break
+    return rows
 
 
-def render_shell_h1(parts: list) -> str:
-    """<h1>Texto<span class="accent">destaque</span>...</h1>"""
-    out = []
-    for p in parts:
-        t = p["text"]
-        if p.get("accent"):
-            out.append(f'<span class="accent">{escape(t.strip())}</span>')
-            # Preserva espaçamento original ao redor do accent
-            if t.startswith(" "):
-                out[-1] = " " + out[-1]
-            if t.endswith(" "):
-                out[-1] = out[-1] + " "
+def extract_bullets(text: str) -> list:
+    """Extrai itens '- foo' ou '* foo' de uma lista markdown."""
+    return [m.group(1).strip() for m in re.finditer(r"^\s*[-*]\s+(.+?)$", text, re.MULTILINE)]
+
+
+def parse_content_md(path: Path) -> dict:
+    """Lê politica-{slug}.md e extrai valores para os placeholders de conteúdo."""
+    text = path.read_text(encoding="utf-8")
+    sections = split_by_h2(text)
+    out: dict = {}
+
+    # 1. Objetivo — 2 parágrafos
+    body = sections.get("1.", "")
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
+    out["TEXTO_OBJETIVO_P1"] = paragraphs[0] if len(paragraphs) >= 1 else ""
+    out["TEXTO_OBJETIVO_P2"] = paragraphs[1] if len(paragraphs) >= 2 else ""
+
+    # 2. Escopo — lede + inclusões + exclusões
+    body = sections.get("2.", "")
+    lede_m = re.match(r"^(.+?)(?=\n\s*\*\*|\n\s*-\s)", body, re.DOTALL)
+    out["LEDE_ESCOPO"] = lede_m.group(1).strip() if lede_m else (body.strip().split("\n\n")[0] if body else "")
+    incl_block_m = re.search(r"\*\*Aplica-se a[^*]*\*\*\s*\n((?:\s*[-*]\s+.+\n?)+)", body)
+    excl_block_m = re.search(r"\*\*N[aã]o se aplica[^*]*\*\*\s*\n((?:\s*[-*]\s+.+\n?)+)", body)
+    incl_items = extract_bullets(incl_block_m.group(1)) if incl_block_m else []
+    excl_items = extract_bullets(excl_block_m.group(1)) if excl_block_m else []
+    if not incl_items and not excl_items:
+        all_bullets = extract_bullets(body)
+        incl_items = all_bullets[:3]
+        excl_items = all_bullets[3:6]
+    for n in range(3):
+        out[f"ESCOPO_INCLUSAO_{n+1}"] = incl_items[n] if n < len(incl_items) else ""
+        out[f"ESCOPO_EXCLUSAO_{n+1}"] = excl_items[n] if n < len(excl_items) else ""
+
+    # 3. Definições — tabela 2 col
+    rows = extract_md_table(sections.get("3.", ""))
+    for n in range(12):
+        if n < len(rows) and len(rows[n]) >= 2:
+            out[f"DEF_TERMO_{n+1}"] = rows[n][0]
+            out[f"DEF_TEXTO_{n+1}"] = rows[n][1]
         else:
-            out.append(escape(t))
-    return f'<h1>{"".join(out)}</h1>'
+            out[f"DEF_TERMO_{n+1}"] = ""
+            out[f"DEF_TEXTO_{n+1}"] = ""
 
-
-def render_cover_title(parts: list) -> str:
-    """<h1 class="cover-title">Texto<br><em>destaque</em>...</h1>
-
-    Heurística de quebra: se a primeira parte é palavra curta (≤12 chars sem
-    espaços trailing) e não tem break_before declarado nas seguintes, força
-    <br> antes da segunda parte (handoff §4.2). Strip espaço ao redor do <br>.
-    """
-    out: list = []
-    first_text_trim = (parts[0]["text"] or "").strip()
-    auto_break = (
-        len(first_text_trim) <= 12
-        and len(parts) > 1
-        and not any(pt.get("break_before") for pt in parts[1:])
-    )
-
-    for i, p in enumerate(parts):
-        break_here = (p.get("break_before") and i > 0) or (auto_break and i == 1)
-        if break_here:
-            if out:
-                out[-1] = out[-1].rstrip()
-            out.append("<br>")
-
-        t = p["text"]
-        if break_here and t.startswith(" "):
-            t = t.lstrip()
-
-        if p.get("accent"):
-            stripped = t.strip()
-            chunk = f"<em>{escape(stripped)}</em>"
-            if t.startswith(" "):
-                chunk = " " + chunk
-            if t.endswith(" "):
-                chunk = chunk + " "
-            out.append(chunk)
+    # 4. Princípios — lede + h3 com parágrafo
+    body = sections.get("4.", "")
+    h3_re = re.compile(r"^###\s+(.+?)$", re.MULTILINE)
+    matches = list(h3_re.finditer(body))
+    out["LEDE_PRINCIPIOS"] = (body[:matches[0].start()].strip() if matches else body.strip())
+    for n in range(7):
+        if n < len(matches):
+            title = matches[n].group(1).strip()
+            start = matches[n].end()
+            end = matches[n + 1].start() if n + 1 < len(matches) else len(body)
+            desc = body[start:end].strip()
+            out[f"PRINCIPIO_{n+1}_TITULO"] = title
+            out[f"PRINCIPIO_{n+1}_DESCRICAO"] = desc
         else:
-            out.append(escape(t))
+            out[f"PRINCIPIO_{n+1}_TITULO"] = ""
+            out[f"PRINCIPIO_{n+1}_DESCRICAO"] = ""
 
-    return f'<h1 class="cover-title">{"".join(out)}</h1>'
-
-
-def render_tabs(siblings: list) -> str:
-    if not siblings:
-        return '<div class="tabs"></div>'
-    parts = ['<div class="tabs">']
-    for s in siblings:
-        label = escape(s["label"])
-        badge = f' <span class="num">{escape(s["badge"])}</span>' if s.get("badge") else ""
-        if s.get("active"):
-            parts.append(f'<div class="tab" data-active="true">{label}{badge}</div>')
-        else:
-            href = escape(s["href"], quote=True)
-            parts.append(f'<a class="tab" href="{href}">{label}{badge}</a>')
-    parts.append("</div>")
-    return "\n        ".join(parts)
-
-
-def render_side_toc(toc: list) -> str:
-    rows = ['<nav class="side-toc" id="side-toc">']
-    for item in toc:
-        pg = str(item["page"]).zfill(2)
-        label = escape(item["label"])
-        rows.append(
-            f'      <button class="item" data-target="{item["page"]}" '
-            f'type="button"><span class="pgnum">{pg}</span>'
-            f'<span class="lbl">{label}</span></button>'
-        )
-    rows.append("    </nav>")
-    return "\n".join(rows)
-
-
-def render_formal_toc(toc: list) -> str:
-    """Sumário da página 2: itens com `section` ou `subsection: true`."""
-    rows = ['<div class="toc">']
-    for item in toc:
-        if item.get("section"):
-            m = re.match(r"^(\d+)\.\s*(.*)$", item["section"])
-            if m:
-                num, name = m.groups()
-            else:
-                num, name = "?", item["section"]
-            rows.append(
-                f'<div class="toc-item"><span class="num">{escape(num)}</span>'
-                f'<span class="label">{escape(name)}</span>'
-                f'<span class="pg">p. {item["page"]}</span></div>'
-            )
-        elif item.get("subsection"):
-            label = item["label"]
-            m = re.match(r"^([\d.]+)\s*[·\-]?\s*(.*)$", label)
-            if m:
-                num, name = m.groups()
-            else:
-                num, name = "", label
-            rows.append(
-                f'<div class="toc-item h2"><span class="num">{escape(num)}</span>'
-                f'<span class="label">{escape(name)}</span>'
-                f'<span class="pg">p. {item["page"]}</span></div>'
-            )
-    rows.append("</div>")
-    return "\n        ".join(rows)
-
-
-def render_side_meta(data: dict) -> str:
-    i = data["identity"]
-    l = data["lifecycle"]
-    g = data["governance"]
-    return (
-        '<div class="side-meta">\n'
-        f'      <div class="row"><span class="k">Código</span><span class="v">{escape(i["code"])}</span></div>\n'
-        f'      <div class="row"><span class="k">Versão</span><span class="v">{escape(i.get("version_label", i["version"]))}</span></div>\n'
-        f'      <div class="row"><span class="k">Próx. revisão</span><span class="v">{escape(l.get("nextReview_label", str(l.get("nextReview", ""))))}</span></div>\n'
-        f'      <div class="row"><span class="k">Owner</span><span class="v">{escape(g["owner"])}</span></div>\n'
-        "    </div>"
-    )
-
-
-def render_cover_grid(data: dict) -> str:
-    i = data["identity"]
-    l = data["lifecycle"]
-    g = data["governance"]
-    return (
-        '<div class="cover-grid">\n'
-        '          <div class="cell">\n'
-        '            <div class="l">Versão</div>\n'
-        f'            <div class="v mono">{escape(i.get("version_label", i["version"]))}</div>\n'
-        '          </div>\n'
-        '          <div class="cell">\n'
-        '            <div class="l">Vigência</div>\n'
-        f'            <div class="v">{escape(l.get("date_label", str(l.get("date", ""))))}</div>\n'
-        '          </div>\n'
-        '          <div class="cell">\n'
-        '            <div class="l">Próxima revisão</div>\n'
-        f'            <div class="v">{escape(l.get("nextReview_label", str(l.get("nextReview", ""))))}</div>\n'
-        '          </div>\n'
-        '          <div class="cell">\n'
-        '            <div class="l">Responsável</div>\n'
-        f'            <div class="v">{escape(g["owner"])}</div>\n'
-        '          </div>\n'
-        '        </div>'
-    )
-
-
-def render_kv_table(data: dict) -> str:
-    i = data["identity"]
-    l = data["lifecycle"]
-    g = data["governance"]
-
-    elaborado = g.get("elaboradoPor", "")
-    if " · " in elaborado:
-        first, rest = elaborado.split(" · ", 1)
-        elab_html = f"<strong>{escape(first)}</strong> · {escape(rest)}"
+    # 5. Diretrizes — lede + sumário (lista) + conteúdo livre
+    body = sections.get("5.", "")
+    sumario_m = re.search(r"\*\*Sum[áa]rio[^*]*\*\*\s*\n((?:\s*[-*]\s+.+\n?)+)", body)
+    if sumario_m:
+        sumario_items = extract_bullets(sumario_m.group(1))
+        sumario_html = "<ul>\n" + "\n".join(f"  <li>{s}</li>" for s in sumario_items) + "\n</ul>"
+        out["LEDE_DIRETRIZES"] = body[: sumario_m.start()].strip()
+        out["SUMARIO_DIRETRIZES"] = sumario_html
+        out["CONTEUDO_DIRETRIZES"] = markdown_to_html(body[sumario_m.end():].strip())
     else:
-        elab_html = f"<strong>{escape(elaborado)}</strong>"
+        ps = re.split(r"\n\s*\n", body, maxsplit=1)
+        out["LEDE_DIRETRIZES"] = ps[0].strip() if ps else ""
+        out["SUMARIO_DIRETRIZES"] = ""
+        out["CONTEUDO_DIRETRIZES"] = markdown_to_html(ps[1].strip()) if len(ps) > 1 else ""
 
-    parent = g.get("parent")
-    if isinstance(parent, dict):
-        p_html = f'<span class="mono">{escape(parent["code"])}</span> · {escape(parent.get("title", ""))}'
+    # 6. Papéis — lede + tabela 3 col
+    body = sections.get("6.", "")
+    rows = extract_md_table(body)
+    table_start = body.find("|")
+    out["LEDE_PAPEIS"] = body[:table_start].strip() if table_start > 0 else (body.strip().split("\n\n")[0] if body else "")
+    for n in range(8):
+        if n < len(rows) and len(rows[n]) >= 3:
+            out[f"PAPEL_{n+1}_NIVEL"] = rows[n][0]
+            out[f"PAPEL_{n+1}_NOME"] = rows[n][1]
+            out[f"PAPEL_{n+1}_RESPONSABILIDADES"] = rows[n][2]
+        else:
+            out[f"PAPEL_{n+1}_NIVEL"] = ""
+            out[f"PAPEL_{n+1}_NOME"] = ""
+            out[f"PAPEL_{n+1}_RESPONSABILIDADES"] = ""
+
+    # 7. Governança — Revisão (intro + gatilhos) + Indicadores + Exceções
+    body = sections.get("7.", "")
+    rev_m = re.search(r"###\s*Revis[aã]o[^\n]*\n(.+?)(?=^###|\Z)", body, re.DOTALL | re.MULTILINE)
+    if rev_m:
+        rev_block = rev_m.group(1)
+        rev_ps = re.split(r"\n\s*\n", rev_block, maxsplit=1)
+        out["REVISAO_PERIODICA_INTRO"] = rev_ps[0].strip()
+        gatilhos = extract_bullets(rev_block)
     else:
-        p_html = "—"
+        out["REVISAO_PERIODICA_INTRO"] = ""
+        gatilhos = []
+    for n in range(4):
+        out[f"GATILHO_REVISAO_{n+1}"] = gatilhos[n] if n < len(gatilhos) else ""
 
-    rows = [
-        ("Código", f'<span class="mono">{escape(i["code"])}</span>'),
-        ("Versão", f'<span class="mono">{escape(i.get("version_label", i["version"]))}</span>'),
-        ("Tipo", f'{escape(i.get("tipo_label", i["tipo"]))} <span class="mono">({escape(i["tipo"])})</span>'),
-        ("Área", escape(i.get("area_label", i["area"]))),
-        ("Data", escape(l.get("date_label", str(l.get("date", ""))))),
-        ("Elaborado por", elab_html),
-        ("Aprovado por", escape(g.get("aprovadoPor", ""))),
-        ("Classificação", escape(i["classif"])),
-        ("Revisão", escape(l["revisaoFreq"])),
-        ("Documento superior", p_html),
-    ]
-    out = ['<table class="kv-table">', "        <tbody>"]
-    for k, v in rows:
-        out.append(f"          <tr><td>{k}</td><td>{v}</td></tr>")
-    out.append("        </tbody>")
-    out.append("      </table>")
-    return "\n".join(out)
+    # Coleta blocos de tabela (uma tabela por seção: indicadores, depois exceções)
+    all_tables: list = []
+    in_table = False
+    current_block: list = []
+    for line in body.split("\n"):
+        if line.strip().startswith("|"):
+            current_block.append(line)
+            in_table = True
+        else:
+            if in_table and current_block:
+                all_tables.append("\n".join(current_block))
+                current_block = []
+                in_table = False
+    if in_table and current_block:
+        all_tables.append("\n".join(current_block))
+
+    ind_rows = extract_md_table(all_tables[0]) if len(all_tables) >= 1 else []
+    exc_rows = extract_md_table(all_tables[1]) if len(all_tables) >= 2 else []
+
+    for n in range(5):
+        if n < len(ind_rows) and len(ind_rows[n]) >= 4:
+            out[f"INDICADOR_{n+1}_NOME"] = ind_rows[n][0]
+            out[f"INDICADOR_{n+1}_FORMULA"] = ind_rows[n][1]
+            out[f"INDICADOR_{n+1}_FREQ"] = ind_rows[n][2]
+            out[f"INDICADOR_{n+1}_META"] = ind_rows[n][3]
+        else:
+            out[f"INDICADOR_{n+1}_NOME"] = ""
+            out[f"INDICADOR_{n+1}_FORMULA"] = ""
+            out[f"INDICADOR_{n+1}_FREQ"] = ""
+            out[f"INDICADOR_{n+1}_META"] = ""
+
+    for n in range(6):
+        if n < len(exc_rows) and len(exc_rows[n]) >= 2:
+            out[f"ESCALA_TIPO_{n+1}"] = exc_rows[n][0]
+            out[f"ESCALA_APROVADOR_{n+1}"] = exc_rows[n][1]
+        else:
+            out[f"ESCALA_TIPO_{n+1}"] = ""
+            out[f"ESCALA_APROVADOR_{n+1}"] = ""
+
+    # 8. Disposições finais — Vigência + tabela doc relacionado
+    body = sections.get("8.", "")
+    vig_m = re.search(r"###\s*Vig[eê]ncia[^\n]*\n(.+?)(?=^###|\Z)", body, re.DOTALL | re.MULTILINE)
+    out["TEXTO_VIGENCIA"] = vig_m.group(1).strip() if vig_m else ""
+    rows = extract_md_table(body)
+    if rows and len(rows[0]) >= 3:
+        out["DOC_REL_1_CODIGO"] = rows[0][0]
+        out["DOC_REL_1_TITULO"] = rows[0][1]
+        out["DOC_REL_1_RELACAO"] = rows[0][2]
+    else:
+        out["DOC_REL_1_CODIGO"] = ""
+        out["DOC_REL_1_TITULO"] = ""
+        out["DOC_REL_1_RELACAO"] = ""
+
+    return out
+
+
+def markdown_to_html(text: str) -> str:
+    """Conversor markdown→HTML usado apenas para CONTEUDO_DIRETRIZES."""
+    if not text.strip():
+        return ""
+    try:
+        import markdown as md_lib  # type: ignore
+        return md_lib.markdown(text, extensions=["tables", "fenced_code"])
+    except ImportError:
+        pass
+    parts: list = []
+    for block in re.split(r"\n\s*\n", text):
+        block = block.strip()
+        if not block:
+            continue
+        if block.startswith("### "):
+            parts.append(f"<h3>{block[4:].strip()}</h3>")
+        elif block.startswith("#### "):
+            parts.append(f"<h4>{block[5:].strip()}</h4>")
+        elif re.match(r"^\s*[-*]\s", block):
+            items = extract_bullets(block)
+            parts.append("<ul>\n" + "\n".join(f"  <li>{i}</li>" for i in items) + "\n</ul>")
+        else:
+            inline = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", block)
+            inline = re.sub(r"\*(.+?)\*", r"<em>\1</em>", inline)
+            parts.append(f"<p>{inline}</p>")
+    return "\n".join(parts)
 
 
 # =============================================================================
-# HTML substitution (anchors)
+# Placeholder builder
 # =============================================================================
 
-def sub_once(html: str, pattern: str, replacement: str, anchor_name: str, count: int = 1) -> str:
-    """Substituição regex com erro claro se não casar.
-
-    Replacement é tratado como string literal — backslashes não são interpretados
-    como backrefs. Para incluir grupos capturados, recapture-os por regex no
-    próprio replacement template (não suportado neste helper — reescreva o
-    pattern para englobar o contexto completo)."""
-    new_html, n = re.subn(
-        pattern,
-        lambda m: replacement,
-        html,
-        count=count,
-        flags=re.DOTALL,
-    )
-    if n == 0:
-        raise RuntimeError(f"Anchor não encontrado: {anchor_name}\n  pattern: {pattern[:80]}...")
-    return new_html
+def split_name_cargo(s: str) -> tuple:
+    if not s:
+        return "", ""
+    if " · " in s:
+        first, rest = s.split(" · ", 1)
+        return first.strip(), rest.strip()
+    return s.strip(), ""
 
 
-def apply_all_substitutions(html: str, data: dict) -> str:
+def split_cover_title(parts: list) -> dict:
+    """Decompõe title_full.parts em LINHA1/PREFIXO/ACENTO/SUFIXO."""
+    accent_idx = next((idx for idx, pt in enumerate(parts) if pt.get("accent")), -1)
+    if accent_idx >= 0:
+        prefix_full = "".join(pt["text"] for pt in parts[:accent_idx])
+        accent = parts[accent_idx]["text"].strip()
+        suffix = "".join(pt["text"] for pt in parts[accent_idx + 1:]).strip()
+        m = re.match(r"^(\S+)\s+(.*)$", prefix_full.strip())
+        if m and len(m.group(1)) <= 12:
+            return {
+                "COVER_TITULO_LINHA1": m.group(1),
+                "COVER_TITULO_PREFIXO": m.group(2).strip(),
+                "COVER_TITULO_ACENTO": accent,
+                "COVER_TITULO_SUFIXO": suffix,
+            }
+        return {
+            "COVER_TITULO_LINHA1": prefix_full.strip(),
+            "COVER_TITULO_PREFIXO": "",
+            "COVER_TITULO_ACENTO": accent,
+            "COVER_TITULO_SUFIXO": suffix,
+        }
+    text = "".join(pt["text"] for pt in parts).strip()
+    m = re.match(r"^(\S+)\s+(.*)$", text)
+    if m and len(m.group(1)) <= 12:
+        return {
+            "COVER_TITULO_LINHA1": m.group(1),
+            "COVER_TITULO_PREFIXO": m.group(2),
+            "COVER_TITULO_ACENTO": "",
+            "COVER_TITULO_SUFIXO": "",
+        }
+    return {
+        "COVER_TITULO_LINHA1": text,
+        "COVER_TITULO_PREFIXO": "",
+        "COVER_TITULO_ACENTO": "",
+        "COVER_TITULO_SUFIXO": "",
+    }
+
+
+def build_placeholders(data: dict, content_md) -> dict:
+    """Mapeia YAML + (opcional) MD → dict com os 145 placeholders."""
     i = data["identity"]
     l = data["lifecycle"]
     g = data["governance"]
     p = data["presentation"]
-    s = data.get("structure", {}) or {}
-    links = data.get("links", {}) or {}
 
-    code = i["code"]
-    version = i["version"]
-    version_label = i.get("version_label", version)
     date_label = l.get("date_label", str(l.get("date", "")))
     next_label = l.get("nextReview_label", str(l.get("nextReview", "")))
-    short_d = short_date(date_label)
-    short_n = short_date(next_label)
-    title_short = p["title_short"]
-    tipo_label = i.get("tipo_label", i["tipo"])
-    area_label = i.get("area_label", i["area"])
-    classif_label = i.get("classif_label", f"Uso interno · {i['classif']}")
-    eyebrow_cat = p.get("eyebrow_categoria", "Documento de governança")
-    section_label = p.get("page_label_section", area_label)
 
-    # 1. <title>
-    html = sub_once(
-        html,
-        r"<title>[^<]*</title>",
-        f"<title>{escape(title_short)} — M7 Investimentos</title>",
-        "title.head",
+    nome_e, cargo_e = split_name_cargo(g.get("elaboradoPor", ""))
+    nome_a, cargo_a = split_name_cargo(g.get("aprovadoPor", ""))
+    nome_r, cargo_r = split_name_cargo(g.get("revisor", ""))
+    parent = g.get("parent") or {}
+
+    cover_pieces = split_cover_title(p["title_full"]["parts"])
+
+    out: dict = {
+        "CODIGO_DOCUMENTO": i["code"],
+        "TIPO_DOCUMENTO": i.get("tipo_label", i["tipo"]),
+        "TIPO_DOCUMENTO_SIGLA": i["tipo"],
+        "NIVEL_DOCUMENTO": i["tipo"],
+        "AREA_DOCUMENTO": i.get("area_label", i["area"]),
+        "TITULO_DOCUMENTO": p["title_short"],
+        "NOME_DA_EMPRESA": "M7 Investimentos",
+        "VERSAO_CURTA": i["version"],
+        "VERSAO_COMPLETA": i.get("version_label", i["version"]),
+        "CLASSIFICACAO_DOCUMENTO": i.get("classif_label", i["classif"]),
+        "TOTAL_PAGINAS": str(i.get("pages", 16)),
+        "DATA_REFERENCIA": date_label,
+        "DATA_VIGENCIA": date_label,
+        "DATA_PROXIMA_REVISAO": next_label,
+        "DATA_ELABORACAO": date_label,
+        "DATA_REVISAO": "",
+        "DATA_APROVACAO": date_label,
+        "CADENCIA_REVISAO": l["revisaoFreq"],
+        "COVER_SUBTITULO": p["subtitle"],
+        "AREA_RESPONSAVEL": g["owner"],
+        "NOME_ELABORADOR": nome_e,
+        "CARGO_ELABORADOR": cargo_e,
+        "NOME_APROVADOR": nome_a,
+        "CARGO_APROVADOR": cargo_a,
+        "NOME_REVISOR": nome_r,
+        "CARGO_REVISOR": cargo_r,
+        "CODIGO_DOC_SUPERIOR": parent.get("code", ""),
+        "TITULO_DOC_SUPERIOR": parent.get("title", ""),
+        "ALTERACOES_VERSAO": "Versão inicial.",
+    }
+    out.update(cover_pieces)
+
+    content_keys = (
+        ["TEXTO_OBJETIVO_P1", "TEXTO_OBJETIVO_P2", "LEDE_ESCOPO"]
+        + [f"ESCOPO_INCLUSAO_{n}" for n in range(1, 4)]
+        + [f"ESCOPO_EXCLUSAO_{n}" for n in range(1, 4)]
+        + [f"DEF_TERMO_{n}" for n in range(1, 13)]
+        + [f"DEF_TEXTO_{n}" for n in range(1, 13)]
+        + ["LEDE_PRINCIPIOS"]
+        + [f"PRINCIPIO_{n}_TITULO" for n in range(1, 8)]
+        + [f"PRINCIPIO_{n}_DESCRICAO" for n in range(1, 8)]
+        + ["LEDE_DIRETRIZES", "SUMARIO_DIRETRIZES", "CONTEUDO_DIRETRIZES"]
+        + ["LEDE_PAPEIS"]
+        + [f"PAPEL_{n}_NIVEL" for n in range(1, 9)]
+        + [f"PAPEL_{n}_NOME" for n in range(1, 9)]
+        + [f"PAPEL_{n}_RESPONSABILIDADES" for n in range(1, 9)]
+        + ["REVISAO_PERIODICA_INTRO"]
+        + [f"GATILHO_REVISAO_{n}" for n in range(1, 5)]
+        + [f"INDICADOR_{n}_{fld}" for n in range(1, 6) for fld in ("NOME", "FORMULA", "FREQ", "META")]
+        + [f"ESCALA_TIPO_{n}" for n in range(1, 7)]
+        + [f"ESCALA_APROVADOR_{n}" for n in range(1, 7)]
+        + ["TEXTO_VIGENCIA", "DOC_REL_1_CODIGO", "DOC_REL_1_TITULO", "DOC_REL_1_RELACAO"]
+    )
+    for k in content_keys:
+        out.setdefault(k, "")
+
+    if content_md and content_md.exists():
+        out.update(parse_content_md(content_md))
+
+    return out
+
+
+# =============================================================================
+# Asset inlining
+# =============================================================================
+
+def inline_css_with_fonts(css: str, fonts_dir: Path) -> str:
+    """Substitui url("fonts/X.otf") por data: URIs base64 dentro do CSS."""
+    def repl(m: "re.Match") -> str:
+        rel = m.group(1)
+        font_path = fonts_dir / Path(rel).name
+        if not font_path.exists():
+            return m.group(0)
+        b64 = base64.b64encode(font_path.read_bytes()).decode("ascii")
+        return f'url(data:font/otf;base64,{b64}) format("opentype")'
+
+    # Casa tanto `url("fonts/X.otf")` quanto `url("fonts/X.otf") format("opentype")`
+    return re.sub(
+        r'url\("([^"]+\.otf)"\)(?:\s+format\("opentype"\))?',
+        repl,
+        css,
     )
 
-    # 2. Shell header — doc-meta block (reconstrói o bloco inteiro)
-    html = sub_once(
-        html,
-        r'<div class="doc-meta">\s*<img[^>]*alt="M7 Investimentos">\s*<div class="meta">\s*<span>[^<]*</span>\s*<span class="dot"></span>\s*<span>[^<]*</span>\s*<span class="dot"></span>\s*<span>[^<]*</span>\s*</div>\s*</div>',
-        (
-            '<div class="doc-meta">\n'
-            '      <img src="assets/m7-logo-offwhite.png" alt="M7 Investimentos">\n'
-            '      <div class="meta">\n'
-            f'        <span>{escape(section_label)}</span><span class="dot"></span>\n'
-            f'        <span>{escape(tipo_label)} · {escape(code)}</span><span class="dot"></span>\n'
-            f'        <span>{escape(date_label)}</span>\n'
-            '      </div>\n'
-            '    </div>'
-        ),
-        "shell.meta",
-    )
 
-    # 3. Shell h1
-    html = sub_once(
-        html,
-        r"<h1>[^<]*<span class=\"accent\">[^<]*</span>[^<]*</h1>|<h1>[^<]*</h1>(?=\s*<p class=\"lede\">)",
-        render_shell_h1(p["title_full"]["parts"]),
-        "shell.h1",
-    )
-
-    # 4. Shell lede
-    html = sub_once(
-        html,
-        r'<p class="lede">[^<]*</p>',
-        f'<p class="lede">{escape(p["lede"])}</p>',
-        "shell.lede",
-    )
-
-    # 5. Shell strip cells
-    html = sub_once(
-        html,
-        r'<div class="strip">.*?</div>\s*</div>\s*<div class="tabs">',
-        (
-            f'<div class="strip">\n'
-            f'          <div class="cell"><div class="v">{escape(version)}</div><div class="l">Versão</div></div>\n'
-            f'          <div class="cell"><div class="v">{i["pages"]}</div><div class="l">Páginas</div></div>\n'
-            f'          <div class="cell"><div class="v">{escape(short_d)}</div><div class="l">Vigência</div></div>\n'
-            f'          <div class="cell"><div class="v">{escape(short_n)}</div><div class="l">Próx. revisão</div></div>\n'
-            f'        </div>\n      </div>\n      <div class="tabs">'
-        ),
-        "shell.strip",
-    )
-
-    # 6. Tabs
-    siblings = links.get("siblings") or []
-    if siblings:
-        html = sub_once(
+def inline_assets(html: str, assets_dir: Path) -> str:
+    """Inlina CSS (com fonts base64) e logos no HTML → output autocontido."""
+    css_path = assets_dir / "m7-tokens.css"
+    if css_path.exists():
+        css_content = css_path.read_text(encoding="utf-8")
+        css_inlined = inline_css_with_fonts(css_content, assets_dir / "fonts")
+        html = re.sub(
+            r'<link rel="stylesheet" href="m7-tokens\.css">',
+            f'<style>\n/* m7-tokens.css inlined with base64 fonts */\n{css_inlined}\n</style>',
             html,
-            r'<div class="tabs">.*?</div>\s*</div>\s*</div>\s*</header>',
-            render_tabs(siblings) + "\n    </div>\n  </div>\n</header>",
-            "shell.tabs",
         )
 
-    # 7. Side TOC
-    toc = s.get("toc") or []
-    if toc:
-        html = sub_once(
-            html,
-            r'<nav class="side-toc" id="side-toc">.*?</nav>',
-            render_side_toc(toc),
-            "side-toc",
-        )
-
-    # 8. Side meta
-    html = sub_once(
-        html,
-        r'<div class="side-meta">.*?</div>\s*</aside>',
-        render_side_meta(data) + "\n  </aside>",
-        "side-meta",
-    )
-
-    # 9. Cover meta (cover-head) — reconstrói o bloco inteiro
-    html = sub_once(
-        html,
-        r'<div class="cover-meta">\s*<img[^>]*alt="M7 Investimentos">\s*<div class="meta">\s*<span>[^<]*</span>\s*<span class="dot"></span>\s*<span class="hl">[^<]*</span>\s*<span class="dot"></span>\s*<span>[^<]*</span>\s*</div>\s*</div>',
-        (
-            '<div class="cover-meta">\n'
-            '        <img src="assets/m7-logo-offwhite.png" alt="M7 Investimentos">\n'
-            '        <div class="meta">\n'
-            f'          <span>{escape(section_label)}</span><span class="dot"></span>\n'
-            f'          <span class="hl">{escape(tipo_label)} · {escape(i["tipo"])}</span><span class="dot"></span>\n'
-            f'          <span>{escape(date_label)}</span>\n'
-            '        </div>\n'
-            '      </div>'
-        ),
-        "cover.meta",
-    )
-
-    # 10. Cover eyebrow
-    html = sub_once(
-        html,
-        r'<div class="cover-eyebrow">.*?</div>',
-        (
-            f'<div class="cover-eyebrow">\n'
-            f"          <span>{escape(eyebrow_cat)}</span>\n"
-            f'          <span>·</span>\n'
-            f'          <span class="v">{escape(code)}</span>\n'
-            f"        </div>"
-        ),
-        "cover.eyebrow",
-    )
-
-    # 11. Cover title
-    html = sub_once(
-        html,
-        r'<h1 class="cover-title">.*?</h1>',
-        render_cover_title(p["title_full"]["parts"]),
-        "cover.title",
-    )
-
-    # 12. Cover subtitle
-    html = sub_once(
-        html,
-        r'<p class="cover-subtitle">[^<]*</p>',
-        f'<p class="cover-subtitle">{escape(p["subtitle"])}</p>',
-        "cover.subtitle",
-    )
-
-    # 13. Cover grid
-    html = sub_once(
-        html,
-        r'<div class="cover-grid">.*?</div>\s*</div>\s*<div class="cover-foot">',
-        render_cover_grid(data) + "\n      </div>\n\n      <div class=\"cover-foot\">",
-        "cover.grid",
-    )
-
-    # 14. Cover foot
-    html = sub_once(
-        html,
-        r'<div class="cover-foot">\s*<span class="conf">[^<]*</span>\s*<span>[^<]*</span>\s*</div>',
-        (
-            f'<div class="cover-foot">\n'
-            f'        <span class="conf">{escape(classif_label)}</span>\n'
-            f'        <span>M7 Investimentos · {escape(code)} · {escape(version)}</span>\n'
-            f"      </div>"
-        ),
-        "cover.foot",
-    )
-
-    # 15. KV-table (página 2)
-    html = sub_once(
-        html,
-        r'<table class="kv-table">.*?</table>',
-        render_kv_table(data),
-        "controle.kv-table",
-    )
-
-    # 16. section-lede da página 2 (referencia o código)
-    html = sub_once(
-        html,
-        r'<p class="section-lede">Identificação canônica do documento\. Toda referência cruzada usa o código <span class="mono">[^<]*</span>\.</p>',
-        f'<p class="section-lede">Identificação canônica do documento. Toda referência cruzada usa o código <span class="mono">{escape(code)}</span>.</p>',
-        "controle.section-lede",
-    )
-
-    # 17. Sumário formal (página 2)
-    if toc:
-        html = sub_once(
-            html,
-            r'<div class="toc">.*?</div>\s*</div>\s*<footer class="page-foot">',
-            render_formal_toc(toc) + "\n    </div>\n\n    <footer class=\"page-foot\">",
-            "controle.toc",
-        )
-
-    # 18. ph-title (×N páginas) — todas as ocorrências
-    html = re.sub(
-        r'<span class="ph-title">[^<]*</span>',
-        f'<span class="ph-title">{escape(title_short)}</span>',
-        html,
-    )
-
-    # 19. ph-meta (×N páginas) — código · versão
-    html = re.sub(
-        r'<span class="ph-meta">[^<]*</span>',
-        f'<span class="ph-meta">{escape(code)} · {escape(version)}</span>',
-        html,
-    )
-
-    # 20. pf-classif (×N páginas)
-    html = re.sub(
-        r'<span class="pf-classif">[^<]*</span>',
-        f'<span class="pf-classif">{escape(classif_label)}</span>',
-        html,
-    )
-
-    # 21. total-pg (×N) e #total-pages — JS atualiza em runtime; ainda assim
-    # fixamos no static para PDFs gerados antes do JS rodar
-    pages_n = str(i["pages"])
-    html = re.sub(
-        r'<span class="total-pg">[^<]*</span>',
-        f'<span class="total-pg">{pages_n}</span>',
-        html,
-    )
-    html = re.sub(
-        r'<span id="total-pages">[^<]*</span>',
-        f'<span id="total-pages">{pages_n}</span>',
-        html,
-    )
+    for logo_name in ("m7-logo-dark.png", "m7-logo-offwhite.png", "m7-logo-favicon.png"):
+        logo_path = assets_dir / logo_name
+        if logo_path.exists():
+            b64 = base64.b64encode(logo_path.read_bytes()).decode("ascii")
+            data_uri = f"data:image/png;base64,{b64}"
+            html = html.replace(f"assets/{logo_name}", data_uri)
 
     return html
-
-
-# =============================================================================
-# Final validation pass
-# =============================================================================
-
-def assert_no_residual_pol_gov_002(html: str, data: dict) -> list:
-    """Detecta resíduos do exemplo POL-GOV-002 que indicariam que algum anchor
-    não foi substituído (exceto se o próprio doc gerado FOR POL-GOV-002)."""
-    if data["identity"]["code"] == "POL-GOV-002":
-        return []
-    issues = []
-    if "POL-GOV-002" in html:
-        issues.append("Resíduo 'POL-GOV-002' no HTML — algum anchor não foi substituído")
-    return issues
 
 
 # =============================================================================
@@ -661,27 +567,18 @@ def slugify(s: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--briefing", required=True, help="Path para BRIEFING-{CODE}.md")
-    parser.add_argument("--output-dir", required=True, help="Diretório de saída")
-    parser.add_argument("--content", help="(Opcional) MD com conteúdo das 8 seções")
-    parser.add_argument("--basename", help="Basename dos outputs (default: slug do código)")
-    parser.add_argument("--template", help="HTML template (default: assets/politica-m7-template.html)")
-    parser.add_argument("--schema-info", action="store_true", help="Imprime resumo do schema e sai")
-    parser.add_argument("--validate-only", action="store_true", help="Só valida YAML, não gera HTML")
+    parser.add_argument("--briefing", required=True)
+    parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--content", help="MD com conteúdo das 8 seções")
+    parser.add_argument("--basename")
+    parser.add_argument("--template")
+    parser.add_argument("--validate-only", action="store_true")
+    parser.add_argument("--no-inline", action="store_true",
+                        help="Não inlinear CSS/fonts/logos (debug)")
     args = parser.parse_args()
-
-    if args.schema_info:
-        print("Schema: normativo.schema.yaml v1.0")
-        print(f"  tipo:       {sorted(ALLOWED_TIPO)}")
-        print(f"  area:       {sorted(ALLOWED_AREA)}")
-        print(f"  status:     {sorted(ALLOWED_STATUS)}")
-        print(f"  classif:    {sorted(ALLOWED_CLASSIF)}")
-        print(f"  revisaoFreq:{sorted(ALLOWED_REVISAO)}")
-        return 0
 
     script_dir = Path(__file__).resolve().parent
     skill_dir = script_dir.parent
-
     template_path = Path(args.template) if args.template else skill_dir / "assets" / "politica-m7-template.html"
     if not template_path.exists():
         sys.stderr.write(f"ERRO: template não encontrado: {template_path}\n")
@@ -692,7 +589,6 @@ def main() -> int:
         sys.stderr.write(f"ERRO: briefing não encontrado: {briefing_path}\n")
         return 2
 
-    # Parse + validate
     try:
         data = parse_briefing(briefing_path)
     except Exception as e:
@@ -710,48 +606,43 @@ def main() -> int:
         print("✓ YAML valida contra o schema")
         return 0
 
-    # Output paths
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     basename = args.basename or slugify(data["identity"]["code"])
     yaml_out = output_dir / f"{basename}.yaml"
     html_out = output_dir / f"{basename}.html"
 
-    # YAML
     yaml_out.write_text(
         yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=120),
         encoding="utf-8",
     )
 
-    # HTML
+    content_md = Path(args.content) if args.content else None
+    placeholders = build_placeholders(data, content_md)
+
     html = template_path.read_text(encoding="utf-8")
-    try:
-        html = apply_all_substitutions(html, data)
-    except RuntimeError as e:
-        sys.stderr.write(f"ERRO na substituição: {e}\n")
-        return 3
+    if not args.no_inline:
+        html = inline_assets(html, skill_dir / "assets")
 
-    residuals = assert_no_residual_pol_gov_002(html, data)
+    for key, val in placeholders.items():
+        html = html.replace("{{" + key + "}}", val)
+
+    residuals = set(re.findall(r"\{\{([A-Z_0-9]+)\}\}", html))
+    warnings: list = []
     if residuals:
-        sys.stderr.write("AVISOS:\n")
-        for r in residuals:
-            sys.stderr.write(f"  · {r}\n")
-
-    if args.content:
-        sys.stderr.write(
-            "AVISO: --content ainda não implementa injeção de conteúdo de seções.\n"
-            "       O HTML gerado preserva o conteúdo do template. Edite manualmente\n"
-            "       as páginas 3-15 do HTML, OU aguarde a próxima iteração da skill.\n"
-        )
+        warnings.append(f"placeholders não substituídos: {sorted(residuals)}")
+    if not args.no_inline and re.search(r'(?:href|src)="(?:assets/|fonts/|m7-tokens\.css)', html):
+        warnings.append("paths relativos restantes após inline")
 
     html_out.write_text(html, encoding="utf-8")
 
-    print(f"✓ Gerado:")
+    size_kb = html_out.stat().st_size // 1024
+    print("✓ Gerado:")
     print(f"   {yaml_out}")
-    print(f"   {html_out}")
-    if residuals:
-        print(f"⚠  {len(residuals)} aviso(s) — veja stderr")
-    return 0
+    print(f"   {html_out}  ({size_kb} KB)")
+    for w in warnings:
+        sys.stderr.write(f"⚠  {w}\n")
+    return 0 if not residuals else 3
 
 
 if __name__ == "__main__":

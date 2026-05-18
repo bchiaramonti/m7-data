@@ -3,30 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Política de Processos — M7 Investimentos</title>
+<title>Política de Processos — {{NOME_DA_EMPRESA}}</title>
 
 <!--
   ====================================================================
-  TEMPLATE: POLÍTICA DE PROCESSOS (M7 Design System · 2026)
+  POLÍTICA ISOLADA (M7 Design System · 2026)
   ====================================================================
-  Documento formal que consolida tudo o que foi desenhado nas três
-  abas (Cadeia de Valor · Missão · Mapa de Interdependência) em um
-  único artefato A4 paginado, pronto para arquivamento e exportação
-  em PDF.
+  Versão isolada do template-politica.html, contendo APENAS o bloco
+  "Politica" (documento A4 paginado) — sem header global e sem
+  sidebar/sumário lateral.
 
-  Como usar:
-  1. Substitua os placeholders {{...}} pelo conteúdo real.
-  2. As páginas A4 são <article class="page"> — adicione/remova
-     conforme a quantidade de processos. O contador no rodapé é
-     atualizado por JS no carregamento.
-  3. Botão "Exportar PDF" usa window.print() com @page A4. Garanta,
-     no diálogo do navegador, "Plano de fundo gráfico" ativo.
-  4. Tokens em m7-tokens.css — nenhuma cor inventada.
+  Estrutura:
+    - <main> com as páginas A4 roláveis
+    - Toolbar flutuante (paginação + exportar PDF)
+    - Tokens em m7-tokens.css — nenhuma cor inventada.
   ==================================================================== -->
 
 <link rel="icon" href="assets/m7-logo-favicon.png">
 <link rel="stylesheet" href="m7-tokens.css">
-<link rel="stylesheet" href="m7-header-dark.css">
 
 <style>
   :root {
@@ -50,115 +44,14 @@
   }
 
   /* ============================================================
-     SHELL — Header fixo · Sumário fixo · Documento rolável
+     SHELL — somente documento rolável (sem header, sem sidebar)
      ============================================================ */
-  .shell-header {
-    flex-shrink: 0;
-    background: var(--vc-700);
-  }
-  /* Reset do margin negativo do .m7-header-dark (que assumia body padding 32) */
-  .shell-header .m7-header-dark {
-    margin: 0 !important;
-    padding: 18px 28px 0 !important;
-  }
-  .shell-header .m7-header-dark .doc-meta,
-  .shell-header .m7-header-dark .h-e { max-width: none; }
-
-  .shell-row {
-    flex: 1; min-height: 0;
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    background: var(--ow-600);
-  }
-
-  /* ── SIDEBAR (sumário) ───────────────────────────────────── */
-  .shell-side {
-    background: var(--off-white);
-    border-right: 1px solid var(--vc-100);
-    overflow-y: auto;
-    padding: 22px 18px 32px;
-  }
-  .side-eyebrow {
-    display: inline-flex; align-items: center; gap: 10px;
-    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--vc-400);
-    margin-bottom: 12px;
-  }
-  .side-eyebrow::before {
-    content: ''; width: 18px; height: 1px; background: var(--lime);
-  }
-  .side-toc {
-    display: flex; flex-direction: column; gap: 2px;
-    margin-bottom: 22px;
-  }
-  .side-toc .item {
-    display: grid; grid-template-columns: 28px 1fr;
-    align-items: center; gap: 8px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: 0.12s;
-    background: transparent;
-    text-align: left;
-    font-family: var(--font-sans);
-    color: var(--vc-500);
-  }
-  .side-toc .item:hover {
-    background: var(--white);
-    border-color: var(--vc-100);
-  }
-  .side-toc .item.active {
-    background: var(--white);
-    border-color: var(--lime);
-    box-shadow: 0 0 0 3px rgba(238,247,124,0.18);
-  }
-  .side-toc .item .pgnum {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 10px; letter-spacing: 0.04em;
-    color: var(--vc-300);
-    background: var(--vc-50);
-    border-radius: 3px;
-    padding: 2px 5px;
-    text-align: center;
-    line-height: 1;
-  }
-  .side-toc .item.active .pgnum {
-    background: var(--lime); color: var(--vc-700); font-weight: 500;
-  }
-  .side-toc .item .lbl {
-    font-size: 11.5px; line-height: 1.3;
-    color: var(--vc-600);
-  }
-  .side-toc .item.active .lbl { color: var(--vc-700); font-weight: 500; }
-
-  .side-meta {
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid var(--vc-100);
-  }
-  .side-meta .row {
-    display: flex; justify-content: space-between; gap: 10px;
-    padding: 4px 0;
-    font-size: 10px;
-    color: var(--vc-400);
-  }
-  .side-meta .row .k {
-    letter-spacing: 0.08em; text-transform: uppercase;
-    font-size: 9px;
-  }
-  .side-meta .row .v {
-    color: var(--vc-700); font-weight: 500;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 10px;
-  }
-
-  /* ── MAIN (scroll das páginas A4) ───────────────────────── */
   .shell-main {
+    flex: 1; min-height: 0;
     overflow-y: auto;
     overflow-x: auto;
     background: var(--ow-600);
-    padding: 28px 28px 64px;
+    padding: 28px 28px 96px;
     scroll-behavior: smooth;
   }
 
@@ -353,27 +246,6 @@
     font-weight: 500;
   }
   .cover-meta .meta .dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,253,239,0.4); }
-
-  .cover-tabs {
-    display: flex; gap: 4px;
-    margin-top: 16px;
-  }
-  .cover-tabs .ctab {
-    padding: 8px 14px;
-    font-size: 11px; color: rgba(255,253,239,0.5);
-    border-bottom: 2px solid transparent;
-    text-decoration: none;
-    display: inline-flex; align-items: center; gap: 6px;
-  }
-  .cover-tabs .ctab .num {
-    font-size: 9px; padding: 1px 5px; border-radius: 3px;
-    background: rgba(255,253,239,0.08); color: rgba(255,253,239,0.5);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-  .cover-tabs .ctab.active {
-    color: var(--lime); border-bottom-color: var(--lime); font-weight: 500;
-  }
-  .cover-tabs .ctab.active .num { background: var(--lime); color: var(--vc-700); }
 
   .cover-body {
     flex: 1;
@@ -574,7 +446,7 @@
   .toc-item.h2 .label { color: var(--vc-500); }
 
   /* ============================================================
-     PÁGINA 3+ — Conteúdo
+     Princípios
      ============================================================ */
   .principles {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
@@ -612,284 +484,6 @@
   }
 
   /* ============================================================
-     PÁGINA 4 — Diagrama da Cadeia
-     ============================================================ */
-  .chain-mini {
-    margin-top: 6px;
-    display: flex; flex-direction: column; gap: 6px;
-  }
-  .clayer {
-    display: grid;
-    grid-template-columns: 90px 1fr;
-    gap: 0;
-    min-height: 56px;
-  }
-  .clayer .clane {
-    background: var(--vc-500);
-    color: var(--off-white);
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-    padding: 8px 10px;
-    position: relative;
-    display: flex; flex-direction: column; justify-content: center;
-  }
-  .clayer .clane::after {
-    content: ''; position: absolute; right: 0; top: 22%;
-    width: 2px; height: 56%; border-radius: 2px; background: var(--lime);
-  }
-  .clayer .clane h3 {
-    font-size: 10px; font-weight: 500; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--off-white);
-  }
-  .clayer .clane .count {
-    font-size: 9px; color: var(--lime); margin-top: 2px;
-  }
-  .clayer .ccontent {
-    background: var(--white);
-    border: 1px solid var(--vc-100); border-left: 0;
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    padding: 8px 10px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .clayer .ccontent.primarios {
-    display: grid;
-    grid-template-columns: 100px 16px 1fr 16px 100px;
-    gap: 6px;
-    align-items: center;
-  }
-  .cprocess {
-    flex: 1; min-width: 0;
-    padding: 6px 8px;
-    border: 1px solid var(--vc-100);
-    border-radius: 4px;
-    background: var(--white);
-  }
-  .cprocess.lime { background: var(--lime-faint); border-color: rgba(238,247,124,0.8); }
-  .cprocess.blue { background: rgba(0,102,255,0.06); border-color: rgba(0,102,255,0.5); }
-  .cprocess .ccode {
-    font-size: 9.5px; font-weight: 700; color: var(--vc-700);
-    line-height: 1;
-  }
-  .cprocess.blue .ccode { color: var(--info); }
-  .cprocess .cname {
-    font-size: 9px; color: var(--verde-claro); margin-top: 2px;
-    line-height: 1.3;
-  }
-  .cflow {
-    color: var(--vc-300); display: flex; align-items: center; justify-content: center;
-  }
-  .cverticais {
-    border: 1.5px solid var(--lime);
-    border-radius: var(--radius-sm);
-    padding: 12px 8px 8px;
-    background: rgba(238,247,124,0.04);
-    position: relative;
-  }
-  .cverticais .clabel {
-    position: absolute; top: -8px; left: 50%;
-    transform: translateX(-50%);
-    background: var(--lime); color: var(--vc-700);
-    font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
-    font-weight: 500;
-    padding: 2px 10px; border-radius: 8px;
-    white-space: nowrap;
-  }
-  .cverticais .cvgrid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
-  }
-  .col-fb {
-    display: flex; flex-direction: column; gap: 4px;
-  }
-
-  .chain-legend {
-    margin-top: 10px;
-    display: flex; gap: 16px;
-    font-size: 9.5px; color: var(--verde-claro);
-  }
-  .chain-legend .ll {
-    display: inline-flex; align-items: center; gap: 6px;
-  }
-  .chain-legend .ll .dot {
-    width: 10px; height: 10px; border-radius: 3px;
-    border: 1px solid var(--vc-100);
-  }
-  .chain-legend .ll .dot.plain { background: var(--white); }
-  .chain-legend .ll .dot.lime { background: var(--lime-faint); border-color: var(--lime); }
-  .chain-legend .ll .dot.blue { background: rgba(0,102,255,0.06); border-color: var(--info); }
-
-  /* ============================================================
-     PÁGINA 5-7 — descrição dos processos
-     ============================================================ */
-  .proc-list {
-    display: flex; flex-direction: column; gap: 8px;
-    margin-top: 6px;
-  }
-  .proc {
-    border: 1px solid var(--vc-100);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    background: var(--white);
-    display: grid;
-    grid-template-columns: 56px 1fr 110px;
-    gap: 14px;
-    align-items: start;
-  }
-  .proc.highlight {
-    background: var(--lime-faint);
-    border-color: rgba(238,247,124,0.7);
-  }
-  .proc.blue {
-    background: rgba(0,102,255,0.04);
-    border-color: rgba(0,102,255,0.4);
-  }
-  .proc-code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 13px; font-weight: 700;
-    color: var(--vc-700);
-    line-height: 1;
-    padding-top: 1px;
-  }
-  .proc.blue .proc-code { color: var(--info); }
-  .proc-main .pname {
-    font-size: 12px; font-weight: 500; color: var(--vc-700);
-    margin-bottom: 2px;
-  }
-  .proc-main .pmission {
-    font-size: 10px; color: var(--verde-claro);
-    line-height: 1.45;
-  }
-  .proc-meta {
-    display: flex; flex-direction: column; gap: 4px;
-  }
-  .proc-meta .m {
-    font-size: 9px;
-    display: flex; justify-content: space-between;
-    gap: 6px;
-    color: var(--vc-400);
-    letter-spacing: 0.04em;
-  }
-  .proc-meta .m .k {
-    text-transform: uppercase;
-    font-weight: 500;
-    color: var(--vc-300);
-    font-size: 8.5px;
-    letter-spacing: 0.1em;
-  }
-  .proc-meta .m .v {
-    color: var(--vc-600); text-align: right; font-weight: 500;
-    font-size: 10px;
-  }
-
-  /* ============================================================
-     PÁGINA SIPOC
-     ============================================================ */
-  .sipoc-list {
-    display: flex; flex-direction: column; gap: 10px;
-    margin-top: 6px;
-  }
-  .sipoc {
-    border: 1px solid var(--vc-100);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    background: var(--white);
-  }
-  .sipoc-head {
-    display: flex; align-items: baseline; gap: 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--vc-50);
-    margin-bottom: 8px;
-  }
-  .sipoc-head .code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 11px; font-weight: 700; color: var(--vc-700);
-  }
-  .sipoc-head .name {
-    font-size: 11.5px; font-weight: 500; color: var(--vc-700);
-  }
-  .sipoc-head .owner {
-    margin-left: auto;
-    font-size: 9px; letter-spacing: 0.08em;
-    color: var(--vc-400);
-  }
-  .sipoc-head .owner strong {
-    color: var(--vc-600); font-weight: 500;
-    margin-left: 6px;
-  }
-  .sipoc-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-  }
-  .sipoc-col h4 {
-    font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--vc-400); font-weight: 500;
-    margin-bottom: 4px;
-  }
-  .sipoc-col .chips {
-    display: flex; flex-wrap: wrap; gap: 3px;
-  }
-  .sipoc-col .chip {
-    font-size: 9px; padding: 2px 6px;
-    background: var(--vc-50); border: 1px solid var(--vc-100);
-    border-radius: 3px; color: var(--vc-600);
-    font-family: var(--font-sans);
-  }
-  .sipoc-col.mission {
-    background: var(--lime-faint);
-    border: 1px solid rgba(238,247,124,0.6);
-    border-radius: 4px;
-    padding: 6px 8px;
-  }
-  .sipoc-col.mission h4 { color: var(--verde-medio); }
-  .sipoc-col.mission p {
-    font-size: 10px; color: var(--vc-700); line-height: 1.4;
-  }
-
-  /* ============================================================
-     PÁGINA — Interdependências (N3)
-     ============================================================ */
-  .depmap {
-    display: flex; flex-direction: column; gap: 6px;
-    margin-top: 4px;
-  }
-  .depmap .row {
-    display: grid;
-    grid-template-columns: 80px 1fr;
-    gap: 10px;
-    align-items: center;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--vc-50);
-  }
-  .depmap .from {
-    font-size: 9.5px; color: var(--vc-700);
-    font-weight: 500;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .depmap .from .code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 10px; padding: 1px 5px;
-    background: var(--vc-500); color: var(--off-white);
-    border-radius: 3px;
-  }
-  .depmap .to {
-    display: flex; flex-wrap: wrap; gap: 4px;
-    align-items: center;
-  }
-  .depmap .to .arr { color: var(--vc-300); font-size: 10px; }
-  .depmap .to .target {
-    font-size: 9.5px;
-    padding: 2px 7px;
-    border: 1px solid var(--vc-100);
-    border-radius: 3px;
-    color: var(--vc-600);
-    background: var(--white);
-  }
-  .depmap .to .target.lime {
-    background: var(--lime-faint);
-    border-color: rgba(238,247,124,0.7);
-    color: var(--vc-700);
-  }
-
-  /* ============================================================
      PRINT
      ============================================================ */
   @page {
@@ -906,14 +500,7 @@
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .toolbar,
-    .shell-header,
-    .shell-side { display: none !important; }
-    .shell-row {
-      display: block !important;
-      grid-template-columns: none !important;
-      background: var(--white) !important;
-    }
+    .toolbar { display: none !important; }
     .shell-main {
       overflow: visible !important;
       padding: 0 !important;
@@ -933,1112 +520,554 @@
       page-break-after: auto;
     }
   }
-
-  /* ============================================================
-     5.1.2 — Cards de processo (tipografia legível)
-     ============================================================ */
-  .proc-card {
-    margin: 8px 0 10px;
-    padding: 8px 12px;
-    border-left: 2px solid var(--lime);
-    background: rgba(238,247,124,0.04);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  }
-  .proc-title {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--vc-700);
-    margin: 0 0 2px;
-    letter-spacing: -0.1px;
-  }
-  .proc-owner {
-    font-size: 9.5px;
-    color: var(--vc-400);
-    font-style: italic;
-    margin-bottom: 6px;
-    letter-spacing: 0.02em;
-  }
-  .proc-block {
-    font-size: 10px !important;
-    line-height: 1.5 !important;
-    margin: 3px 0 !important;
-    color: var(--vc-600);
-  }
-  .proc-block strong {
-    color: var(--vc-700);
-    font-weight: 500;
-  }
-  .camada-sep {
-    margin: 8px 0 6px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--vc-100);
-  }
-  .camada-title {
-    margin: 4px 0 2px !important;
-    color: var(--vc-700) !important;
-    font-size: 13px !important;
-  }
-  .camada-desc {
-    font-size: 10px !important;
-    color: var(--verde-claro) !important;
-    margin: 0 0 4px !important;
-    font-style: italic;
-  }
-  /* 5.1.1 imagem da Cadeia */
-  .cadeia-img-wrap {
-    margin: 8px 0;
-    text-align: center;
-  }
-  .cadeia-img-wrap img {
-    max-width: 100%;
-    height: auto;
-    border: 1px solid var(--vc-100);
-    border-radius: var(--radius-sm);
-  }
-  .cadeia-caption {
-    font-size: 9.5px !important;
-    color: var(--vc-400) !important;
-    margin-top: 4px !important;
-    font-style: italic;
-    text-align: center;
-  }
-
 </style>
 </head>
 <body>
 
-<!-- ============================================================
-     SHELL HEADER (fixo)
-     ============================================================ -->
-<header class="shell-header">
-  <div class="m7-header-dark">
-    <div class="doc-meta">
-      <img src="assets/m7-logo-offwhite.png" alt="M7 Investimentos">
-      <div class="meta">
-        <span>Governança</span><span class="dot"></span>
-        <span>Política · POL-GOV-002</span><span class="dot"></span>
-        <span>18/05/2026</span>
-      </div>
-    </div>
-    <div class="h-e">
-      <div class="body">
-        <div>
-          <h1>Política <span class="accent">geral de governança</span> corporativa</h1>
-          <p class="lede">Documento normativo POL-GOV-002. Estabelece princípios, limites e responsabilidades para a operação dos 12 processos primários da Cadeia de Valor M7.</p>
-        </div>
-        <div class="strip">
-          <div class="cell"><div class="v">v1.0</div><div class="l">Versão</div></div>
-          <div class="cell"><div class="v">16</div><div class="l">Páginas</div></div>
-          <div class="cell"><div class="v">18/05/26</div><div class="l">Vigência</div></div>
-          <div class="cell"><div class="v">18/05/27</div><div class="l">Próx. revisão</div></div>
-        </div>
-      </div>
-      <div class="tabs">
-        <a class="tab" href="cadeia-de-valor-m7-investimentos.html">Visão geral <span class="num">N1</span></a>
-        <a class="tab" href="missao-do-processo-m7-investimentos.html">Missão do processo</a>
-        <a class="tab" href="mapa-de-interdependencia-m7-investimentos.html">Mapa de interdependência</a>
-        <div class="tab" data-active="true">Política <span class="num">DOC</span></div>
-      </div>
-    </div>
-  </div>
-</header>
+<main class="shell-main" id="shell-main">
 
-<!-- ============================================================
-     SHELL ROW (sumário + documento rolável)
-     ============================================================ -->
-<div class="shell-row">
-
-  <aside class="shell-side" aria-label="Sumário do documento">
-    <div class="side-eyebrow">Sumário</div>
-    <nav class="side-toc" id="side-toc">
-      <button class="item" data-target="1" type="button"><span class="pgnum">01</span><span class="lbl">Capa</span></button>
-      <button class="item" data-target="2" type="button"><span class="pgnum">02</span><span class="lbl">Controle &amp; sumário</span></button>
-      <button class="item" data-target="3" type="button"><span class="pgnum">03</span><span class="lbl">1. Objetivo &amp; 2. Escopo</span></button>
-      <button class="item" data-target="4" type="button"><span class="pgnum">04</span><span class="lbl">3. Definições</span></button>
-      <button class="item" data-target="5" type="button"><span class="pgnum">05</span><span class="lbl">4. Princípios</span></button>
-      <button class="item" data-target="6" type="button"><span class="pgnum">06</span><span class="lbl">5.1 Cadeia de valor</span></button>
-      <button class="item" data-target="7" type="button"><span class="pgnum">07</span><span class="lbl">5.1.2 · Gerencial</span></button>
-      <button class="item" data-target="8" type="button"><span class="pgnum">08</span><span class="lbl">5.1.2 · Primária P1-P4</span></button>
-      <button class="item" data-target="9" type="button"><span class="pgnum">09</span><span class="lbl">5.1.2 · Primária P5-P8</span></button>
-      <button class="item" data-target="10" type="button"><span class="pgnum">10</span><span class="lbl">5.1.2 · Primária P9-P12</span></button>
-      <button class="item" data-target="11" type="button"><span class="pgnum">11</span><span class="lbl">5.1.2 · Apoio A1-A4</span></button>
-      <button class="item" data-target="12" type="button"><span class="pgnum">12</span><span class="lbl">5.1.2 · A5 e 5.2</span></button>
-      <button class="item" data-target="13" type="button"><span class="pgnum">13</span><span class="lbl">5.3 a 5.7 Diretrizes</span></button>
-      <button class="item" data-target="14" type="button"><span class="pgnum">14</span><span class="lbl">6. Papéis &amp; responsabilidades</span></button>
-      <button class="item" data-target="15" type="button"><span class="pgnum">15</span><span class="lbl">7. Governança</span></button>
-      <button class="item" data-target="16" type="button"><span class="pgnum">16</span><span class="lbl">8. Disposições finais</span></button>
-    </nav>
-    <div class="side-meta">
-      <div class="row"><span class="k">Código</span><span class="v">POL-GOV-002</span></div>
-      <div class="row"><span class="k">Versão</span><span class="v">v1.0 · Mai / 2026</span></div>
-      <div class="row"><span class="k">Próx. revisão</span><span class="v">18/05/2027</span></div>
-      <div class="row"><span class="k">Owner</span><span class="v">Estratégia &amp; Governança</span></div>
-    </div>
-  </aside>
-
-  <main class="shell-main" id="shell-main">
-
-    <div class="doc" id="doc">
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 1 — CAPA
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page cover" data-page-label="Capa">
-    <div class="cover-head">
-      <div class="cover-meta">
-        <img src="assets/m7-logo-offwhite.png" alt="M7 Investimentos">
-        <div class="meta">
-          <span>Governança</span><span class="dot"></span>
-          <span class="hl">Política · POL</span><span class="dot"></span>
-          <span>18/05/2026</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="cover-body">
-      <div>
-        <div class="cover-eyebrow">
-          <span>Documento de governança</span>
-          <span>·</span>
-          <span class="v">POL-GOV-002</span>
-        </div>
-        <h1 class="cover-title">Política<br>geral de <em>governança</em> corporativa</h1>
-        <p class="cover-subtitle">Princípios, limites e responsabilidades que regem a operação dos 12 processos primários da Holding M7 Investimentos, dos pontos de contato com o cliente à arquitetura de aderência e exceções.</p>
-
-        <div class="cover-grid">
-          <div class="cell">
-            <div class="l">Versão</div>
-            <div class="v mono">v1.0 · Mai / 2026</div>
-          </div>
-          <div class="cell">
-            <div class="l">Vigência</div>
-            <div class="v">18/05/2026</div>
-          </div>
-          <div class="cell">
-            <div class="l">Próxima revisão</div>
-            <div class="v">18/05/2027</div>
-          </div>
-          <div class="cell">
-            <div class="l">Responsável</div>
-            <div class="v">Estratégia &amp; Governança</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="cover-foot">
-        <span class="conf">Uso interno · Confidencial</span>
-        <span>M7 Investimentos · POL-GOV-002 · v1.0</span>
-      </div>
-    </div>
-  </article>
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 2 — Controle do Documento + Sumário
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Controle &amp; sumário">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">00</span> Controle do documento</h2>
-      <p class="section-lede">Identificação canônica do documento. Toda referência cruzada usa o código <span class="mono">POL-GOV-002</span>.</p>
-      <table class="kv-table">
-        <tbody>
-          <tr><td>Código</td><td><span class="mono">POL-GOV-002</span></td></tr>
-          <tr><td>Versão</td><td><span class="mono">v1.0 · Mai / 2026</span></td></tr>
-          <tr><td>Tipo</td><td>Política <span class="mono">(POL)</span></td></tr>
-          <tr><td>Área</td><td>Governança</td></tr>
-          <tr><td>Data</td><td>18/05/2026</td></tr>
-          <tr><td>Elaborado por</td><td><strong>Bruno Chiaramonti</strong> · Head de Desempenho · M7 Investimentos</td></tr>
-          <tr><td>Aprovado por</td><td>Diretoria Executiva · M7 Investimentos</td></tr>
-          <tr><td>Classificação</td><td>Interno</td></tr>
-          <tr><td>Revisão</td><td>Anual</td></tr>
-          <tr><td>Documento superior</td><td><span class="mono">POL-GOV-001</span> · Política de Gestão por Processos e Padronização</td></tr>
-        </tbody>
-      </table>
-
-      <hr class="divider">
-
-      <h2 class="section"><span class="num">00</span> Sumário</h2>
-      <div class="toc">
-        <div class="toc-item"><span class="num">1</span><span class="label">Objetivo</span><span class="pg">p. 3</span></div>
-        <div class="toc-item"><span class="num">2</span><span class="label">Escopo</span><span class="pg">p. 3</span></div>
-        <div class="toc-item"><span class="num">3</span><span class="label">Definições</span><span class="pg">p. 4</span></div>
-        <div class="toc-item"><span class="num">4</span><span class="label">Princípios</span><span class="pg">p. 5</span></div>
-        <div class="toc-item"><span class="num">5</span><span class="label">Diretrizes</span><span class="pg">p. 6-13</span></div>
-        <!--
-          Sub-itens da seção 5 — repita o bloco abaixo para cada diretriz
-          presente no documento. Os números (5.N) e títulos espelham os
-          <h3 class="sub"> usados em CONTEUDO_DIRETRIZES.
-        -->
-                <div class="toc-item h2"><span class="num">5.1</span><span class="label">Cadeia de Valor como referência única</span><span class="pg">p. 6</span></div>
-        <div class="toc-item h2"><span class="num">5.2</span><span class="label">Hierarquia normativa por processo primário</span><span class="pg">p. 12</span></div>
-        <div class="toc-item h2"><span class="num">5.3</span><span class="label">Ownership e cadência</span><span class="pg">p. 13</span></div>
-        <div class="toc-item h2"><span class="num">5.4</span><span class="label">Pontos de contato com o cliente</span><span class="pg">p. 13</span></div>
-        <div class="toc-item h2"><span class="num">5.5</span><span class="label">Dado único e integrações</span><span class="pg">p. 13</span></div>
-        <div class="toc-item h2"><span class="num">5.6</span><span class="label">Cross-sell e handoff entre verticais</span><span class="pg">p. 13</span></div>
-        <div class="toc-item h2"><span class="num">5.7</span><span class="label">Aderência, exceções e auditoria</span><span class="pg">p. 13</span></div>
-        <div class="toc-item"><span class="num">6</span><span class="label">Papéis e responsabilidades</span><span class="pg">p. 14</span></div>
-        <div class="toc-item"><span class="num">7</span><span class="label">Governança</span><span class="pg">p. 15</span></div>
-        <div class="toc-item"><span class="num">8</span><span class="label">Disposições finais</span><span class="pg">p. 16</span></div>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>2</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 3 — Objetivo + Escopo
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Objetivo &amp; Escopo">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">01</span> Objetivo</h2>
-      <p>Esta política estabelece os <strong>princípios, limites e responsabilidades</strong> que orientam a governança corporativa da Holding M7 Investimentos no que tange à operação de seus processos primários, aqueles que mantêm contato direto com o cliente e geram receita, conforme delimitados pela Cadeia de Valor N1 vigente.</p>
-      <p>Seu propósito é assegurar que a operação da M7 dependa de <strong>processos documentados, mensuráveis e auditáveis</strong>, e não da memória ou disponibilidade de indivíduos específicos, sustentando crescimento previsível, experiência consistente do cliente e aderência regulatória contínua.</p>
-
-      <hr class="divider">
-
-      <h2 class="section"><span class="num">02</span> Escopo</h2>
-      <p class="section-lede">Aplica-se aos 12 processos primários (P1 a P12) da Cadeia de Valor M7 e a todos os colaboradores e parceiros envolvidos em sua execução.</p>
-
-      <div class="twocol">
-        <div>
-          <h3 class="sub">Aplica-se a</h3>
-          <ul>
-            <li>Os <strong>12 processos primários</strong> (P1 a P12) da Cadeia de Valor, nas 9 verticais de produto e nas funções de front-end (P1, P2) e back-end (P12).</li>
-            <li>Todos os colaboradores diretos e terceirizados que executam, supervisionam ou apoiam esses processos.</li>
-            <li>Todos os <strong>pontos de contato com o cliente</strong> realizados em nome da Holding M7, presenciais, digitais ou telefônicos.</li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="sub">Não se aplica a</h3>
-          <ul>
-            <li>Processos <strong>gerenciais</strong> (G1 Planejamento, G2 Performance, G3 Compliance, G4 Orçamentária), regidos por políticas específicas.</li>
-            <li>Processos de <strong>apoio</strong> (A1 Tecnologia, A2 Jurídico, A3 Financeiro, A4 Pessoas, A5 Backoffice), regidos por políticas específicas.</li>
-            <li>Operações de parceiros e terceiros que <strong>não envolvam contato direto</strong> com clientes M7.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>3</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 4 — Definições
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Definições">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">03</span> Definições</h2>
-      <p class="section-lede">Para fins desta política, aplicam-se os seguintes termos.</p>
-
-      <table class="doc-table">
-        <thead>
-          <tr>
-            <th style="width:22%">Termo</th>
-            <th>Definição</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><strong>Accountability</strong></td><td>Responsabilidade nomeada e mensurável por um processo ou resultado, atribuída a um único papel formal.</td></tr>
-          <tr><td><strong>Cadeia de Valor</strong></td><td>Conjunto dos 21 processos macro da Holding M7, organizados em três camadas (gerenciais, primários e apoio), conforme documento N1 vigente.</td></tr>
-          <tr><td><strong>Cross-sell</strong></td><td>Oferta integrada de produtos de mais de uma vertical para o mesmo cliente, conduzida com contexto preservado entre as áreas.</td></tr>
-          <tr><td><strong>Hierarquia Normativa</strong></td><td>Estrutura POL → MAN → INS → ESP que organiza os documentos normativos da M7, conforme POL-GOV-001.</td></tr>
-          <tr><td><strong>Manual (MAN)</strong></td><td>Documento de nível tático que define visão de processo, regras de negócio, papéis e indicadores para um processo primário.</td></tr>
-          <tr><td><strong>Missão do Processo</strong></td><td>Sentença que descreve, no formato verbo + objeto + finalidade, o propósito macro de um processo conforme SIPOC N1.</td></tr>
-          <tr><td><strong>Playbook</strong></td><td>Documento operacional consolidado que prescreve a forma padrão de execução, ritmos, scripts e critérios de qualidade de um processo primário.</td></tr>
-          <tr><td><strong>Ponto de Contato</strong></td><td>Momento de interação entre o cliente e a M7 dentro de um processo primário, presencial ou remoto.</td></tr>
-          <tr><td><strong>Process Owner</strong></td><td>Papel formal responsável integralmente por um processo primário (P1 a P12): documentação, aderência, indicadores e melhoria contínua.</td></tr>
-          <tr><td><strong>Processos Primários</strong></td><td>Os 12 processos da camada produtiva da Cadeia de Valor M7 (P1 a P12), responsáveis pela geração direta de receita e contato com cliente.</td></tr>
-          <tr><td><strong>SIPOC</strong></td><td>Modelo macro de descrição de processo: Supplier, Input, Process, Output, Customer.</td></tr>
-          <tr><td><strong>SSoT (Single Source of Truth)</strong></td><td>Fonte de dados ou regras única e canônica para um processo, contra a qual qualquer divergência entre sistemas é resolvida.</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>4</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 5 — Princípios
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Princípios">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">04</span> Princípios</h2>
-      <p class="section-lede">São os fundamentos filosóficos desta política. Em caso de conflito entre diretrizes operacionais, prevalece a interpretação que melhor honra estes princípios.</p>
-
-      <div class="principles">
-        <div class="principle">
-          <div class="pn">P1</div>
-          <div class="pt">Cliente no centro</div>
-          <div class="pd">Toda decisão sobre processo, produto, ritual ou ferramenta deve ser justificada pela melhoria mensurável na experiência do cliente. Quando há conflito entre eficiência interna e experiência do cliente, a experiência prevalece.</div>
-        </div>
-        <div class="principle">
-          <div class="pn">P2</div>
-          <div class="pt">Gestão por processo, não por pessoa</div>
-          <div class="pd">O conhecimento sobre como atender o cliente é institucional, não individual. Saída de um colaborador-chave não pode interromper, degradar ou levar embora a operação.</div>
-        </div>
-        <div class="principle">
-          <div class="pn">P3</div>
-          <div class="pt">Padronização auditável</div>
-          <div class="pd">O que está escrito é o que é executado. O que é executado é medido. O que é medido é auditado. Documentos sem aderência são letra morta; aderência sem documento é exceção, não regra.</div>
-        </div>
-        <div class="principle">
-          <div class="pn">P4</div>
-          <div class="pt">Dado único como fonte de verdade</div>
-          <div class="pd">Cada processo tem uma SSoT explicitamente designada pelo Process Owner. Decisões operacionais usam essa fonte; quando há divergência entre sistemas, vence a SSoT do processo.</div>
-        </div>
-        <div class="principle">
-          <div class="pn">P5</div>
-          <div class="pt">Accountability com ownership claro</div>
-          <div class="pd">Cada um dos 12 processos primários tem um Process Owner nomeado, com nome próprio, cargo e perímetro escritos. Responsabilidade compartilhada que não cabe em um nome único é responsabilidade não existente.</div>
-        </div>
-        <div class="principle">
-          <div class="pn">P6</div>
-          <div class="pt">Melhoria contínua baseada em indicadores</div>
-          <div class="pd">Processos são avaliados por indicadores de aderência, qualidade e resultado, com cadência mínima definida. Mudanças relevantes só ocorrem após análise de indicadores, opinião sem dado não move processo.</div>
-        </div>
-        <div class="principle">
-          <div class="pn">P7</div>
-          <div class="pt">Cross-sell estruturado entre verticais</div>
-          <div class="pd">Verticais conversam entre si por processo desenhado, e não por iniciativa individual. O P12 Relacionamento &amp; Retenção é o hub formal de cross-sell, com contexto preservado no CRM e SLA acordado.</div>
-        </div>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>5</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
+  <div class="doc" id="doc">
 
     <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 6 — Diretrizes · 5.1 e Cadeia de Valor
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.1 e Cadeia de Valor">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes</h2>
-      <p class="section-lede">Regras operacionais que materializam os princípios. Específicas o suficiente para orientar, genéricas o suficiente para não engessar a evolução natural do negócio.</p>
-
-      <h3 class="sub">5.1 · Cadeia de Valor como referência única</h3>
-      <p>A Cadeia de Valor N1 da Holding M7 é a referência única para identificar, codificar e priorizar processos primários. Qualquer documento, projeto ou ritual que se refira a um processo deve usar a codificação oficial (P1 a P12) e a Missão SIPOC associada.</p>
-      <ul>
-        <li>Toda mudança na Cadeia (criação, fusão, deprecação ou renumeração de processo) exige aprovação da Diretoria Executiva e atualização documental em até <strong>30 dias corridos</strong>.</li>
-        <li>O documento Missão do Processo (SIPOC N1) define o <em>para quê</em> de cada processo primário e prevalece sobre interpretações locais.</li>
-        <li>A versão vigente da Cadeia de Valor e da Missão SIPOC fica custodiada pela área de Desempenho.</li>
-      </ul>
-
-      <h3 class="sub">5.1.1 · Visão sistêmica</h3>
-      <p>A Cadeia de Valor da M7 organiza <strong>21 processos macro</strong> em três camadas de Porter. A camada gerencial (G1-G4) direciona; a camada primária (P1-P12) executa o ciclo de valor com o cliente, do front de geração de demanda às nove verticais de produto e ao back de relacionamento e retenção; a camada de apoio (A1-A5) viabiliza a operação. Esta política governa exclusivamente a camada primária, conforme 2. Escopo.</p>
-
-      <div class="cadeia-img-wrap">
-        <img src="assets/cadeia-de-valor-m7.png" alt="Cadeia de Valor M7 — 21 processos macro em três camadas">
-        <p class="cadeia-caption">Figura 1 — Cadeia de Valor M7-2026. Os processos P3 a P11 constituem as nove verticais de produto e formam o núcleo monetizador da holding; P1, P2 e P12 são os processos primários transversais que orquestram a entrada e a permanência do cliente.</p>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>6</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 7 — Diretrizes · 5.1.2 Gerencial
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.1.2 Gerencial">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes
-        <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação · inventário)</span>
-      </h2>
-
-      <h3 class="sub">5.1.2 · Inventário de processos macro</h3>
-      <p class="section-lede">Esta seção descreve, processo a processo, a razão de existência de cada um dos 21 processos macro da M7, o que ele transforma (inputs em outputs) e a quem ele entrega valor. Leitura obrigatória para todo colaborador novo da holding.</p>
-
-      <div class="camada-sep">
-        <h3 class="sub camada-title">Camada gerencial</h3>
-        <p class="camada-desc">Quatro processos que direcionam a holding: estratégia, performance, compliance e orçamento. Não conversam com cliente, mas determinam onde o capital vai e como o ritmo é cobrado.</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">G1 · Planejamento Estratégico</h4>
-        <div class="proc-owner">Owner: CEO · Comitê Estratégico</div>
-        <p class="proc-block"><strong>Por que existe.</strong> É o único processo no qual a holding decide para onde ir. Sem G1 vivo, as BUs definem metas a partir de interesses locais, o capital flui por urgência política e a holding deriva. G1 é o ponto de origem da estratégia que todas as demais camadas executam.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Cenário macroeconômico, performance consolidada do ano anterior, pleitos das BUs e brief dos sponsors viram Plano Estratégico aprovado, OKRs por área, capital alocado por BU e portfólio de iniciativas H1/H2/H3.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> G2 Gestão de Performance (metas a desdobrar) e G4 Gestão Orçamentária (capital alocado a orçar).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">G2 · Gestão de Performance</h4>
-        <div class="proc-owner">Owner: Head de Desempenho · Comitê de Gestão</div>
-        <p class="proc-block"><strong>Por que existe.</strong> É o motor que mantém a estratégia viva no dia a dia. Estratégia sem cadência operacional vira apresentação esquecida. G2 traduz os OKRs corporativos em metas semanais por vertical, expõe desvios em WBR/MBR e força decisões de correção antes que o ano feche no vermelho.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> OKRs definidos no PE, dashboards de BI (A1) e comitês de cada BU viram WBR/MBR consolidados, decisões de correção de rota e auditoria de aderência aos rituais.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> Todos os processos primários P1 a P12 (com metas, KRs e ritmo de execução).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">G3 · Compliance & Risco</h4>
-        <div class="proc-owner">Owner: Diretor de Compliance · Comitê de Risco</div>
-        <p class="proc-block"><strong>Por que existe.</strong> A M7 opera sob quatro reguladores (CVM, BACEN, SUSEP, ANS) e qualquer um deles pode revogar licença, multar ou expor a holding judicialmente. G3 é o filtro que impede a operação de avançar sem aderência regulatória, protegendo licenças, reputação e capital.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Mapas regulatórios atualizados, logs de operações sensíveis e reclamações de ouvidoria viram pareceres de compliance, planos de remediação e reportes regulatórios aos órgãos competentes.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> Todos os processos primários P1 a P12 (compliance vinculante), G2 (sinais de risco) e G4 (impacto orçamentário de exceções).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">G4 · Gestão Orçamentária</h4>
-        <div class="proc-owner">Owner: CFO · Comitê Orçamentário</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Estratégia sem dinheiro alocado é boa intenção. G4 transforma o capital alocado pela estratégia em orçamento executável por área, controla o realizado contra o planejado mensalmente e dispara aprovações de capex que precisam acontecer com método, não por urgência.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Plano estratégico aprovado (G1), DRE realizado (A3) e pleitos de investimento das áreas viram orçamento anual aprovado, DRE projetado, aprovações de capex e política de comissionamento.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> Todas as áreas primárias P1 a P12 e de apoio A1 a A5 (orçamento alocado) e G2 (KRs financeiros).</p>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>7</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 8 — Diretrizes · 5.1.2 Primária P1-P4
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.1.2 Primária P1-P4">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes
-        <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação · inventário)</span>
-      </h2>
-
-      <div class="camada-sep">
-        <h3 class="sub camada-title">Camada primária</h3>
-        <p class="camada-desc">Doze processos no perímetro desta política. Ligam M7 e cliente: dois de front (P1, P2 geram e qualificam demanda), nove de produto (P3 a P11 monetizam) e um de back (P12 retém e gera advocacy).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P1 · Geração de Demanda</h4>
-        <div class="proc-owner">Owner: Head de Marketing · Comitê Comercial</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Sem novas oportunidades entrando, as verticais consumem apenas a base atual e o crescimento estanca. P1 é o motor que alimenta o topo do funil: campanhas digitais, M7 Summit, M7 Educa, parcerias estratégicas e mídia que produzem leads qualificados em volume e custo controlados.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Brief de campanha, persona definida e verba aprovada (G4) viram MQLs entregues mensalmente, pipeline de eventos, conteúdo editorial publicado e parcerias estratégicas ativas.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P2 Prospecção & Qualificação (MQLs para conversão).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P2 · Prospecção & Qualificação</h4>
-        <div class="proc-owner">Owner: Head Comercial · Comitê Comercial</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Lead bruto não vira receita: precisa ser qualificado, segmentado e distribuído para a vertical certa, com contexto preservado. P2 é o roteador inteligente entre o topo e o meio do funil. Sem ele, ou as verticais recebem ruído ou leads bons morrem na fila errada.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> MQLs do P1, scoring e segmentação, mapa de funis viram SQLs distribuídos, pipeline por vertical e lead com contexto preservado para o atendimento.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> As nove verticais de produto P3 a P11.</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P3 · Crédito</h4>
-        <div class="proc-owner">Owner: Head de Crédito · Comitê de Crédito</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Clientes precisam de capital de giro (PJ) ou de consumo (PF) que o sistema bancário tradicional não atende com agilidade ou previsibilidade. P3 origina crédito colateralizado e consignado com risco controlado, completando o ciclo de relacionamento do cliente que já investe na M7.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Lead com necessidade, políticas de crédito e funding disponível (FIDC) viram operação desembolsada, carteira ativa e inadimplência sob controle.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P12 Relacionamento, A2 Jurídico (contratos de FIDC), A3 Financeiro (desembolso e cobrança).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P4 · Investimentos</h4>
-        <div class="proc-owner">Owner: Head de Investimentos · Comitê de Alocação</div>
-        <p class="proc-block"><strong>Por que existe.</strong> É a vertical-mãe da M7. Constrói carteiras personalizadas com risco controlado para fazer o patrimônio do cliente crescer. Sem P4 disciplinado, decisões de alocação seguem viés do assessor ou modismo de mercado, e a carteira do cliente fica refém da última conversa.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Cliente onboarded, suitability validado e políticas de alocação viram carteiras montadas, aportes recorrentes e rebalanceamentos periódicos.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P8 Wealth (clientes que viram alta renda), P12 Relacionamento, A1 Tecnologia (dados de carteira).</p>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>8</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 9 — Diretrizes · 5.1.2 Primária P5-P8
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.1.2 Primária P5-P8">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes
-        <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação · inventário)</span>
-      </h2>
-
-      <div class="proc-card">
-        <h4 class="proc-title">P5 · Seguros</h4>
-        <div class="proc-owner">Owner: Head de Seguros · Comitê PJ2</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Sinistro pode destruir em horas patrimônio construído em décadas. P5 protege patrimônio e renda de pessoas e empresas, preservando projetos de longo prazo do cliente. Funciona como cross-sell natural de quem tem operação em P3, P4 e P8.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Diagnóstico de risco do cliente, catálogo de seguradoras e cotações ativas viram apólice contratada, renovações gerenciadas e sinistros tratados.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P12 Relacionamento, A2 Jurídico (contratos de apólice), A5 Backoffice (cadastros).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P6 · Consórcio</h4>
-        <div class="proc-owner">Owner: Head de Consórcio · Comitê PJ2</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Permite ao cliente realizar projetos (imóvel, veículo, expansão de negócio) sem custo de juros, antecipando acesso a bens via mecânica de assembleias. Tipicamente cross-sell de quem é atendido por P4 Investimentos ou P7 Ecossistemas.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Perfil financeiro do cliente, tabelas de cotas e políticas de aceitação viram cotas contratadas, assembleias acompanhadas e contemplações gerenciadas.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P12 Relacionamento, A3 Financeiro (fluxo de parcelas).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P7 · Ecossistemas</h4>
-        <div class="proc-owner">Owner: Head de Ecossistemas · Comitê Comercial</div>
-        <p class="proc-block"><strong>Por que existe.</strong> A M7 tem hoje uma base de mais de 100 mil CPFs PF. Quase nenhum é atendido individualmente pelas verticais boutique (P4 Investimentos, P8 Wealth). P7 monetiza essa base ampla com produtos PF padronizados, ampliando share-of-wallet sem demandar atendimento individualizado.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Base de clientes ativa, catálogo de produtos PF e campanhas de cross-sell viram produtos contratados, receita recorrente e engajamento da base.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P12 Relacionamento, A1 Tecnologia (CRM unificado).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P8 · Wealth</h4>
-        <div class="proc-owner">Owner: Head de Wealth · Comitê Patrimonial</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Cliente de alta renda não busca produto: busca consultoria patrimonial integrada (tributária, sucessória, internacional). P8 opera essa consultoria preservando e expandindo patrimônio em horizonte longo, com ticket médio e LTV muito superiores aos da P4 retail.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Cliente alta renda, diagnóstico patrimonial e políticas tributárias viram plano patrimonial estruturado, estruturas de holding e sucessão organizada.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P4 Investimentos (alocação executiva), P10 Investment Banking (deals patrimoniais), A2 Jurídico (estruturas societárias).</p>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>9</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 10 — Diretrizes · 5.1.2 Primária P9-P12
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.1.2 Primária P9-P12">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes
-        <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação · inventário)</span>
-      </h2>
-
-      <div class="proc-card">
-        <h4 class="proc-title">P9 · Vida Saúde e Previdência</h4>
-        <div class="proc-owner">Owner: Head de Vida & Saúde · Comitê PJ2</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Vida, saúde e aposentadoria são as três grandes incertezas que comprometem o planejamento financeiro de longo prazo. P9 coordena a proteção dessas três dimensões para sustentar bem-estar do cliente e construir reserva, complementando o pilar de Seguros (P5) com produtos de natureza humana.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Diagnóstico de saúde e proteção, catálogo de operadoras e políticas de subscrição viram plano de saúde ativo, apólice de vida e previdência em vigor.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P12 Relacionamento, A5 Backoffice (cadastros junto às operadoras).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P10 · Investment Banking</h4>
-        <div class="proc-owner">Owner: Head de Investment Banking · Comitê de Investimentos</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Cliente PJ chega a momentos de crescimento inorgânico, sucessão ou liquidez parcial que exigem operações estruturadas (M&A, FIDC, emissão de capital). P10 conduz essas operações de maior ticket e maior complexidade, ancorando a M7 como banco de investimento e não apenas distribuidor de produtos.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Mandato do cliente, universo de investidores e documentação corporativa viram deal fechado, estruturação de capital e captação concluída.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P12 Relacionamento, A2 Jurídico (contratos M&A), G4 (fee receita).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P11 · Comex</h4>
-        <div class="proc-owner">Owner: Head de Câmbio · Comitê de Tesouraria</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Clientes PJ com operação internacional precisam de câmbio comercial, hedge cambial e remessas com compliance Bacen rigoroso. P11 viabiliza essa operação internacional, protegendo o cliente de exposição cambial e regulatória, e abrindo um vetor de cross-sell único na holding.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Demanda de câmbio ou remessa, compliance Bacen e perfil cambial do cliente viram contrato de câmbio fechado, hedge ativo e remessa internacional liquidada.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P12 Relacionamento, A2 Jurídico (contratos Bacen), G3 Compliance.</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">P12 · Relacionamento & Retenção</h4>
-        <div class="proc-owner">Owner: Head de Customer Success · Comitê Comercial</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Receita recorrente em serviços financeiros depende de retenção. Custo de aquisição é muito maior que custo de retenção, e cross-sell entre verticais só acontece com hub formal. P12 fecha o ciclo: previne churn, identifica cross-sell e retroalimenta P1 com indicações (advocacy).</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Cliente ativo, sinal de churn e oportunidade de cross-sell viram cliente retido, cross-sell ativado entre verticais e NPS reportado.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P1 Geração de Demanda (advocacy), todas as verticais P3 a P11 (cross-sell), A1 Tecnologia.</p>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>10</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 11 — Diretrizes · 5.1.2 Apoio A1-A4
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.1.2 Apoio A1-A4">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes
-        <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação · inventário)</span>
-      </h2>
-
-      <div class="camada-sep">
-        <h3 class="sub camada-title">Camada de apoio</h3>
-        <p class="camada-desc">Cinco processos que viabilizam a operação primária. Não geram receita direta, mas a ausência deles inviabiliza todo o resto: tecnologia, jurídico, financeiro, pessoas e backoffice.</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">A1 · Tecnologia & Dados</h4>
-        <div class="proc-owner">Owner: CTO · Comitê de Tecnologia</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Sem plataforma integrada, cada vertical opera com sua planilha, o cliente vê assessores que não se falam e cross-sell vira atrito. A1 é o pilar integrador da holding: CRM unificado, BI, integrações com XP, QI Tech, Bacen e seguradoras, RPA e automações.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Demandas das verticais, roadmap de produto e capacidade do time viram plataforma estável (uptime > 99,5%), integrações vivas, BI confiável e data lake unificado.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> Todos os processos primários P1 a P12 (dados e ferramentas) e G2 (dashboards de gestão).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">A2 · Jurídico</h4>
-        <div class="proc-owner">Owner: Diretor Jurídico · Comitê de Risco</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Holding multi-vertical regulada opera dentro de uma malha contratual densa (XP, QI Tech, Bacen, seguradoras, clientes PJ). A2 resguarda interesses legais, valida contratos antes da assinatura e atua em contencioso. Sem A2 ativo, exposição jurídica acumula silenciosamente.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Demandas das BUs, mapa regulatório (G3) e contratos modelo viram contratos validados, pareceres jurídicos especializados e defesa em contencioso administrativo e judicial.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P3 Crédito (contratos de FIDC), P10 Investment Banking (M&A), P11 Comex (contratos Bacen), demais verticais.</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">A3 · Financeiro</h4>
-        <div class="proc-owner">Owner: Controller · Comitê Orçamentário</div>
-        <p class="proc-block"><strong>Por que existe.</strong> A operação financeira da holding (contas, conciliação, comissionamento, fluxo de caixa) precisa fechar todo mês com precisão para que G4 e G2 tenham dado confiável. Sem A3 disciplinado, gestores tomam decisão com número errado, o que é pior do que não tomar decisão.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Fluxo de caixa projetado, contas a pagar e contas a receber viram conciliação bancária diária, DRE consolidado mensal e relatórios fiscais (DCTF, EFD, Sped).</p>
-        <p class="proc-block"><strong>Alimenta.</strong> G4 Gestão Orçamentária (DRE realizado), G2 (KRs financeiros), todas as verticais (comissionamento).</p>
-      </div>
-      <div class="proc-card">
-        <h4 class="proc-title">A4 · Gestão de Pessoas</h4>
-        <div class="proc-owner">Owner: Head de Pessoas · Comitê Estratégico</div>
-        <p class="proc-block"><strong>Por que existe.</strong> A M7 está mais que triplicando em cinco anos (R$ 31,7 MM → R$ 130 MM). Crescimento dessa magnitude exige time atraído, desenvolvido, certificado regulatoriamente (CEA, CGA, CFP, AAI) e retido. A4 sustenta a capacidade humana sem a qual a estratégia se torna inviável.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Estratégia de pessoas (G1), mapa de talentos e políticas de carreira viram time estruturado e certificado, PDIs ativos, política de remuneração atualizada e programa de cultura.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> Todas as áreas (pessoas e capacitação) e G1 Planejamento Estratégico (capacidade humana vs ambição).</p>
-      </div>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>11</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 12 — Diretrizes · A5 e 5.2
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · A5 e 5.2">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes
-        <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação)</span>
-      </h2>
-
-      <div class="proc-card">
-        <h4 class="proc-title">A5 · Backoffice</h4>
-        <div class="proc-owner">Owner: Coordenador de Backoffice · Comitê Operacional</div>
-        <p class="proc-block"><strong>Por que existe.</strong> Cada nova operação gera tarefas administrativas (KYC, documentação, conciliação, custódia, comunicação regulatória). A5 processa essas tarefas dentro de SLAs, liberando a ponta comercial para focar em cliente. Sem A5 eficiente, vertical comercial vira backoffice e produtividade despenca.</p>
-        <p class="proc-block"><strong>O que transforma.</strong> Demandas das verticais, documentos pendentes e SLAs definidos viram cadastros KYC completos, operações processadas dentro do SLA e documentação digitalizada e arquivada.</p>
-        <p class="proc-block"><strong>Alimenta.</strong> P2 Prospecção (cadastro liberando onboarding) e todas as verticais sob demanda.</p>
-      </div>
-      <h3 class="sub">5.2 · Hierarquia normativa por processo primário</h3>
-      <p>Cada processo primário deve estar coberto pela seguinte hierarquia mínima de normativos, conforme POL-GOV-001:</p>
-      <table class="doc-table">
-        <thead>
-          <tr>
-            <th style="width:18%">Nível</th>
-            <th style="width:38%">Documento mínimo</th>
-            <th>Cobertura esperada</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><strong>Estratégico</strong></td><td>1 POL (esta, ou específica da vertical)</td><td>Princípios e limites</td></tr>
-          <tr><td><strong>Tático</strong></td><td>1 MAN obrigatório por processo P1-P12</td><td>Visão de processo, regras de negócio, papéis e indicadores</td></tr>
-          <tr><td><strong>Operacional</strong></td><td>INS conforme demanda</td><td>Procedimentos críticos e rituais</td></tr>
-          <tr><td><strong>Técnico</strong></td><td>ESP conforme demanda</td><td>Cálculos, indicadores e integrações</td></tr>
-        </tbody>
-      </table>
-      <ul>
-        <li>Não é permitido operar um processo primário sem MAN vigente após o término da implementação do Playbook (18/07/2026).</li>
-        <li>Mudanças regulatórias relevantes exigem revisão extraordinária do MAN afetado em até <strong>60 dias corridos</strong>.</li>
-      </ul>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>12</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 13 — Diretrizes · 5.3 a 5.7
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Diretrizes · 5.3 a 5.7">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">05</span> Diretrizes
-        <span style="font-size:11px;color:var(--vc-300);font-weight:400;margin-left:6px">(continuação)</span>
-      </h2>
-
-      <h3 class="sub">5.3 · Ownership e cadência</h3>
-      <ul>
-        <li>Cada processo P1 a P12 tem <strong>1 (um) Process Owner</strong> formal, conforme tabela da seção 6.</li>
-        <li>O Process Owner é responsável por: documentação vigente, aderência da equipe ao playbook, KPIs entregues no ritmo definido e propostas de melhoria fundamentadas em indicadores.</li>
-        <li>Cadência mínima de rituais por processo primário: <strong>WBR semanal</strong> por vertical, <strong>MBR mensal</strong> consolidado e <strong>Revisão Trimestral</strong> conduzida pelo Process Owner com a área de Desempenho.</li>
-      </ul>
-
-      <h3 class="sub">5.4 · Pontos de contato com o cliente</h3>
-      <ul>
-        <li>Todo ponto de contato com o cliente deve estar mapeado em jornada documentada, com canal, gatilho, responsável e SLA explícitos.</li>
-        <li>Toda interação comercial relevante deve estar registrada no <strong>CRM corporativo</strong>, SSoT do relacionamento, custodiado por A1 Tecnologia &amp; Dados.</li>
-        <li>Não é permitido contato comercial relevante (proposta, fechamento, reativação, sinistro) realizado fora dos registros oficiais.</li>
-      </ul>
-
-      <h3 class="sub">5.5 · Dado único e integrações</h3>
-      <ul>
-        <li>Para cada processo primário, o Process Owner declara explicitamente, dentro do MAN, qual é a <strong>SSoT do processo</strong>.</li>
-        <li>Conflitos entre sistemas são resolvidos pela SSoT declarada, com registro formal de incidente para tratamento pela A1.</li>
-        <li>Mudança de SSoT exige aprovação da Diretoria Executiva e do Head de Tecnologia (A1).</li>
-      </ul>
-
-      <h3 class="sub">5.6 · Cross-sell e handoff entre verticais</h3>
-      <ul>
-        <li>O <strong>P12 Relacionamento &amp; Retenção</strong> é o hub formal de cross-sell entre verticais primárias.</li>
-        <li>Lead ou cliente identificado em uma vertical com aderência a outra vertical é distribuído via P2 Prospecção &amp; Qualificação ou via P12, com contexto preservado no CRM.</li>
-        <li>Não é permitido handoff entre verticais sem registro no CRM, com SLA explícito e responsável de chegada nomeado.</li>
-      </ul>
-
-      <h3 class="sub">5.7 · Aderência, exceções e auditoria</h3>
-      <ul>
-        <li>A <strong>aderência mínima</strong> de equipe ao playbook do processo é de <strong>80%</strong>, medida por auditoria semanal conduzida pelo Head de Desempenho.</li>
-        <li>Toda exceção formal a um playbook exige justificativa registrada no CRM ou no sistema de gestão de processos.</li>
-        <li>Exceção recorrente, caracterizada por <strong>3 ou mais ocorrências em 90 dias</strong> para o mesmo motivo, dispara revisão obrigatória do normativo afetado.</li>
-      </ul>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>13</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 8 — Papéis e Responsabilidades
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Papéis &amp; responsabilidades">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">06</span> Papéis e responsabilidades</h2>
-      <p class="section-lede">Estrutura formal de governança nos três níveis hierárquicos. Todo papel listado tem responsabilidade nomeada e mensurável.</p>
-
-      <table class="doc-table">
-        <thead>
-          <tr>
-            <th style="width:24%">Papel</th>
-            <th style="width:14%">Nível</th>
-            <th>Responsabilidades</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Diretoria Executiva</strong></td>
-            <td><span class="tag">Estratégico</span></td>
-            <td>Aprovar esta política e suas revisões; aprovar criação, fusão e deprecação de processos primários; aprovar exceções estruturais e mudança de SSoT.</td>
-          </tr>
-          <tr>
-            <td><strong>Comitê de Processos</strong></td>
-            <td><span class="tag">Estratégico</span></td>
-            <td>Deliberar conflitos entre verticais; avaliar trimestralmente esta política; recomendar à Diretoria propostas de mudança estrutural.</td>
-          </tr>
-          <tr>
-            <td><strong>Head de Desempenho</strong></td>
-            <td><span class="tag muted">Tático</span></td>
-            <td>Custodiar os normativos M7; medir aderência aos rituais e playbooks; reportar não conformidades; coordenar as revisões periódicas obrigatórias.</td>
-          </tr>
-          <tr>
-            <td><strong>Process Owner (P1-P12)</strong></td>
-            <td><span class="tag muted">Tático</span></td>
-            <td>Garantir documentação vigente, aderência da equipe, entrega dos KPIs e propostas de melhoria do processo sob sua titularidade.</td>
-          </tr>
-          <tr>
-            <td><strong>Heads de Vertical e Áreas</strong></td>
-            <td><span class="tag muted">Tático</span></td>
-            <td>Aplicar esta política em sua vertical; designar Process Owners; aprovar MANs e INSs do seu perímetro.</td>
-          </tr>
-          <tr>
-            <td><strong>Líderes Operacionais</strong></td>
-            <td><span class="tag muted">Operacional</span></td>
-            <td>Treinar suas equipes nos playbooks; conduzir WBR e MBR; escalonar exceções; registrar não conformidades.</td>
-          </tr>
-          <tr>
-            <td><strong>Equipe de Front e Backoffice</strong></td>
-            <td><span class="tag muted">Operacional</span></td>
-            <td>Executar processos conforme playbook; registrar interações no CRM; sinalizar gaps e propor melhorias incrementais.</td>
-          </tr>
-          <tr>
-            <td><strong>Auditoria Interna</strong></td>
-            <td><span class="tag">Estratégico</span></td>
-            <td>Auditar aderência conforme cronograma; reportar à Diretoria não conformidades materiais; validar evidências de remediação.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>14</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 9 — Governança
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Governança">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">07</span> Governança</h2>
-
-      <h3 class="sub">7.1 · Revisão periódica</h3>
-      <p>Esta política tem revisão obrigatória <strong>anual</strong>, conduzida pelo Head de Desempenho e aprovada pela Diretoria Executiva, conforme cadência definida na POL-GOV-001 para o tipo POL.</p>
-      <p>Revisão <strong>extraordinária</strong> é obrigatória quando ocorrer qualquer um dos seguintes gatilhos:</p>
-      <ul>
-        <li>Mudança regulatória relevante emitida por <strong>CVM, BACEN, SUSEP ou ANS</strong> com impacto sobre processo primário.</li>
-        <li>Reorganização da Cadeia de Valor: criação, fusão, deprecação ou renumeração de processo primário.</li>
-        <li>Incidente material em processo primário, com perda superior a <strong>1% da receita mensal</strong> da vertical afetada.</li>
-        <li>Decisão estratégica da Diretoria Executiva que altere modelo de negócio ou perímetro de uma vertical.</li>
-      </ul>
-
-      <h3 class="sub">7.2 · Indicadores de aderência</h3>
-      <table class="doc-table">
-        <thead>
-          <tr>
-            <th style="width:24%">Indicador</th>
-            <th>Fórmula</th>
-            <th style="width:14%">Frequência</th>
-            <th style="width:14%">Meta</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>Aderência aos rituais</td><td>Rituais executados conforme padrão / Rituais previstos</td><td>Semanal</td><td><strong>≥ 80%</strong></td></tr>
-          <tr><td>Cobertura documental</td><td>Processos P1 a P12 com MAN vigente / 12</td><td>Trimestral</td><td><strong>100%</strong></td></tr>
-          <tr><td>Tempestividade de revisão</td><td>Normativos dentro da validade / Total normativos vigentes</td><td>Trimestral</td><td><strong>100%</strong></td></tr>
-          <tr><td>Maturidade média</td><td>Média do nível de maturidade dos 12 processos (escala 1 a 5)</td><td>Semestral</td><td><strong>≥ 3</strong></td></tr>
-          <tr><td>Exceções tratadas no SLA</td><td>Exceções resolvidas no prazo / Total de exceções abertas</td><td>Mensal</td><td><strong>≥ 95%</strong></td></tr>
-        </tbody>
-      </table>
-
-      <h3 class="sub">7.3 · Escalonamento de exceções</h3>
-      <table class="doc-table">
-        <thead>
-          <tr>
-            <th style="width:55%">Tipo de exceção</th>
-            <th>Aprovador</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>Exceção operacional pontual a playbook</td><td>Process Owner</td></tr>
-          <tr><td>Exceção recorrente em playbook (≥ 3 ocorrências em 90 dias)</td><td>Head da Vertical + Head de Desempenho</td></tr>
-          <tr><td>Dispensa temporária de documentação obrigatória</td><td>Diretoria Executiva</td></tr>
-          <tr><td>Alteração na hierarquia normativa de um processo</td><td>Diretoria Executiva</td></tr>
-          <tr><td>Mudança de SSoT de processo primário</td><td>Diretoria Executiva + Head de Tecnologia (A1)</td></tr>
-          <tr><td>Criação, fusão ou deprecação de processo primário</td><td>Diretoria Executiva</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>15</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
-
-  <!-- ════════════════════════════════════════════════════════════
-       PÁGINA 10 — Disposições finais + Controle de Versões
-       ════════════════════════════════════════════════════════════ -->
-  <article class="page" data-page-label="Disposições finais">
-    <header class="page-head">
-      <div class="ph-left">
-        <img src="assets/m7-logo-dark.png" alt="M7">
-        <div class="ph-sep"></div>
-        <span class="ph-title">Política Geral de Governança Corporativa</span>
-      </div>
-      <span class="ph-meta">POL-GOV-002 · v1.0</span>
-    </header>
-
-    <div class="page-body">
-      <h2 class="section"><span class="num">08</span> Disposições finais</h2>
-
-      <h3 class="sub">8.1 · Vigência</h3>
-      <p>Esta política entra em vigor na <strong>data de sua aprovação</strong> pela Diretoria Executiva e permanece vigente até substituição ou revogação formal por documento de mesmo nível ou superior. A revisão anual obrigatória, prevista em 7.1, não interrompe sua vigência.</p>
-
-      <h3 class="sub">8.2 · Documentos relacionados</h3>
-      <table class="doc-table">
-        <thead>
-          <tr>
-            <th style="width:18%">Código</th>
-            <th style="width:32%">Título</th>
-            <th>Relação</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><span class="mono">POL-GOV-001</span></td>
-            <td>Política de Gestão por Processos e Padronização</td>
-            <td>Política mãe da hierarquia normativa M7, define o sistema de documentação que esta política instancia para a camada primária.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <hr class="divider">
-
-      <h2 class="section"><span class="num">00</span> Controle de versões</h2>
-      <table class="doc-table">
-        <thead>
-          <tr>
-            <th style="width:12%">Versão</th>
-            <th style="width:16%">Data</th>
-            <th style="width:32%">Autor</th>
-            <th>Alterações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><span class="mono">v1.0 · Mai / 2026</span></td>
-            <td>18/05/2026</td>
-            <td><strong>Bruno Chiaramonti</strong> · Head de Desempenho · M7 Investimentos</td>
-            <td>Versão inicial. Estabelece princípios, escopo nos processos primários P1-P12 e arquitetura de aderência. Documento superior: POL-GOV-001.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <hr class="divider">
-
-      <h2 class="section"><span class="num">00</span> Aprovações</h2>
-      <div class="approval-grid">
-        <div class="approval-card">
-          <div class="role">Elaborador</div>
-          <div class="who">Bruno Chiaramonti</div>
-          <div class="what">Head de Desempenho · M7 Investimentos</div>
-          <div class="sig-line"><span>Assinatura</span><span>18/05/2026</span></div>
-        </div>
-        <div class="approval-card">
-          <div class="role">Revisor</div>
-          <div class="who">Comitê de Processos</div>
-          <div class="what">Instância colegiada da Diretoria</div>
-          <div class="sig-line"><span>Assinatura</span><span>__/__/____</span></div>
-        </div>
-        <div class="approval-card">
-          <div class="role">Aprovador</div>
-          <div class="who">Diretoria Executiva</div>
-          <div class="what">M7 Investimentos</div>
-          <div class="sig-line"><span>Assinatura</span><span>__/__/____</span></div>
+         PÁGINA 1 — CAPA
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page cover" data-page-label="Capa">
+      <div class="cover-head">
+        <div class="cover-meta">
+          <img src="assets/m7-logo-offwhite.png" alt="{{NOME_DA_EMPRESA}}">
+          <div class="meta">
+            <span>{{AREA_DOCUMENTO}}</span><span class="dot"></span>
+            <span class="hl">{{TIPO_DOCUMENTO}} · {{NIVEL_DOCUMENTO}}</span><span class="dot"></span>
+            <span>{{DATA_REFERENCIA}}</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <footer class="page-foot">
-      <span class="pf-classif">Uso interno · Confidencial</span>
-      <span class="pf-page">Página <strong>16</strong> de <span class="total-pg">16</span></span>
-    </footer>
-  </article>
+      <div class="cover-body">
+        <div>
+          <div class="cover-eyebrow">
+            <span>Documento de governança</span>
+            <span>·</span>
+            <span class="v">{{CODIGO_DOCUMENTO}}</span>
+          </div>
+          <h1 class="cover-title">{{COVER_TITULO_LINHA1}}<br>{{COVER_TITULO_PREFIXO}} <em>{{COVER_TITULO_ACENTO}}</em> {{COVER_TITULO_SUFIXO}}</h1>
+          <p class="cover-subtitle">{{COVER_SUBTITULO}}</p>
 
-    </div><!-- /.doc -->
+          <div class="cover-grid">
+            <div class="cell">
+              <div class="l">Versão</div>
+              <div class="v mono">{{VERSAO_COMPLETA}}</div>
+            </div>
+            <div class="cell">
+              <div class="l">Vigência</div>
+              <div class="v">{{DATA_VIGENCIA}}</div>
+            </div>
+            <div class="cell">
+              <div class="l">Próxima revisão</div>
+              <div class="v">{{DATA_PROXIMA_REVISAO}}</div>
+            </div>
+            <div class="cell">
+              <div class="l">Responsável</div>
+              <div class="v">{{AREA_RESPONSAVEL}}</div>
+            </div>
+          </div>
+        </div>
 
-  </main><!-- /.shell-main -->
-</div><!-- /.shell-row -->
+        <div class="cover-foot">
+          <span class="conf">Uso interno · Confidencial</span>
+          <span>{{NOME_DA_EMPRESA}} · {{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+        </div>
+      </div>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA 2 — Controle do Documento + Sumário
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page" data-page-label="Controle &amp; sumário">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
+        </div>
+        <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+      </header>
+
+      <div class="page-body">
+        <h2 class="section"><span class="num">00</span> Controle do documento</h2>
+        <p class="section-lede">Identificação canônica do documento. Toda referência cruzada usa o código <span class="mono">{{CODIGO_DOCUMENTO}}</span>.</p>
+        <table class="kv-table">
+          <tbody>
+            <tr><td>Código</td><td><span class="mono">{{CODIGO_DOCUMENTO}}</span></td></tr>
+            <tr><td>Versão</td><td><span class="mono">{{VERSAO_COMPLETA}}</span></td></tr>
+            <tr><td>Tipo</td><td>{{TIPO_DOCUMENTO}} <span class="mono">({{TIPO_DOCUMENTO_SIGLA}})</span></td></tr>
+            <tr><td>Área</td><td>{{AREA_DOCUMENTO}}</td></tr>
+            <tr><td>Data</td><td>{{DATA_REFERENCIA}}</td></tr>
+            <tr><td>Elaborado por</td><td><strong>{{NOME_ELABORADOR}}</strong> · {{CARGO_ELABORADOR}}</td></tr>
+            <tr><td>Aprovado por</td><td>{{NOME_APROVADOR}} · {{CARGO_APROVADOR}}</td></tr>
+            <tr><td>Classificação</td><td>{{CLASSIFICACAO_DOCUMENTO}}</td></tr>
+            <tr><td>Revisão</td><td>{{CADENCIA_REVISAO}}</td></tr>
+            <tr><td>Documento superior</td><td><span class="mono">{{CODIGO_DOC_SUPERIOR}}</span> · {{TITULO_DOC_SUPERIOR}}</td></tr>
+          </tbody>
+        </table>
+
+        <hr class="divider">
+
+        <h2 class="section"><span class="num">00</span> Sumário</h2>
+        <div class="toc">
+          <div class="toc-item"><span class="num">1</span><span class="label">Objetivo</span><span class="pg">p. 3</span></div>
+          <div class="toc-item"><span class="num">2</span><span class="label">Escopo</span><span class="pg">p. 3</span></div>
+          <div class="toc-item"><span class="num">3</span><span class="label">Definições</span><span class="pg">p. 4</span></div>
+          <div class="toc-item"><span class="num">4</span><span class="label">Princípios</span><span class="pg">p. 5</span></div>
+          <div class="toc-item"><span class="num">5</span><span class="label">Diretrizes</span><span class="pg">p. 6</span></div>
+          {{SUMARIO_DIRETRIZES}}
+          <div class="toc-item"><span class="num">6</span><span class="label">Papéis e responsabilidades</span><span class="pg">p. 7</span></div>
+          <div class="toc-item"><span class="num">7</span><span class="label">Governança</span><span class="pg">p. 8</span></div>
+          <div class="toc-item"><span class="num">8</span><span class="label">Disposições finais</span><span class="pg">p. 9</span></div>
+        </div>
+      </div>
+
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>2</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
+      </footer>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA 3 — Objetivo + Escopo
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page" data-page-label="Objetivo &amp; Escopo">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
+        </div>
+        <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+      </header>
+
+      <div class="page-body">
+        <h2 class="section"><span class="num">01</span> Objetivo</h2>
+        <p>{{TEXTO_OBJETIVO_P1}}</p>
+        <p>{{TEXTO_OBJETIVO_P2}}</p>
+
+        <hr class="divider">
+
+        <h2 class="section"><span class="num">02</span> Escopo</h2>
+        <p class="section-lede">{{LEDE_ESCOPO}}</p>
+
+        <div class="twocol">
+          <div>
+            <h3 class="sub">Aplica-se a</h3>
+            <ul>
+              <li>{{ESCOPO_INCLUSAO_1}}</li>
+              <li>{{ESCOPO_INCLUSAO_2}}</li>
+              <li>{{ESCOPO_INCLUSAO_3}}</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="sub">Não se aplica a</h3>
+            <ul>
+              <li>{{ESCOPO_EXCLUSAO_1}}</li>
+              <li>{{ESCOPO_EXCLUSAO_2}}</li>
+              <li>{{ESCOPO_EXCLUSAO_3}}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>3</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
+      </footer>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA 4 — Definições
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page" data-page-label="Definições">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
+        </div>
+        <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+      </header>
+
+      <div class="page-body">
+        <h2 class="section"><span class="num">03</span> Definições</h2>
+        <p class="section-lede">Para fins desta política, aplicam-se os seguintes termos.</p>
+
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th style="width:22%">Termo</th>
+              <th>Definição</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>{{DEF_TERMO_1}}</strong></td><td>{{DEF_TEXTO_1}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_2}}</strong></td><td>{{DEF_TEXTO_2}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_3}}</strong></td><td>{{DEF_TEXTO_3}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_4}}</strong></td><td>{{DEF_TEXTO_4}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_5}}</strong></td><td>{{DEF_TEXTO_5}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_6}}</strong></td><td>{{DEF_TEXTO_6}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_7}}</strong></td><td>{{DEF_TEXTO_7}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_8}}</strong></td><td>{{DEF_TEXTO_8}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_9}}</strong></td><td>{{DEF_TEXTO_9}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_10}}</strong></td><td>{{DEF_TEXTO_10}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_11}}</strong></td><td>{{DEF_TEXTO_11}}</td></tr>
+            <tr><td><strong>{{DEF_TERMO_12}}</strong></td><td>{{DEF_TEXTO_12}}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>4</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
+      </footer>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA 5 — Princípios
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page" data-page-label="Princípios">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
+        </div>
+        <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+      </header>
+
+      <div class="page-body">
+        <h2 class="section"><span class="num">04</span> Princípios</h2>
+        <p class="section-lede">{{LEDE_PRINCIPIOS}}</p>
+
+        <div class="principles">
+          <div class="principle">
+            <div class="pn">P1</div>
+            <div class="pt">{{PRINCIPIO_1_TITULO}}</div>
+            <div class="pd">{{PRINCIPIO_1_DESCRICAO}}</div>
+          </div>
+          <div class="principle">
+            <div class="pn">P2</div>
+            <div class="pt">{{PRINCIPIO_2_TITULO}}</div>
+            <div class="pd">{{PRINCIPIO_2_DESCRICAO}}</div>
+          </div>
+          <div class="principle">
+            <div class="pn">P3</div>
+            <div class="pt">{{PRINCIPIO_3_TITULO}}</div>
+            <div class="pd">{{PRINCIPIO_3_DESCRICAO}}</div>
+          </div>
+          <div class="principle">
+            <div class="pn">P4</div>
+            <div class="pt">{{PRINCIPIO_4_TITULO}}</div>
+            <div class="pd">{{PRINCIPIO_4_DESCRICAO}}</div>
+          </div>
+          <div class="principle">
+            <div class="pn">P5</div>
+            <div class="pt">{{PRINCIPIO_5_TITULO}}</div>
+            <div class="pd">{{PRINCIPIO_5_DESCRICAO}}</div>
+          </div>
+          <div class="principle">
+            <div class="pn">P6</div>
+            <div class="pt">{{PRINCIPIO_6_TITULO}}</div>
+            <div class="pd">{{PRINCIPIO_6_DESCRICAO}}</div>
+          </div>
+          <div class="principle">
+            <div class="pn">P7</div>
+            <div class="pt">{{PRINCIPIO_7_TITULO}}</div>
+            <div class="pd">{{PRINCIPIO_7_DESCRICAO}}</div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>5</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
+      </footer>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA 6 — Diretrizes
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page" data-page-label="Diretrizes">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
+        </div>
+        <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+      </header>
+
+      <div class="page-body">
+        <h2 class="section"><span class="num">05</span> Diretrizes</h2>
+        <p class="section-lede">{{LEDE_DIRETRIZES}}</p>
+
+        {{CONTEUDO_DIRETRIZES}}
+      </div>
+
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>6</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
+      </footer>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA 7 — Papéis e Responsabilidades
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page" data-page-label="Papéis &amp; responsabilidades">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
+        </div>
+        <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+      </header>
+
+      <div class="page-body">
+        <h2 class="section"><span class="num">06</span> Papéis e responsabilidades</h2>
+        <p class="section-lede">{{LEDE_PAPEIS}}</p>
+
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th style="width:24%">Papel</th>
+              <th style="width:14%">Nível</th>
+              <th>Responsabilidades</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>{{PAPEL_1_NOME}}</strong></td>
+              <td><span class="tag">{{PAPEL_1_NIVEL}}</span></td>
+              <td>{{PAPEL_1_RESPONSABILIDADES}}</td>
+            </tr>
+            <tr>
+              <td><strong>{{PAPEL_2_NOME}}</strong></td>
+              <td><span class="tag">{{PAPEL_2_NIVEL}}</span></td>
+              <td>{{PAPEL_2_RESPONSABILIDADES}}</td>
+            </tr>
+            <tr>
+              <td><strong>{{PAPEL_3_NOME}}</strong></td>
+              <td><span class="tag muted">{{PAPEL_3_NIVEL}}</span></td>
+              <td>{{PAPEL_3_RESPONSABILIDADES}}</td>
+            </tr>
+            <tr>
+              <td><strong>{{PAPEL_4_NOME}}</strong></td>
+              <td><span class="tag muted">{{PAPEL_4_NIVEL}}</span></td>
+              <td>{{PAPEL_4_RESPONSABILIDADES}}</td>
+            </tr>
+            <tr>
+              <td><strong>{{PAPEL_5_NOME}}</strong></td>
+              <td><span class="tag muted">{{PAPEL_5_NIVEL}}</span></td>
+              <td>{{PAPEL_5_RESPONSABILIDADES}}</td>
+            </tr>
+            <tr>
+              <td><strong>{{PAPEL_6_NOME}}</strong></td>
+              <td><span class="tag muted">{{PAPEL_6_NIVEL}}</span></td>
+              <td>{{PAPEL_6_RESPONSABILIDADES}}</td>
+            </tr>
+            <tr>
+              <td><strong>{{PAPEL_7_NOME}}</strong></td>
+              <td><span class="tag muted">{{PAPEL_7_NIVEL}}</span></td>
+              <td>{{PAPEL_7_RESPONSABILIDADES}}</td>
+            </tr>
+            <tr>
+              <td><strong>{{PAPEL_8_NOME}}</strong></td>
+              <td><span class="tag">{{PAPEL_8_NIVEL}}</span></td>
+              <td>{{PAPEL_8_RESPONSABILIDADES}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>7</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
+      </footer>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA 8 — Governança
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page" data-page-label="Governança">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
+        </div>
+        <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+      </header>
+
+      <div class="page-body">
+        <h2 class="section"><span class="num">07</span> Governança</h2>
+
+        <h3 class="sub">7.1 · Revisão periódica</h3>
+        <p>{{REVISAO_PERIODICA_INTRO}}</p>
+        <p>Revisão <strong>extraordinária</strong> é obrigatória quando ocorrer qualquer um dos seguintes gatilhos:</p>
+        <ul>
+          <li>{{GATILHO_REVISAO_1}}</li>
+          <li>{{GATILHO_REVISAO_2}}</li>
+          <li>{{GATILHO_REVISAO_3}}</li>
+          <li>{{GATILHO_REVISAO_4}}</li>
+        </ul>
+
+        <h3 class="sub">7.2 · Indicadores de aderência</h3>
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th style="width:24%">Indicador</th>
+              <th>Fórmula</th>
+              <th style="width:14%">Frequência</th>
+              <th style="width:14%">Meta</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>{{INDICADOR_1_NOME}}</td><td>{{INDICADOR_1_FORMULA}}</td><td>{{INDICADOR_1_FREQ}}</td><td><strong>{{INDICADOR_1_META}}</strong></td></tr>
+            <tr><td>{{INDICADOR_2_NOME}}</td><td>{{INDICADOR_2_FORMULA}}</td><td>{{INDICADOR_2_FREQ}}</td><td><strong>{{INDICADOR_2_META}}</strong></td></tr>
+            <tr><td>{{INDICADOR_3_NOME}}</td><td>{{INDICADOR_3_FORMULA}}</td><td>{{INDICADOR_3_FREQ}}</td><td><strong>{{INDICADOR_3_META}}</strong></td></tr>
+            <tr><td>{{INDICADOR_4_NOME}}</td><td>{{INDICADOR_4_FORMULA}}</td><td>{{INDICADOR_4_FREQ}}</td><td><strong>{{INDICADOR_4_META}}</strong></td></tr>
+            <tr><td>{{INDICADOR_5_NOME}}</td><td>{{INDICADOR_5_FORMULA}}</td><td>{{INDICADOR_5_FREQ}}</td><td><strong>{{INDICADOR_5_META}}</strong></td></tr>
+          </tbody>
+        </table>
+
+        <h3 class="sub">7.3 · Escalonamento de exceções</h3>
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th style="width:55%">Tipo de exceção</th>
+              <th>Aprovador</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>{{ESCALA_TIPO_1}}</td><td>{{ESCALA_APROVADOR_1}}</td></tr>
+            <tr><td>{{ESCALA_TIPO_2}}</td><td>{{ESCALA_APROVADOR_2}}</td></tr>
+            <tr><td>{{ESCALA_TIPO_3}}</td><td>{{ESCALA_APROVADOR_3}}</td></tr>
+            <tr><td>{{ESCALA_TIPO_4}}</td><td>{{ESCALA_APROVADOR_4}}</td></tr>
+            <tr><td>{{ESCALA_TIPO_5}}</td><td>{{ESCALA_APROVADOR_5}}</td></tr>
+            <tr><td>{{ESCALA_TIPO_6}}</td><td>{{ESCALA_APROVADOR_6}}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>8</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
+      </footer>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA 9 — Disposições finais + Controle de Versões
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page" data-page-label="Disposições finais">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">{{TITULO_DOCUMENTO}}</span>
+        </div>
+        <span class="ph-meta">{{CODIGO_DOCUMENTO}} · {{VERSAO_CURTA}}</span>
+      </header>
+
+      <div class="page-body">
+        <h2 class="section"><span class="num">08</span> Disposições finais</h2>
+
+        <h3 class="sub">8.1 · Vigência</h3>
+        <p>{{TEXTO_VIGENCIA}}</p>
+
+        <h3 class="sub">8.2 · Documentos relacionados</h3>
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th style="width:18%">Código</th>
+              <th style="width:32%">Título</th>
+              <th>Relação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="mono">{{DOC_REL_1_CODIGO}}</span></td>
+              <td>{{DOC_REL_1_TITULO}}</td>
+              <td>{{DOC_REL_1_RELACAO}}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <hr class="divider">
+
+        <h2 class="section"><span class="num">00</span> Controle de versões</h2>
+        <table class="doc-table">
+          <thead>
+            <tr>
+              <th style="width:12%">Versão</th>
+              <th style="width:16%">Data</th>
+              <th style="width:32%">Autor</th>
+              <th>Alterações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="mono">{{VERSAO_COMPLETA}}</span></td>
+              <td>{{DATA_REFERENCIA}}</td>
+              <td><strong>{{NOME_ELABORADOR}}</strong> · {{CARGO_ELABORADOR}}</td>
+              <td>{{ALTERACOES_VERSAO}}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <hr class="divider">
+
+        <h2 class="section"><span class="num">00</span> Aprovações</h2>
+        <div class="approval-grid">
+          <div class="approval-card">
+            <div class="role">Elaborador</div>
+            <div class="who">{{NOME_ELABORADOR}}</div>
+            <div class="what">{{CARGO_ELABORADOR}}</div>
+            <div class="sig-line"><span>Assinatura</span><span>{{DATA_ELABORACAO}}</span></div>
+          </div>
+          <div class="approval-card">
+            <div class="role">Revisor</div>
+            <div class="who">{{NOME_REVISOR}}</div>
+            <div class="what">{{CARGO_REVISOR}}</div>
+            <div class="sig-line"><span>Assinatura</span><span>{{DATA_REVISAO}}</span></div>
+          </div>
+          <div class="approval-card">
+            <div class="role">Aprovador</div>
+            <div class="who">{{NOME_APROVADOR}}</div>
+            <div class="what">{{CARGO_APROVADOR}}</div>
+            <div class="sig-line"><span>Assinatura</span><span>{{DATA_APROVACAO}}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>9</strong> de <span class="total-pg">{{TOTAL_PAGINAS}}</span></span>
+      </footer>
+    </article>
+
+  </div><!-- /.doc -->
+
+</main><!-- /.shell-main -->
 
 <!-- ============================================================
      TOOLBAR flutuante (apenas em tela)
      ============================================================ -->
 <div class="toolbar" role="toolbar" aria-label="Controles do documento">
   <button class="navbtn" id="prev-page" aria-label="Página anterior">◀</button>
-  <div class="counter">Página <strong id="cur-page">1</strong> / <span id="total-pages">16</span></div>
+  <div class="counter">Página <strong id="cur-page">1</strong> / <span id="total-pages">9</span></div>
   <button class="navbtn" id="next-page" aria-label="Próxima página">▶</button>
   <div class="sep"></div>
   <button class="export" id="export-pdf" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+      <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"></path>
     </svg>
     Exportar PDF
   </button>
@@ -2057,26 +1086,19 @@
     const nextBtn  = document.getElementById('next-page');
     const exportBtn= document.getElementById('export-pdf');
     const scroller = document.getElementById('shell-main');
-    const tocItems = Array.from(document.querySelectorAll('#side-toc .item'));
 
     totalEl.textContent = total;
     document.querySelectorAll('.total-pg').forEach(el => el.textContent = total);
 
-    // Página atual = página com maior interseção dentro do scroller
     let current = 1;
     const setCurrent = (n) => {
       if (n === current) return;
       current = n;
       curEl.textContent = n;
-      tocItems.forEach(it => {
-        it.classList.toggle('active', Number(it.dataset.target) === n);
-      });
     };
-    // Marca inicial
     setCurrent(1);
 
     const io = new IntersectionObserver((entries) => {
-      // Maior interseção entre as entradas observadas que estão visíveis
       const visible = entries
         .filter(e => e.isIntersecting)
         .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -2088,26 +1110,16 @@
 
     pages.forEach(p => io.observe(p));
 
-    // Navegação por scroll programático dentro do shell-main
     const scrollToPage = (n) => {
       const idx = Math.max(0, Math.min(total - 1, n - 1));
       const target = pages[idx];
-      const top = target.offsetTop - 24; // pequeno gutter
+      const top = target.offsetTop - 24;
       scroller.scrollTo({ top, behavior: 'smooth' });
     };
 
     prevBtn.addEventListener('click', () => scrollToPage(current - 1));
     nextBtn.addEventListener('click', () => scrollToPage(current + 1));
 
-    // Sumário lateral — clique vai à página
-    tocItems.forEach(it => {
-      it.addEventListener('click', () => {
-        const n = Number(it.dataset.target);
-        if (!isNaN(n)) scrollToPage(n);
-      });
-    });
-
-    // Navegação por teclado
     document.addEventListener('keydown', (e) => {
       const tag = (document.activeElement && document.activeElement.tagName) || '';
       if (['INPUT', 'TEXTAREA'].includes(tag)) return;
@@ -2122,7 +1134,6 @@
       }
     });
 
-    // Export PDF — diálogo nativo (Salvar como PDF)
     exportBtn.addEventListener('click', () => window.print());
   })();
 </script>
