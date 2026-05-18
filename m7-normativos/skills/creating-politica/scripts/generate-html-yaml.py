@@ -303,6 +303,7 @@ def parse_content_md(path: Path) -> dict:
     raw_chunks = re.split(r"<!--\s*/?page-break\s*-->", after_sumario)
     raw_chunks = [c.strip() for c in raw_chunks if c.strip()]
     out["CONTEUDO_DIRETRIZES"] = markdown_to_html(raw_chunks[0]) if raw_chunks else ""
+    out["_diretrizes_chunk0_md"] = raw_chunks[0] if raw_chunks else ""
     out["_diretrizes_extra_chunks_md"] = raw_chunks[1:] if len(raw_chunks) > 1 else []
 
     # 6. Papéis — lede + tabela 3 col
@@ -667,6 +668,41 @@ def inject_m7_classes(html: str) -> str:
     return html
 
 
+def _estimate_chunk_height(md: str) -> int:
+    """Estima altura em px do chunk renderizado em A4 (largura ~174mm).
+
+    Heurística conservadora — bate dentro de ±15% para conteúdo típico.
+    Usada para alertar autor quando um page-break é necessário antes que
+    `overflow: hidden` corte o conteúdo (page-body útil ≈ 960px).
+    """
+    h = 0
+    # Cards (qualquer classe `*-card` no MD): ~180px cada
+    h += len(re.findall(r'<div\s+class="[^"]*-card[^"]*"', md)) * 180
+    # Tabelas markdown: header (28px) + ~35px por linha
+    table_lines = len(re.findall(r"^\s*\|.*\|\s*$", md, re.MULTILINE))
+    if table_lines:
+        h += 28 + max(0, table_lines - 2) * 35  # -2 = header + separator
+    # SVG inline (assume aspect ratio + width 100%)
+    if "<svg" in md:
+        h += 540
+    # Headings
+    h += len(re.findall(r"^###\s", md, re.MULTILINE)) * 30
+    h += len(re.findall(r"^####\s", md, re.MULTILINE)) * 22
+    # Bullets
+    h += len(re.findall(r"^\s*[-*]\s+", md, re.MULTILINE)) * 22
+    # Parágrafos não-HTML/não-heading/não-list/não-tabela
+    paras = 0
+    for line in md.split("\n"):
+        s = line.strip()
+        if not s:
+            continue
+        if s.startswith(("<", "#", "|", "-", "*")):
+            continue
+        paras += 1
+    h += paras * 22  # linha média (parágrafos longos quebrarão em múltiplas)
+    return h
+
+
 def build_extra_diretrizes_pages(content_md, placeholders: dict) -> str:
     """Renderiza os chunks 1..N de Diretrizes como <article class="page">.
 
@@ -676,10 +712,37 @@ def build_extra_diretrizes_pages(content_md, placeholders: dict) -> str:
 
     O JS do template auto-numera todas as `.page` no load, então
     `Página ? de ?` aqui é só placeholder visual antes do JS rodar.
+
+    Emite warning no stderr quando o chunk estimado > 900px (margem de
+    segurança em relação ao page-body útil de ~960px). Threshold no chunk 0
+    também (cadernal — exibido com índice 1 para o autor).
     """
-    chunks = placeholders.get("_diretrizes_extra_chunks_md") or []
-    if not chunks:
+    # Validação de altura do chunk 0 (CONTEUDO_DIRETRIZES renderizado)
+    chunks_md = placeholders.get("_diretrizes_extra_chunks_md") or []
+    chunk0_md = placeholders.get("_diretrizes_chunk0_md", "")
+    if chunk0_md:
+        est = _estimate_chunk_height(chunk0_md)
+        if est > 900:
+            sys.stderr.write(
+                f"⚠  Chunk Diretrizes #1 estimado em {est}px — pode exceder "
+                f"altura do page-body A4 (~960px) e ser cortado por overflow:hidden.\n"
+                f"   Adicione <!-- /page-break --> antes de elementos pesados.\n"
+            )
+
+    if not chunks_md:
         return ""
+
+    # Validar chunks extras (1..N)
+    for i, chunk_md in enumerate(chunks_md, start=2):
+        est = _estimate_chunk_height(chunk_md)
+        if est > 900:
+            sys.stderr.write(
+                f"⚠  Chunk Diretrizes #{i} estimado em {est}px — pode exceder "
+                f"altura do page-body A4 (~960px) e ser cortado por overflow:hidden.\n"
+                f"   Adicione <!-- /page-break --> antes de elementos pesados.\n"
+            )
+
+    chunks = chunks_md
 
     code = placeholders.get("CODIGO_DOCUMENTO", "")
     version = placeholders.get("VERSAO_CURTA", "")

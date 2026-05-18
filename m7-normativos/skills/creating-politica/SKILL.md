@@ -144,6 +144,11 @@ O MD segue **estrutura estrita** — h2 numerados, blocos específicos por seç�
 - `**bold**`, `*itálico*`, `` `code` ``, `[texto](url)` funcionam em **todos** os campos de texto, não só Diretrizes
 - `<!-- /page-break -->` na seção 5 quebra Diretrizes em múltiplas páginas A4
 
+A partir da v3.0:
+
+- **Namespaces CSS reservados**: `.skill-proc-*` (grid compacto), `.inv-*` (cards verticais narrativos), `.embed-svg` (wrappers de SVG), além de `.approval-card`/`.kv-table`/`.doc-table`/`.sub`/`.subsub`. **Não sobrescreva**. Para custom CSS use prefixos próprios. Detalhes e exemplos HTML em [normativo-schema.md → Namespaces CSS reservados](references/normativo-schema.md#namespaces-css-reservados-pelo-template-v30).
+- **Page-break com alerta**: o script estima a altura de cada chunk de Diretrizes e avisa no stderr quando excede ~900px (margem de segurança), indicando onde adicionar `<!-- /page-break -->` extras.
+
 Estrutura canônica:
 
 ```markdown

@@ -440,35 +440,93 @@
     background: var(--lime); opacity: 0.7;
   }
 
-  /* ───── cards de inventário de processos (#4) ───── */
-  .proc-block {
+  /* ───── Padrão 1: grid 4-col compacto (.skill-proc-*) ─────
+     Namespace `.skill-*` reservado pela skill. Para cards verticais
+     narrativos, use `.inv-*` (abaixo). */
+  .skill-proc-block {
     display: flex; flex-wrap: wrap; gap: 6px;
     margin: 8px 0;
   }
-  .proc-card {
+  .skill-proc-card {
     flex: 1 1 calc(25% - 6px);
     min-width: 110px;
     border: 1px solid var(--lime); border-radius: 4px;
     padding: 6px 8px; background: rgba(238, 247, 124, 0.05);
   }
-  .proc-title {
+  .skill-proc-title {
     font-size: 10px; font-weight: 500;
     color: var(--vc-700); margin: 0 0 2px;
   }
-  .proc-owner { font-size: 8.5px; color: var(--vc-400); }
-  .camada-sep {
+  .skill-proc-owner { font-size: 8.5px; color: var(--vc-400); }
+  .skill-camada-sep {
     margin: 10px 0 4px;
     padding-top: 8px;
     border-top: 1px solid var(--vc-100);
   }
-  .camada-title {
+  .skill-camada-title {
     font-size: 11px; font-weight: 500;
     color: var(--vc-600); margin: 0;
     letter-spacing: 0.04em; text-transform: uppercase;
   }
-  .camada-sep p {
+  .skill-camada-sep p {
     font-size: 9.5px; color: var(--verde-claro);
     margin: 4px 0 0; font-style: italic;
+  }
+
+  /* ───── Padrão 2: cards verticais narrativos (.inv-*) ─────
+     Cards com border-left lime + body com <p class="inv-block">.
+     Adequado para inventário com narrativa expandida ("Por que existe",
+     "O que transforma", "Alimenta", etc.). */
+  .inv-card {
+    margin: 6px 0 8px;
+    padding: 6px 10px 5px;
+    border-left: 2px solid var(--lime);
+    background: rgba(238, 247, 124, 0.04);
+    border-radius: 0 6px 6px 0;
+  }
+  .inv-title {
+    font-size: 11.5px; font-weight: 500;
+    color: var(--vc-700);
+    margin: 0 0 2px; letter-spacing: -0.1px; line-height: 1.25;
+  }
+  .inv-owner {
+    font-size: 9px; color: var(--vc-300);
+    font-style: italic;
+    margin: 0 0 4px; letter-spacing: 0.02em;
+  }
+  .inv-block {
+    font-size: 9.5px; line-height: 1.42;
+    margin: 2px 0; color: var(--verde-medio);
+  }
+  .inv-block strong { color: var(--vc-700); font-weight: 500; }
+  .inv-sep {
+    margin: 8px 0 4px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  .inv-sep-title {
+    margin: 4px 0 2px;
+    color: var(--vc-700);
+    font-size: 12.5px; font-weight: 500;
+  }
+  .inv-sep-desc {
+    font-size: 9.5px; color: var(--vc-400);
+    margin: 0 0 2px; font-style: italic; line-height: 1.4;
+  }
+
+  /* ───── Embed genérico para SVG (cadeia de valor, fluxogramas) ───── */
+  .embed-svg {
+    display: block; width: 100%;
+    margin: 8px auto;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 6px; overflow: hidden;
+    background: var(--off-white);
+  }
+  .embed-svg svg { display: block; width: 100%; height: auto; }
+  .embed-svg-caption {
+    font-size: 9.5px; color: var(--vc-300);
+    margin-top: 4px; font-style: italic;
+    text-align: center;
   }
 
   /* Sumário */

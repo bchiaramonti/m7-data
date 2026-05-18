@@ -319,3 +319,120 @@ Renderiza como cartões `lime-bordered` 4 colunas com separadores discretos por 
 ## Imagens externas (v2.3+)
 
 `<img src="path/relativo/img.svg">` (ou .png/.jpg/.webp) no MD é automaticamente inlinado como `data:image/...;base64`. Path é relativo ao diretório do MD. Imagens com `src="data:..."`, `http://`, `https://` são preservadas. Se o arquivo não existir, o script emite warning no stderr mas continua.
+
+## Namespaces CSS reservados pelo template (v3.0+)
+
+O template oficial define classes CSS com semântica específica. **Não sobrescreva** essas classes via `<style>` no MD — use prefixos próprios para custom styling (ex.: `.callout-*`, `.user-*`, `.note-*`).
+
+| Classe / Namespace | Semântica |
+|--------------------|-----------|
+| `.skill-proc-block`, `.skill-proc-card`, `.skill-proc-title`, `.skill-proc-owner` | Grid 4-col compacto de processos. Card mini com border lime. |
+| `.skill-camada-sep`, `.skill-camada-title` | Separadores das camadas G/P/A no grid compacto. |
+| `.inv-card`, `.inv-title`, `.inv-owner`, `.inv-block`, `.inv-sep`, `.inv-sep-title`, `.inv-sep-desc` | Cards verticais narrativos. Body com `<p class="inv-block">`. Border-left lime. |
+| `.embed-svg`, `.embed-svg-caption` | Wrapper para SVG inline (cadeia de valor, fluxogramas). |
+| `.approval-card`, `.approval-grid`, `.kv-table`, `.doc-table`, `.principles`, `.principle-card`, `.sub`, `.subsub`, `.section`, `.section-lede` | Estrutura do template — nunca redefinir. |
+
+### Padrão A — Grid compacto (`.skill-proc-*`)
+
+Quando: o documento lista muitos processos (10+) e cada um cabe em ~80 chars.
+
+```html
+<div class="skill-camada-sep">
+  <h4 class="skill-camada-title">Camada Primária</h4>
+  <p>Doze processos que geram receita direta.</p>
+</div>
+
+<div class="skill-proc-block">
+  <div class="skill-proc-card">
+    <h4 class="skill-proc-title">P1 · Geração de Demanda</h4>
+    <p class="skill-proc-owner">Head de Marketing</p>
+  </div>
+  <div class="skill-proc-card">
+    <h4 class="skill-proc-title">P2 · Qualificação</h4>
+    <p class="skill-proc-owner">Head de Vendas</p>
+  </div>
+  <!-- ... até P12 ... -->
+</div>
+```
+
+Renderiza em grid 4-col responsivo, ~25% de largura por card.
+
+### Padrão B — Cards verticais narrativos (`.inv-*`)
+
+Quando: cada processo precisa de explicação ("Por que existe / O que transforma / Alimenta") — o card vira um bloco vertical.
+
+```html
+<div class="inv-sep">
+  <h4 class="inv-sep-title">Camada Primária</h4>
+  <p class="inv-sep-desc">Doze processos que geram receita direta.</p>
+</div>
+
+<div class="inv-card">
+  <h4 class="inv-title">P1 · Geração de Demanda</h4>
+  <p class="inv-owner">Owner: Head de Marketing</p>
+  <p class="inv-block"><strong>Por que existe:</strong> ativar pipeline de leads qualificados.</p>
+  <p class="inv-block"><strong>O que transforma:</strong> demanda latente em oportunidade quente.</p>
+  <p class="inv-block"><strong>Alimenta:</strong> P2 (Qualificação) com leads scored.</p>
+</div>
+<!-- ...repetir por processo -->
+```
+
+Renderiza vertical 1-col com border-left lime e tipografia leve.
+
+### Padrão C — Embed SVG (`.embed-svg`)
+
+```html
+<div class="embed-svg">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+    <!-- ... -->
+  </svg>
+</div>
+<p class="embed-svg-caption">Fig 1 · Cadeia de Valor M7-2026.</p>
+```
+
+SVG ocupa 100% da largura do page-body; caption discreta abaixo.
+
+## Page-break com alerta de altura (v3.0+)
+
+O script estima a altura de cada chunk de Diretrizes (entre `<!-- /page-break -->` markers). Se um chunk excede ~900px (margem de segurança em relação aos ~960px úteis do page-body A4), emite warning no stderr:
+
+```
+⚠  Chunk Diretrizes #2 estimado em 1340px — pode exceder altura do page-body A4 (~960px)
+   e ser cortado por overflow:hidden.
+   Adicione <!-- /page-break --> antes de elementos pesados.
+```
+
+Heurística de altura (px por elemento):
+
+| Elemento | Custo |
+|----------|-------|
+| `<div class="*-card">` (inv-card, skill-proc-card, etc.) | 180 |
+| Linha de tabela markdown | 35 (+28 header) |
+| `<svg>` inline | 540 |
+| h3 / h4 | 30 / 22 |
+| Bullet (`- `) | 22 |
+| Parágrafo | 22 |
+
+O warning não bloqueia a geração — só alerta. O autor decide se adiciona o page-break ou se aceita o risco de overflow.
+
+## CSS customizado no MD do autor
+
+Você pode injetar `<style>` no MD para classes próprias. **Cuidados:**
+
+1. **Use prefixos exclusivos** — não sobrescreva os namespaces da tabela acima. Bons prefixos: `.callout-*`, `.user-*`, `.note-*`, `.diagram-*`.
+
+2. **O `<style>` injetado é global** ao HTML inteiro (vaza para outras seções). Para escopar, use seletor descendente:
+
+   ```css
+   .my-namespace .card { font-size: 11px; }
+   ```
+
+   E envolva o conteúdo:
+
+   ```html
+   <div class="my-namespace">
+     <div class="card">...</div>
+   </div>
+   ```
+
+3. **Especificidade**: regras do template e do autor têm a mesma especificidade quando ambas usam classes simples. Em caso de empate, a regra que vem **depois** no DOM vence. Como o `<style>` do MD aparece após o `<style>` inline do template no `<head>`, o autor geralmente vence. Mesmo assim, prefira prefixos próprios — é mais previsível.

@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-05-18
+
+Iteração baseada em [SKILL-v2.3.0-PATCH-PROPOSAL.md](../../catalogo/SKILL-v2.3.0-PATCH-PROPOSAL.md), que documentou 3 anomalias residuais descobertas no uso real da v2.3.0 em POL-GOV-002 (inventário narrativo de 21 processos com 7 page-breaks).
+
+### Breaking changes (creating-politica)
+
+- **Rename de classes CSS** para evitar colisão com `<style>` injetado no MD do autor:
+  - `.proc-block` → `.skill-proc-block`
+  - `.proc-card` → `.skill-proc-card`
+  - `.proc-title` → `.skill-proc-title`
+  - `.proc-owner` → `.skill-proc-owner`
+  - `.camada-sep` → `.skill-camada-sep`
+  - `.camada-title` → `.skill-camada-title`
+- Documentos que dependiam dessas classes herdando estilo do template precisam migrar para os novos nomes (ou adotar o padrão `.inv-*` natativo abaixo). Em produção apenas POL-GOV-002 existia, e o autor já havia migrado para `.inv-*` como workaround — impacto efetivo zero.
+
+### Added (creating-politica)
+
+- **Padrão `.inv-*` nativo no template** (anomalia #1 do patch proposal): 8 classes (`inv-card`, `inv-title`, `inv-owner`, `inv-block`, `inv-block strong`, `inv-sep`, `inv-sep-title`, `inv-sep-desc`) que renderizam cards verticais narrativos com border-left lime. Adequado para inventário com explicação por processo ("Por que existe / O que transforma / Alimenta"). Autor do POL-GOV-002 pode agora deletar 8 das 11 linhas do `<style>` block do MD — as classes batem 1:1.
+- **Padrão `.embed-svg-*`** para SVG inline (cadeia de valor, fluxogramas): 3 classes (`embed-svg`, `embed-svg svg`, `embed-svg-caption`). Padrão reutilizável.
+- **Height estimator com warnings** (anomalia #2): nova função `_estimate_chunk_height(md_text)` no script. Estima altura px do chunk renderizado (cards = 180px, tabelas = 35px/linha, SVG = 540px, h3 = 30px, h4 = 22px, bullets = 22px, parágrafos = 22px). Emite warning no stderr quando chunk > 900px (margem de segurança em relação aos ~960px úteis do page-body A4). Aplicado tanto ao chunk 0 (CONTEUDO_DIRETRIZES) quanto aos extras gerados por `<!-- /page-break -->`. Não bloqueia geração — só alerta.
+
+### Changed
+
+- **`references/normativo-schema.md`** ganhou seção robusta "Namespaces CSS reservados pelo template" com 3 padrões HTML lado a lado:
+  - Padrão A: grid compacto `.skill-proc-*`
+  - Padrão B: vertical narrativo `.inv-*`
+  - Padrão C: SVG embed `.embed-svg`
+- Documentação do "Page-break com alerta de altura" com tabela de heurística e exemplos.
+- Documentação do CSS customizado (prefixos próprios, scope com seletor descendente, regra de especificidade).
+- **SKILL.md** Fase 2 menciona namespaces reservados + page-break alerta + link para a doc detalhada.
+
+### Migration
+
+POL-GOV-002 atual continua funcionando sem ajuste — workaround do user usa `.inv-*` que agora é nativo. Para "limpar":
+
+1. Deletar o `<style>` block do MD da seção 5 (linhas 91-103 do POL-GOV-002.md).
+2. Regenerar — visual idêntico, MD mais limpo, 1 fonte de verdade para as classes (template).
+
+### Anomalia #3 (style global) — abordagem
+
+Não fizemos `<style scoped>` (deprecated em HTML5). Optamos por **documentação explícita** sobre:
+- Quais namespaces são reservados (não sobrescrever)
+- Como usar prefixos próprios em CSS customizado
+- Como escopar via seletor descendente quando necessário
+
+Solução pragmática que cobre 100% dos casos sem adicionar complexidade no parser.
+
 ## [2.3.0] - 2026-05-18
 
 ### Fixed (creating-politica)
