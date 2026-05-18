@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-05-18
+
+### Fixed (creating-politica)
+
+- Template `politica-m7-template.html`: `<title>` ficava com "Política de Processos" hardcoded para qualquer POL (placeholder estava só em `{{NOME_DA_EMPRESA}}`). Trocado por `<title>{{TITULO_DOCUMENTO}} — {{NOME_DA_EMPRESA}}</title>` — agora o title da janela reflete o título real da política gerada (ex.: "Política Geral de Governança Corporativa — M7 Investimentos").
+
 ## [2.1.0] - 2026-05-18
 
 ### Changed (creating-politica)
