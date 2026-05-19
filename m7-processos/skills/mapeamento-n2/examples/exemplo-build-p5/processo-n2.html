@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Processos — Mapeamento N2 P5 Crédito | M7 Investimentos</title>
+<link rel="icon" href="assets/m7-logo-favicon.png">
+<link rel="stylesheet" href="m7-tokens.css">
+<link rel="stylesheet" href="m7-header-dark.css">
+<link rel="stylesheet" href="mapeamento.css">
+<link rel="stylesheet" href="mapeamento-views.css">
+</head>
+<body data-screen-label="Processos · P5 Crédito">
+
+<header class="m7-header-dark">
+  <div class="doc-meta">
+    <img src="assets/m7-logo-offwhite.png" alt="M7 Investimentos">
+    <div class="meta">
+      <span>Mapeamento de Processos</span>
+      <span class="dot"></span>
+      <span>P5 · Crédito</span>
+      <span class="dot"></span>
+      <span>Nível 2 · Subprocessos</span>
+    </div>
+  </div>
+  <div class="h-e">
+    <div class="body">
+      <div>
+        <h1><span style="color: var(--lime); font-weight: 500;">P5</span> &nbsp;Crédito</h1>
+        <p class="lede">O P5 Crédito é a vertical primária do grupo (FIDC Crédito, FIDC Serviços e Consignado), com originação multi-canal, gestão de risco end-to-end e maior contribuição de receita do portfólio. Este documento decompõe o P5 em 5 subprocessos, com BPMN end-to-end e SIPOC/DEIP por card.</p>
+      </div>
+      <div class="strip">
+        <div class="cell"><div class="v">WBS 3.2</div><div class="l">WBS · Stage</div></div>
+        <div class="cell"><div class="v">Diretor Comercial · Mesa Crédito</div><div class="l">Owner</div></div>
+        <div class="cell"><div class="v lime">12/05 → 30/05</div><div class="l">Janela</div></div>
+        <div class="cell"><div class="v status">Em produção</div><div class="l">Status</div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="view-nav" aria-label="Visões do N2">
+  <div class="view-nav-inner">
+    <span class="scope-label">N2 · Visões</span>
+    <a class="view-tab active" href="processo-n2.html">Processos</a>
+    <a class="view-tab" href="sipoc-deip.html">SIPOC / DEIP</a>
+    <a class="view-tab" href="jornada-cx.html">Jornada CX</a>
+    <a class="view-tab" href="data-lake.html">Data Lake</a>
+    <div class="view-spacer"></div>
+    <span class="view-hint">P5 Crédito · navegação entre as 4 páginas</span>
+  </div>
+</nav>
+
+<main class="mapping-main">
+
+  <!-- ==================== VIEW: PROCESSOS (BPMN end-to-end) ==================== -->
+  <section class="view-pane active" id="view-bpmn">
+
+    <div class="section-eyebrow">Processos · subprocessos do P5</div>
+    <h2 class="section-title">Mapa N2 — Decomposição em subprocessos</h2>
+
+    <div class="bpmn-wrap">
+      <div class="bpmn-meta">
+        <div class="bm-left">
+          <span class="bm-tag">BPMN end-to-end</span>
+          <span class="bm-stat">P5 Crédito · Nível 2</span>
+          <span class="bm-stat">5 collapsed subprocesses</span>
+          <span class="bm-stat">pool externa Cliente</span>
+          <span class="bm-stat">esquerda → direita (Bizagi convention)</span>
+        </div>
+        <div class="bm-right">cada caixa <strong>abre o DEIP</strong></div>
+      </div>
+
+      <div class="pool-wrap">
+        <!-- ========== POOL CLIENTE ========== -->
+        <div class="pool cliente">
+          <div class="pool-label">Cliente<span class="pool-sub">externo</span></div>
+          <div class="pool-content">
+            <div class="cliente-row">
+              <div class="ev start" title="M7: solicitação + dados básicos"></div>
+              <div class="cliente-spacer"></div>
+              <div class="cliente-msg">M7: documentos financeiros</div>
+              <div class="cliente-spacer"></div>
+              <div class="cliente-msg">Cliente: minutas para assinar</div>
+              <div class="cliente-spacer"></div>
+              <div class="cliente-msg">Cliente: confirmação de desembolso</div>
+              <div class="cliente-spacer"></div>
+              <div class="ev end" title="Cliente: lembretes e cobrança"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== POOL M7 ========== -->
+        <div class="pool">
+          <div class="pool-label">M7 &middot; Crédito<span class="pool-sub">interno</span></div>
+          <div class="pool-content">
+            <div class="m7-row">
+              <div class="ev start" title="Recebe demanda"></div>
+              <div class="seq short"></div>
+              <button class="subproc" data-sipoc="p5-1">
+                <div class="sp-code">P5.1</div>
+                <div class="sp-name">Originação</div>
+                <div class="sp-meta">Multi-canal · pré-análise</div>
+                <div class="sp-tech">Bitrix24 · Boa Vista · Quod</div>
+                <span class="sp-cadence">D+0 contínuo</span>
+              </button>
+              <div class="seq-mini"></div>
+              <button class="subproc" data-sipoc="p5-2">
+                <div class="sp-code">P5.2</div>
+                <div class="sp-name">Análise & Score</div>
+                <div class="sp-meta">Underwriting · alçadas</div>
+                <div class="sp-tech">Serasa · SCR Bacen · Modelo M7</div>
+                <span class="sp-cadence">SLA 3-5d</span>
+              </button>
+              <div class="seq-mini"></div>
+              <button class="subproc" data-sipoc="p5-3">
+                <div class="sp-code">P5.3</div>
+                <div class="sp-name">Estruturação & Formalização</div>
+                <div class="sp-meta">Contratos · garantias</div>
+                <div class="sp-tech">DocuSign · CETIP · Núclea</div>
+                <span class="sp-cadence">SLA 2-3d</span>
+              </button>
+              <div class="seq-mini"></div>
+              <button class="subproc" data-sipoc="p5-4">
+                <div class="sp-code">P5.4</div>
+                <div class="sp-name">Desembolso & Operação</div>
+                <div class="sp-meta">Liberação · cota FIDC</div>
+                <div class="sp-tech">FIDC Admin · PIX · Folha</div>
+                <span class="sp-cadence">SLA D+1</span>
+              </button>
+              <div class="seq-mini"></div>
+              <button class="subproc" data-sipoc="p5-5">
+                <div class="sp-code">P5.5</div>
+                <div class="sp-name">Monitoramento & Cobrança</div>
+                <div class="sp-meta">NPL · régua · recovery</div>
+                <div class="sp-tech">ClickHouse · Régua · Núclea</div>
+                <span class="sp-cadence">Diário</span>
+              </button>
+              <div class="seq-mini"></div>
+              <div class="ev end" title="Operação encerrada"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bpmn-legend">
+        <span class="lg-label">Legenda BPMN</span>
+        <span class="lg-item"><span class="lg-dot-start"></span> Start event</span>
+        <span class="lg-item"><span class="lg-dot-end"></span> End event</span>
+        <span class="lg-item"><span class="lg-collapsed"></span> Collapsed subprocess</span>
+        <span class="lg-item"><span class="lg-seq"></span> Sequence flow</span>
+        <span class="lg-item"><span class="lg-msg"></span> Message flow (Cliente ↔ M7)</span>
+      </div>
+    </div>
+
+    <div class="pergunta-guia">
+      <span class="pg-label">Pergunta-guia N2</span>
+      <span class="pg-text">"Qual é o propósito de cada subprocesso, suas entradas e saídas, e como interfaceia com o cliente e processos vizinhos?"</span>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="mapping-footer">
+  <div>BPM CBOK · Framework Aquila · Bizagi convention &nbsp;·&nbsp; M7 Investimentos · Mapeamento N2 P5 · v1.0</div>
+  <div class="footer-actions">
+    <button onclick="window.open(window.location.href, '_blank')">↗ Nova aba</button>
+    <button onclick="window.print()">⎙ Imprimir</button>
+    <button onclick="navigator.clipboard && navigator.clipboard.writeText(window.location.href); this.textContent='✓ copiado'; setTimeout(() => this.textContent='⌘ Copiar link', 1500)">⌘ Copiar link</button>
+  </div>
+</footer>
+
+<script>
+  // BPMN subprocess buttons → navega para a página SIPOC/DEIP com ?sp=X
+  document.querySelectorAll('.subproc[data-sipoc]').forEach(el => {
+    el.addEventListener('click', () => {
+      window.location.href = 'sipoc-deip.html?sp=' + el.dataset.sipoc;
+    });
+  });
+</script>
+
+</body>
+</html>

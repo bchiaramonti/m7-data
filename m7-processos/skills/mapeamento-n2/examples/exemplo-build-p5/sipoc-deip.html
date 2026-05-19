@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIPOC / DEIP — Mapeamento N2 P5 Crédito | M7 Investimentos</title>
+<link rel="icon" href="assets/m7-logo-favicon.png">
+<link rel="stylesheet" href="m7-tokens.css">
+<link rel="stylesheet" href="m7-header-dark.css">
+<link rel="stylesheet" href="mapeamento.css">
+<link rel="stylesheet" href="mapeamento-views.css">
+</head>
+<body data-screen-label="SIPOC/DEIP · P5 Crédito">
+
+<header class="m7-header-dark">
+  <div class="doc-meta">
+    <img src="assets/m7-logo-offwhite.png" alt="M7 Investimentos">
+    <div class="meta">
+      <span>Mapeamento de Processos</span>
+      <span class="dot"></span>
+      <span>P5 · Crédito</span>
+      <span class="dot"></span>
+      <span>Nível 2 · Subprocessos</span>
+    </div>
+  </div>
+  <div class="h-e">
+    <div class="body">
+      <div>
+        <h1><span style="color: var(--lime); font-weight: 500;">P5</span> &nbsp;Crédito</h1>
+        <p class="lede">FIDC Crédito, FIDC Serviços e Consignado. Vertical primária do grupo, com originação multi-canal e gestão de risco end-to-end. Este documento decompõe o P5 em 5 subprocessos, com BPMN end-to-end e SIPOC/DEIP por card.</p>
+      </div>
+      <div class="strip">
+        <div class="cell"><div class="v">WBS 3.2</div><div class="l">WBS · Stage</div></div>
+        <div class="cell"><div class="v">Filipe Costa</div><div class="l">Owner</div></div>
+        <div class="cell"><div class="v lime">12/05 → 30/05</div><div class="l">Janela</div></div>
+        <div class="cell"><div class="v status">Em produção</div><div class="l">Status</div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="view-nav" aria-label="Visões do N2">
+  <div class="view-nav-inner">
+    <span class="scope-label">N2 · Visões</span>
+    <a class="view-tab" href="processo-n2.html">Processos</a>
+    <a class="view-tab active" href="sipoc-deip.html">SIPOC / DEIP</a>
+    <a class="view-tab" href="jornada-cx.html">Jornada CX</a>
+    <a class="view-tab" href="data-lake.html">Data Lake</a>
+    <div class="view-spacer"></div>
+    <span class="view-hint">P5 Crédito · navegação entre as 4 páginas</span>
+  </div>
+</nav>
+
+<main class="mapping-main">
+
+  <!-- ==================== VIEW: SIPOC / DEIP ==================== -->
+  <section class="view-pane active" id="view-sipoc">
+
+    <div class="section-eyebrow">SIPOC / DEIP · subprocessos N2</div>
+    <h2 class="section-title">Mapa N2 — Objetivo, interfaces, fornecedores e clientes</h2>
+
+    <div class="pergunta-guia">
+      <span class="pg-label">Pergunta-guia DEIP</span>
+      <span class="pg-text">"Qual o objetivo do subprocesso, quem fornece o quê, quem é o cliente da saída, e que regulação e suporte sustentam a operação?"</span>
+    </div>
+
+    <div class="sipoc-layout">
+      <aside class="sipoc-sidebar">
+        <div class="sipoc-sidebar-head">
+          <span class="ssh-label">Subprocessos</span>
+          <span class="ssh-count" id="sipoc-sb-count">5</span>
+        </div>
+        <div class="sipoc-sidebar-list" id="sipoc-sidebar-list"></div>
+        <div class="sipoc-sidebar-foot">selecione um subprocesso →</div>
+      </aside>
+
+      <div class="sipoc-canvas" id="sipoc-canvas-frame">
+        <div class="sipoc-canvas-empty" id="sipoc-canvas-empty">
+          <span class="sce-icon">▣</span>
+          <span class="sce-text">Selecione um subprocesso na sidebar para abrir o DEIP</span>
+        </div>
+        <div class="sipoc-scale-wrap" id="sipoc-scale-wrap" hidden></div>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="mapping-footer">
+  <div>BPM CBOK · Framework Aquila · Bizagi convention &nbsp;·&nbsp; M7 Investimentos · Mapeamento N2 · v3.1</div>
+  <div class="footer-actions">
+    <button onclick="window.open(window.location.href, '_blank')">↗ Nova aba</button>
+    <button onclick="window.print()">⎙ Imprimir</button>
+    <button onclick="navigator.clipboard && navigator.clipboard.writeText(window.location.href); this.textContent='✓ copiado'; setTimeout(() => this.textContent='⌘ Copiar link', 1500)">⌘ Copiar link</button>
+  </div>
+</footer>
+
+<script src="dados-p5-credito-p5.js"></script>
+<script src="sipoc-deip.js" defer></script>
+
+</body>
+</html>

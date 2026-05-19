@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Processos — Mapeamento N2 {{CODE}} {{NOME_PROCESSO}} | M7 Investimentos</title>
+<link rel="icon" href="assets/m7-logo-favicon.png">
+<link rel="stylesheet" href="m7-tokens.css">
+<link rel="stylesheet" href="m7-header-dark.css">
+<link rel="stylesheet" href="mapeamento.css">
+<link rel="stylesheet" href="mapeamento-views.css">
+</head>
+<body data-screen-label="Processos · {{CODE}} {{NOME_PROCESSO}}">
+
+<header class="m7-header-dark">
+  <div class="doc-meta">
+    <img src="assets/m7-logo-offwhite.png" alt="M7 Investimentos">
+    <div class="meta">
+      <span>Mapeamento de Processos</span>
+      <span class="dot"></span>
+      <span>{{CODE}} · {{NOME_PROCESSO}}</span>
+      <span class="dot"></span>
+      <span>Nível 2 · Subprocessos</span>
+    </div>
+  </div>
+  <div class="h-e">
+    <div class="body">
+      <div>
+        <h1><span style="color: var(--lime); font-weight: 500;">{{CODE}}</span> &nbsp;{{NOME_PROCESSO}}</h1>
+        <p class="lede">{{LEDE}}</p>
+      </div>
+      <div class="strip">
+        <div class="cell"><div class="v">{{WBS}}</div><div class="l">WBS · Stage</div></div>
+        <div class="cell"><div class="v">{{OWNER}}</div><div class="l">Owner</div></div>
+        <div class="cell"><div class="v lime">{{JANELA}}</div><div class="l">Janela</div></div>
+        <div class="cell"><div class="v status">{{STATUS}}</div><div class="l">Status</div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="view-nav" aria-label="Visões do N2">
+  <div class="view-nav-inner">
+    <span class="scope-label">N2 · Visões</span>
+    <a class="view-tab active" href="processo-n2.html">Processos</a>
+    <a class="view-tab" href="sipoc-deip.html">SIPOC / DEIP</a>
+    <a class="view-tab" href="jornada-cx.html">Jornada CX</a>
+    <a class="view-tab" href="data-lake.html">Data Lake</a>
+    <div class="view-spacer"></div>
+    <span class="view-hint">{{CODE}} {{NOME_PROCESSO}} · navegação entre as 4 páginas</span>
+  </div>
+</nav>
+
+<main class="mapping-main">
+
+  <!-- ==================== VIEW: PROCESSOS (BPMN end-to-end) ==================== -->
+  <section class="view-pane active" id="view-bpmn">
+
+    <div class="section-eyebrow">Processos · subprocessos do {{CODE}}</div>
+    <h2 class="section-title">Mapa N2 — Decomposição em subprocessos</h2>
+
+    <div class="bpmn-wrap">
+      <div class="bpmn-meta">
+        <div class="bm-left">
+          <span class="bm-tag">BPMN end-to-end</span>
+          <span class="bm-stat">{{CODE}} {{NOME_PROCESSO}} · Nível 2</span>
+          <span class="bm-stat">{{N_SUBPROCS}} collapsed subprocesses</span>
+          <span class="bm-stat">pool externa Cliente</span>
+          <span class="bm-stat">esquerda → direita (Bizagi convention)</span>
+        </div>
+        <div class="bm-right">cada caixa <strong>abre o DEIP</strong></div>
+      </div>
+
+      <div class="pool-wrap">
+        <!-- ========== POOL CLIENTE ========== -->
+        <div class="pool cliente">
+          <div class="pool-label">Cliente<span class="pool-sub">externo</span></div>
+          <div class="pool-content">
+            <div class="cliente-row">
+{{CLIENTE_ROW}}
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== POOL M7 ========== -->
+        <div class="pool">
+          <div class="pool-label">M7 &middot; {{NOME_PROCESSO}}<span class="pool-sub">interno</span></div>
+          <div class="pool-content">
+            <div class="m7-row">
+              <div class="ev start" title="Recebe demanda"></div>
+              <div class="seq short"></div>
+{{M7_SUBPROC_BUTTONS}}
+              <div class="seq-mini"></div>
+              <div class="ev end" title="Operação encerrada"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bpmn-legend">
+        <span class="lg-label">Legenda BPMN</span>
+        <span class="lg-item"><span class="lg-dot-start"></span> Start event</span>
+        <span class="lg-item"><span class="lg-dot-end"></span> End event</span>
+        <span class="lg-item"><span class="lg-collapsed"></span> Collapsed subprocess</span>
+        <span class="lg-item"><span class="lg-seq"></span> Sequence flow</span>
+        <span class="lg-item"><span class="lg-msg"></span> Message flow (Cliente ↔ M7)</span>
+      </div>
+    </div>
+
+    <div class="pergunta-guia">
+      <span class="pg-label">Pergunta-guia N2</span>
+      <span class="pg-text">"Qual é o propósito de cada subprocesso, suas entradas e saídas, e como interfaceia com o cliente e processos vizinhos?"</span>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="mapping-footer">
+  <div>BPM CBOK · Framework Aquila · Bizagi convention &nbsp;·&nbsp; M7 Investimentos · Mapeamento N2 {{CODE}} · v1.0</div>
+  <div class="footer-actions">
+    <button onclick="window.open(window.location.href, '_blank')">↗ Nova aba</button>
+    <button onclick="window.print()">⎙ Imprimir</button>
+    <button onclick="navigator.clipboard && navigator.clipboard.writeText(window.location.href); this.textContent='✓ copiado'; setTimeout(() => this.textContent='⌘ Copiar link', 1500)">⌘ Copiar link</button>
+  </div>
+</footer>
+
+<script>
+  // BPMN subprocess buttons → navega para a página SIPOC/DEIP com ?sp=X
+  document.querySelectorAll('.subproc[data-sipoc]').forEach(el => {
+    el.addEventListener('click', () => {
+      window.location.href = 'sipoc-deip.html?sp=' + el.dataset.sipoc;
+    });
+  });
+</script>
+
+</body>
+</html>

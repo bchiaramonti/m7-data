@@ -1,0 +1,282 @@
+/* ====================================================================
+   Mapeamento N2/N3 — shell compartilhado entre os artefatos
+   Estende m7-tokens.css + m7-header-dark.css
+   ==================================================================== */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--off-white);
+  color: var(--vc-500);
+  line-height: 1.5;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button { font-family: inherit; cursor: pointer; }
+
+/* ========== DARK HEADER — extensões para mapeamento ========== */
+/* Override grande para acomodar 2 níveis de tabs no header */
+.m7-header-dark { margin-bottom: 0; padding-bottom: 0; }
+
+.m7-header-dark .h-e h1 {
+  font-size: 36px;
+  font-weight: 300;
+  letter-spacing: -1px;
+}
+
+.m7-header-dark .h-e .lede { max-width: 720px; margin-top: 8px; }
+
+/* Strip de status (em vez de stats numéricos): WBS, owner, datas, status */
+.m7-header-dark .h-e .strip { background: rgba(255,253,239,0.04); }
+.m7-header-dark .h-e .cell { padding: 10px 18px; }
+.m7-header-dark .h-e .cell .v { font-size: 14px; font-weight: 400; }
+.m7-header-dark .h-e .cell .v.lime { color: var(--lime); font-weight: 500; }
+.m7-header-dark .h-e .cell .v.status::before {
+  content: ''; display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--lime); margin-right: 8px;
+  vertical-align: 1px;
+}
+.m7-header-dark .h-e .cell .l {
+  font-size: 9.5px; letter-spacing: 0.14em;
+}
+
+/* ========== NIVEL 2: sub-vistas dentro do nível ========== */
+.view-nav {
+  background: var(--vc-600);
+  margin: 0 -32px 24px;
+  padding: 8px 32px;
+  border-top: 1px solid rgba(255,253,239,0.10);
+  border-bottom: 1px solid rgba(255,253,239,0.04);
+  flex-shrink: 0;
+}
+.view-nav-inner {
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.view-nav .scope-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,253,239,0.35);
+  font-weight: 500;
+}
+.view-tab {
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(255,253,239,0.55);
+  font-size: 12px;
+  font-weight: 400;
+  padding: 6px 14px;
+  border-radius: 6px;
+  transition: 0.15s;
+  white-space: nowrap;
+}
+.view-tab:hover {
+  background: rgba(255,253,239,0.06);
+  color: var(--off-white);
+}
+.view-tab.active {
+  background: var(--lime);
+  color: var(--vc-700);
+  font-weight: 600;
+  cursor: default;
+}
+.view-tab.active:hover { background: var(--lime); }
+.view-nav .view-spacer { flex: 1; }
+.view-nav .view-hint {
+  font-size: 10.5px;
+  color: rgba(255,253,239,0.4);
+  letter-spacing: 0.03em;
+}
+
+/* ========== MAIN ========== */
+.mapping-main {
+  max-width: 1360px;
+  width: 100%;
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--vc-300);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.section-eyebrow::after {
+  content: '';
+  flex: 1; height: 1px; background: var(--vc-100);
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -0.5px;
+  color: var(--vc-700);
+  margin-bottom: 20px;
+  line-height: 1.15;
+}
+
+.pergunta-guia {
+  background: rgba(238,247,124,0.18);
+  border-left: 3px solid var(--lime);
+  padding: 10px 18px;
+  margin: 12px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 0 6px 6px 0;
+}
+.pergunta-guia .pg-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--vc-500);
+  white-space: nowrap;
+}
+.pergunta-guia .pg-text {
+  font-size: 14px;
+  font-style: italic;
+  color: var(--vc-600);
+  line-height: 1.4;
+}
+
+/* ========== FOOTER ========== */
+.mapping-footer {
+  max-width: 1360px;
+  width: 100%;
+  margin: 24px auto 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--vc-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--vc-300);
+  flex-shrink: 0;
+}
+.mapping-footer .footer-actions { display: flex; gap: 8px; }
+.mapping-footer .footer-actions button {
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid var(--vc-100);
+  color: var(--vc-500);
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 5px;
+  transition: 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mapping-footer .footer-actions button:hover {
+  border-color: var(--vc-300);
+  background: var(--vc-50);
+}
+
+/* ========== MODAL ========== */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(40, 39, 31, 0.55);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 32px;
+  animation: fade-in 0.18s ease;
+}
+.modal-backdrop.open { display: flex; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--off-white);
+  border: 1px solid var(--vc-200);
+  border-radius: 10px;
+  max-width: 1280px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(40,39,31,0.35);
+  animation: slide-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.modal-header {
+  position: sticky; top: 0;
+  background: var(--vc-700);
+  color: var(--off-white);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px 10px 0 0;
+  z-index: 5;
+}
+.modal-header .mh-left { display: flex; align-items: center; gap: 14px; }
+.modal-header .mh-code {
+  background: var(--lime);
+  color: var(--vc-700);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+.modal-header .mh-title {
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.3px;
+}
+.modal-header .mh-sub {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,253,239,0.45);
+}
+.modal-close {
+  background: transparent;
+  border: 1px solid rgba(255,253,239,0.18);
+  color: var(--off-white);
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+  font-size: 18px;
+  line-height: 1;
+}
+.modal-close:hover {
+  background: rgba(255,253,239,0.1);
+  border-color: rgba(255,253,239,0.35);
+}
+.modal-body { padding: 24px 28px 28px; }
+
+@media print {
+  body { padding: 16px; height: auto; overflow: visible; }
+  .view-nav, .mapping-footer { display: none !important; }
+  .modal-backdrop { position: static; padding: 0; display: block; background: transparent; }
+  .modal { box-shadow: none; max-height: none; }
+}

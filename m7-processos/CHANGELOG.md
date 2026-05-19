@@ -4,6 +4,47 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.2.0] - 2026-05-19
+
+**MINOR · Nova skill `mapeamento-n2` (irmã da `mapeamento-n1`).** Pipeline iterativo de 3 fases que decompõe **um processo primário** vindo de uma cadeia N1 (ex.: P5 Crédito) em ~5 subprocessos e produz **4 artefatos HTML interligados** M7-2026:
+
+| Camada | Artefato | Pergunta que responde |
+|---|---|---|
+| Processo N2 | `processo-n2.html` (BPMN end-to-end Cliente↔M7) | Quais subprocessos e como se encadeiam? |
+| SIPOC/DEIP | `sipoc-deip.html` + `dados-{slug}.js` (sidebar + canvas fit-to-frame) | Para cada subproc.: I/O, etapas, regulação, suporte |
+| Jornada CX | `jornada-cx.html` + `journey-{slug}.js` (P5_JOURNEY) | Como o cliente sente cada etapa? |
+| Data Lake | `data-lake.html` + `journey-{slug}.js` (P5_DATALAKE) | Que dado nasce e onde persiste? |
+
+### Melhorias vs `mapeamento-n1`
+
+- **SSOT fragmentado**: 4 MDs canônicos em `ssot/` (processo-n2 · sipocs · jornada-cx · data-lake) em vez de 1 BRIEFING monolítico — corrigir Data Lake nunca toca SIPOC
+- **Fase A separada do SSOT**: output é `entrevista.md` (log perguntas+respostas), Fase B traduz em SSOT — preserva linguagem de negócio durante captura
+- **Iteração no SIPOC subprocesso-a-subprocesso**: `build_sipoc.py --subproc P5.1`, valida, depois `--subproc P5.2` etc. — não é single-shot
+- **Build em camadas com gates explícitos**: 4 scripts independentes (`build_processo.py` → `build_sipoc.py` → `build_jornada.py` → `build_datalake.py`), cada um aborta se o output da camada anterior não está presente
+- **Handoff N1 obrigatório**: `n1_artifacts.briefing` é bloqueador; `processo.code` (ex.: P5) precisa constar em `processos[]` do BRIEFING N1. Carrega oportunisticamente os 4 artefatos N1 (especialmente Política) para ancorar a entrevista em governança formalizada
+
+### Added
+
+- **`skills/mapeamento-n2/`** (32 arquivos):
+  - `SKILL.md` (entrypoint <500 linhas) + `ENTREVISTA.tmpl.md`
+  - 9 references: `phase-a-entrevista.md`, `phase-b-ssot.md`, `phase-c-build.md`, 4 schemas SSOT (`ssot-processo-n2.md`, `ssot-sipocs.md`, `ssot-jornada-cx.md`, `ssot-data-lake.md`), `design-system-m7.md` (cópia da N1), `critique-rules.md`
+  - 2 agents read-only: `n2-interview-critic` (Fase A · gaps semânticos), `n2-build-critic` (Fase C · integridade estrutural HTML+JS, tools Bash p/ `node --check`)
+  - 4 templates SSOT (`templates/ssot/*.tmpl.md`)
+  - 4 HTML shells (3 estáticos do gabarito + `processo-n2.tmpl.html` tokenizado com placeholders `{{CODE}}`, `{{M7_SUBPROC_BUTTONS}}`, `{{CLIENTE_ROW}}` etc.)
+  - Assets compartilhados: 4 CSS (m7-tokens, m7-header-dark, mapeamento, mapeamento-views), 4 fonts TWK Everett .otf, 3 logos M7 .png
+  - 6 scripts: `_build_common.py` (bootstrap idempotente + parse YAML + write_js_block + run_check_ssot), `check_ssot.py` (validador determinístico ~700 linhas com 40+ regras + cross-checks transversais), `build_processo.py`/`build_sipoc.py`/`build_jornada.py`/`build_datalake.py` (entrypoints finos com gates)
+  - Exemplo P5 Crédito completo (entrevista + 4 SSOTs + fake N1 briefing) que valida limpo (0 bloqueadores)
+
+### Changed
+
+- **`m7-processos/plugin.json`** e **`m7-data/marketplace.json`**: descrição atualizada listando as 3 skills (mapeamento-n1, mapeamento-n2, drawing-bpmn-flowcharts); keywords novas (`sipoc-deip`, `mapeamento-n2`, `subprocessos`, `jornada-cx`, `customer-journey`, `data-lake`, `service-blueprint`)
+
+### Validação
+
+- `check_ssot.py --all examples/exemplo-ssot-p5/`: ✓ 0 bloqueadores · 1 aviso (`POLITICA-AUSENTE` esperado, política é opcional)
+- Pipeline Camada 1→2→3→4 sobre exemplo P5: ✓ todos os 4 HTMLs gerados sem placeholders, 3 JS data files com sintaxe válida (`node --check` OK)
+- Negative test: SSOT com `purpose="fazer originação"`, `owner="João Silva"`, IO duplicado, 2 etapas, 1 regulação, code `S9` → ✓ 7 bloqueadores detectados, exit 1
+
 ## [2.1.1] - 2026-05-18
 
 Sync: template-politica.html simplificou as páginas de Diretrizes e removeu a página de Hierarquia normativa.
