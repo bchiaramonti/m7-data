@@ -102,8 +102,10 @@ structure:
     - { page: 15, label: "8. Disposições finais",               section: "8. Disposições finais" }
 
 links:
-  # Caminho relativo a partir da raiz do cockpit.
-  artifact_html: "../artefatos/politica-m7-investimentos.html"
+  # Convenção v3.1+: par .html + .yaml + .md co-localizados em normativos/catalogo/.
+  # Paths relativos ao próprio YAML.
+  artifact_html: "POL-GOV-002.html"
+  artifact_md:   "POL-GOV-002.md"
 
   siblings:
     - label:  "Visão geral"

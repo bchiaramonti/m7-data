@@ -443,11 +443,21 @@ properties:
         type: string
         description: |
           Caminho relativo (a partir do próprio YAML) do HTML autocontido.
-          Como os YAMLs vivem em normativos/catalogo/ e os HTMLs em
-          01-fundacao-2.1/artefatos/, o caminho típico é:
-            "../../artefatos/{slug-humano}.html"
-          O cockpit resolve via `new URL(artifact_html, yamlUrl)` e abre
-          em iframe quando o usuário clica "Abrir documento".
+          Convenção atual (v3.1+): YAML e HTML co-localizados no catalogo/,
+          então o típico é simplesmente "{basename}.html" (ex.: "POL-GOV-002.html").
+          O cockpit resolve via `new URL(artifact_html, yamlUrl)` e abre em
+          iframe quando o usuário clica "Abrir documento".
+
+      artifact_md:
+        type: string
+        description: |
+          (Opcional, v3.1+) Caminho relativo do MD narrativo usado como fonte
+          de conteúdo das 8 seções (Fase 2 da skill). Convenção: "{basename}.md"
+          no mesmo diretório do par .html+.yaml. Útil para o cockpit oferecer
+          "abrir fonte editável" ao curador, e para auditoria — quem editar o
+          MD pode regerar o HTML deterministicamente via
+          `python3 generate-html-yaml.py --briefing {basename}.yaml --content {basename}.md`.
+          Não consumido pela renderização do HTML; é metadata de catalogação.
 
       siblings:
         type: array

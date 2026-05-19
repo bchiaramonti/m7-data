@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-05-19
+
+Iteração baseada na versão atualizada de `SKILL-v2.3.0-PATCH-PROPOSAL.md`, que adicionou 3 anomalias residuais (#4, #5, #6) descobertas no uso de v3.0.0 com POL-GOV-002 final (com SVG inline da Cadeia de Valor M7 + tabela 5.2 adjacente a `<div class="inv-card">`).
+
+### Added (creating-politica)
+
+- **`links.artifact_md`** como campo first-class no schema (anomalia #4). Opcional. Convenção: `{basename}.md` co-localizado com .html e .yaml. Útil para o cockpit oferecer "abrir fonte editável" ao curador e para auditoria/regeneração determinística.
+- **Stash/restore de `<svg>` inline** na função `markdown_to_html` (anomalia #5). Antes do parse via python-markdown, blocos `<svg>...</svg>` são substituídos por placeholders `@@SVG_BLOCK_N@@`; após o parse, são restaurados intactos. Sem isso, a lib serializa o conteúdo do SVG como prosa (perde `<rect>`, `<path>`, e transforma `<text>` em texto solto).
+- **Auto-isolamento de bloco HTML + markdown** via `_md_isolate_html_blocks` (anomalia #6). Insere linha em branco entre `</div|p|table|figure|aside|section>` e o próximo elemento markdown (`#`, `|`, `-`, `*`), garantindo que a python-markdown reconheça o limite do bloco HTML e processe a tabela/heading/lista que vem depois.
+- **Suporte a tabelas no fallback** (`_md_render_table` + `_is_md_table`). Quando a lib `markdown` não está instalada, o fallback agora renderiza tabelas markdown como `<table>` semântico — antes só suportava bullets/parágrafos/headings.
+
+### Changed
+
+- `markdown_to_html` refatorado: stash SVG → isola HTML blocks → parse (md_lib ou fallback) → restore SVG. Função `_md_fallback` extraída como helper público.
+- Exemplo `normativo.exemplo-pol-gov-002.yaml` atualizado para usar convenção atual: `artifact_html: "POL-GOV-002.html"` + `artifact_md: "POL-GOV-002.md"` (co-localizados em catalogo/).
+- `references/normativo-schema.md` ganhou 4 novas subseções:
+  - "SVG inline preservado (v3.1+)" — stash/restore + uso de `.embed-svg`
+  - "Tabela markdown adjacente a HTML é auto-isolada (v3.1+)" — comportamento auto + exemplo
+  - "`links.artifact_md` — fonte editável (v3.1+)" — semântica, convenção, casos de uso
+  - Em "Schema → Links": doc do `artifact_md`
+- `SKILL.md` Fase 2 ganhou bullets v3.1 sobre SVG, auto-isolamento de tabelas e `artifact_md`.
+
+### Notes
+
+- **Anomalia #4 é histórica**, não código novo: `parse_briefing()` + `yaml.safe_dump()` já preservavam campos custom como `artifact_md`. A v3.1 só formaliza o campo no schema + docs.
+- **Catálogo do user em produção não foi tocado** — feedback aplicado: smoke test sintético em `/tmp/` é suficiente para validar bug fixes. Autor regere quando quiser.
+
 ## [3.0.0] - 2026-05-18
 
 Iteração baseada em [SKILL-v2.3.0-PATCH-PROPOSAL.md](../../catalogo/SKILL-v2.3.0-PATCH-PROPOSAL.md), que documentou 3 anomalias residuais descobertas no uso real da v2.3.0 em POL-GOV-002 (inventário narrativo de 21 processos com 7 page-breaks).

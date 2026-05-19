@@ -320,6 +320,57 @@ Renderiza como cartões `lime-bordered` 4 colunas com separadores discretos por 
 
 `<img src="path/relativo/img.svg">` (ou .png/.jpg/.webp) no MD é automaticamente inlinado como `data:image/...;base64`. Path é relativo ao diretório do MD. Imagens com `src="data:..."`, `http://`, `https://` são preservadas. Se o arquivo não existir, o script emite warning no stderr mas continua.
 
+## SVG inline preservado (v3.1+)
+
+Você pode colar um `<svg viewBox="...">...</svg>` diretamente no MD da Fase 2 — comum para diagramas vetoriais autocontidos (cadeia de valor, fluxograma, etc.). O script faz **stash do SVG antes do parse markdown** e restaura intacto após. Sem essa proteção, a markdown lib processa o conteúdo do SVG como prosa (serializa `<text>`, descarta `<rect>`/`<path>`).
+
+Combine com a classe `.embed-svg` para wrap visual:
+
+```html
+<div class="embed-svg">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+    <!-- conteúdo do SVG -->
+  </svg>
+</div>
+<p class="embed-svg-caption">Fig 1 · Cadeia de Valor M7.</p>
+```
+
+Múltiplos SVGs no mesmo MD funcionam — cada um é stashed com placeholder numerado.
+
+## Tabela markdown adjacente a HTML é auto-isolada (v3.1+)
+
+Quando uma tabela markdown vem imediatamente após um bloco HTML (ex.: `<div class="inv-card">`, `<div class="embed-svg">`), a python-markdown precisa de uma linha em branco entre eles para reconhecer o fim do bloco HTML — sem ela, a tabela é tratada como continuação do HTML e renderiza como texto pipe.
+
+O script v3.1+ **injeta automaticamente** essa linha em branco entre `</div|p|table|figure|aside|section>` e o próximo elemento markdown (`#`, `|`, `-`, `*`). Autor não precisa adicionar manualmente. Exemplo que funciona sem fricção:
+
+```markdown
+<div class="inv-card">
+<h4 class="inv-title">Card X</h4>
+<p class="inv-block">Conteúdo do card.</p>
+</div>
+| Coluna A | Coluna B |
+|----------|----------|
+| valor 1  | valor 2  |
+```
+
+## `links.artifact_md` — fonte editável (v3.1+)
+
+Campo opcional em `links` que aponta para o MD da Fase 2:
+
+```yaml
+links:
+  artifact_html: "POL-GOV-002.html"
+  artifact_md:   "POL-GOV-002.md"
+  siblings: [...]
+```
+
+Convenção: co-localizado com .html e .yaml em `normativos/catalogo/`, basename idêntico. Útil para:
+- Cockpit oferecer "abrir fonte editável" ao curador
+- Auditoria: quem editar o MD pode regerar o HTML deterministicamente via `python3 generate-html-yaml.py --briefing {basename}.yaml --content {basename}.md`
+- Trio canônico do catálogo: `.html` (renderização), `.yaml` (sidecar), `.md` (fonte)
+
+Não consumido pela renderização do HTML — é metadata de catalogação consumida pelo cockpit. YAMLs sem `artifact_md` continuam válidos.
+
 ## Namespaces CSS reservados pelo template (v3.0+)
 
 O template oficial define classes CSS com semântica específica. **Não sobrescreva** essas classes via `<style>` no MD — use prefixos próprios para custom styling (ex.: `.callout-*`, `.user-*`, `.note-*`).

@@ -408,20 +408,21 @@ def _md_inline_lite(text: str) -> str:
     return text
 
 
-def markdown_to_html(text: str) -> str:
-    """Conversor markdown→HTML para blocos ricos (CONTEUDO_DIRETRIZES).
+def _md_isolate_html_blocks(text: str) -> str:
+    """Adiciona linha em branco entre `</div|p|table|figure|aside|section>`
+    e o próximo elemento markdown (#, |, -, *). A python-markdown precisa
+    desse delimitador para reconhecer o fim do bloco HTML e processar a
+    tabela/heading/list que vem depois (anomalia #6 do patch proposal)."""
+    return re.sub(
+        r"(</(?:div|p|table|figure|aside|section)>)\n(?=[#|*\-]\s)",
+        r"\1\n\n",
+        text,
+    )
 
-    Tenta usar a lib `markdown` (mais completa); se não disponível, usa um
-    fallback inline que cobre: parágrafos, listas, h3/h4, bold, italic,
-    code, links. NÃO suporta tabelas no fallback — use a lib para isso.
-    """
-    if not text.strip():
-        return ""
-    try:
-        import markdown as md_lib  # type: ignore
-        return md_lib.markdown(text, extensions=["tables", "fenced_code"])
-    except ImportError:
-        pass
+
+def _md_fallback(text: str) -> str:
+    """Conversor markdown→HTML mínimo (parágrafos, listas, h3/h4, inline, tabelas).
+    Usado quando a lib `markdown` não está instalada."""
     parts: list = []
     for block in re.split(r"\n\s*\n", text):
         block = block.strip()
@@ -431,6 +432,8 @@ def markdown_to_html(text: str) -> str:
             parts.append(f"<h3>{_md_inline_lite(block[4:].strip())}</h3>")
         elif block.startswith("#### "):
             parts.append(f"<h4>{_md_inline_lite(block[5:].strip())}</h4>")
+        elif _is_md_table(block):
+            parts.append(_md_render_table(block))
         elif re.match(r"^\s*[-*]\s", block):
             items = extract_bullets(block)
             items_inline = [_md_inline_lite(i) for i in items]
@@ -438,6 +441,78 @@ def markdown_to_html(text: str) -> str:
         else:
             parts.append(f"<p>{_md_inline_lite(block)}</p>")
     return "\n".join(parts)
+
+
+def _is_md_table(block: str) -> bool:
+    """Detecta se o bloco é uma tabela markdown (header + separator + rows)."""
+    lines = [l.strip() for l in block.split("\n") if l.strip()]
+    if len(lines) < 2:
+        return False
+    if not (lines[0].startswith("|") and lines[0].endswith("|")):
+        return False
+    if not re.match(r"^\|[\s\-:|]+\|$", lines[1]):
+        return False
+    return True
+
+
+def _md_render_table(block: str) -> str:
+    """Renderiza tabela markdown como <table>. Inline md aplicado a cada célula."""
+    lines = [l.strip() for l in block.split("\n") if l.strip()]
+    header_cells = [c.strip() for c in lines[0].strip("|").split("|")]
+    body_rows = []
+    for line in lines[2:]:
+        if line.startswith("|") and line.endswith("|"):
+            body_rows.append([c.strip() for c in line.strip("|").split("|")])
+
+    thead = "<thead><tr>" + "".join(
+        f"<th>{_md_inline_lite(c)}</th>" for c in header_cells
+    ) + "</tr></thead>"
+    tbody_rows = []
+    for row in body_rows:
+        tbody_rows.append(
+            "<tr>" + "".join(f"<td>{_md_inline_lite(c)}</td>" for c in row) + "</tr>"
+        )
+    tbody = "<tbody>" + "".join(tbody_rows) + "</tbody>"
+    return f"<table>\n{thead}\n{tbody}\n</table>"
+
+
+def markdown_to_html(text: str) -> str:
+    """Conversor markdown→HTML para blocos ricos (CONTEUDO_DIRETRIZES).
+
+    Tenta usar a lib `markdown` (mais completa); se não disponível, usa um
+    fallback inline. Antes do parse:
+      - Stash `<svg>...</svg>` (anomalia #5: a lib quebra o DOM do SVG)
+      - Isola blocos HTML para que tabelas/listas após `</div>` sejam parseadas
+        corretamente (anomalia #6)
+    """
+    if not text.strip():
+        return ""
+
+    # Patch #5 — stash <svg> antes do parse
+    svg_blocks: list = []
+
+    def _stash_svg(m: "re.Match") -> str:
+        svg_blocks.append(m.group(0))
+        return f"\n\n@@SVG_BLOCK_{len(svg_blocks) - 1}@@\n\n"
+
+    text_safe = re.sub(r"<svg\b[^>]*>.*?</svg>", _stash_svg, text, flags=re.DOTALL)
+
+    # Patch #6 — garantir linha em branco entre HTML block e markdown
+    text_safe = _md_isolate_html_blocks(text_safe)
+
+    try:
+        import markdown as md_lib  # type: ignore
+        html_out = md_lib.markdown(text_safe, extensions=["tables", "fenced_code"])
+    except ImportError:
+        html_out = _md_fallback(text_safe)
+
+    # Restaurar <svg> intactos (remover wrapper <p> que a lib pode injetar)
+    for i, svg in enumerate(svg_blocks):
+        placeholder = f"@@SVG_BLOCK_{i}@@"
+        html_out = html_out.replace(f"<p>{placeholder}</p>", svg)
+        html_out = html_out.replace(placeholder, svg)
+
+    return html_out
 
 
 # =============================================================================

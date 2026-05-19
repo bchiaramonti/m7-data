@@ -149,6 +149,12 @@ A partir da v3.0:
 - **Namespaces CSS reservados**: `.skill-proc-*` (grid compacto), `.inv-*` (cards verticais narrativos), `.embed-svg` (wrappers de SVG), além de `.approval-card`/`.kv-table`/`.doc-table`/`.sub`/`.subsub`. **Não sobrescreva**. Para custom CSS use prefixos próprios. Detalhes e exemplos HTML em [normativo-schema.md → Namespaces CSS reservados](references/normativo-schema.md#namespaces-css-reservados-pelo-template-v30).
 - **Page-break com alerta**: o script estima a altura de cada chunk de Diretrizes e avisa no stderr quando excede ~900px (margem de segurança), indicando onde adicionar `<!-- /page-break -->` extras.
 
+A partir da v3.1:
+
+- **SVG inline preservado**: cole `<svg viewBox="..." xmlns="...">...</svg>` no MD livremente — o parser faz stash/restore para evitar que a markdown lib serialize o conteúdo do SVG como prosa. Combine com `.embed-svg` para wrap visual.
+- **Tabela markdown após bloco HTML é auto-isolada**: você pode escrever `<div class="inv-card">...</div>` imediatamente seguido de uma tabela markdown — o script injeta a linha em branco que a python-markdown precisa para reconhecer o limite. Sem ajuste manual.
+- **`links.artifact_md`** opcional: aponta para o MD da Fase 2 (fonte editável). Convenção: `{basename}.md` no mesmo dir que `.html` + `.yaml`. Útil pro cockpit oferecer "abrir fonte".
+
 Estrutura canônica:
 
 ```markdown
