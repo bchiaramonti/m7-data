@@ -384,15 +384,23 @@ def parse_content_md(path: Path) -> dict:
         body, re.DOTALL | re.MULTILINE,
     )
     out["TEXTO_VIGENCIA"] = vig_m.group(1).strip() if vig_m else ""
+
+    # v3.2.0 fix #5 — popular até 10 slots DOC_REL dinamicamente
+    # Slots não usados ficam vazios e são removidos pelo _strip_empty_slots()
+    # após substituição de placeholders. Se TODOS os 10 ficarem vazios, o
+    # cleanup pass injeta um fallback row "Nenhum documento subordinado vinculado..."
     rows = extract_md_table(body)
-    if rows and len(rows[0]) >= 3:
-        out["DOC_REL_1_CODIGO"] = rows[0][0]
-        out["DOC_REL_1_TITULO"] = rows[0][1]
-        out["DOC_REL_1_RELACAO"] = rows[0][2]
-    else:
-        out["DOC_REL_1_CODIGO"] = ""
-        out["DOC_REL_1_TITULO"] = ""
-        out["DOC_REL_1_RELACAO"] = ""
+    MAX_DOC_REL = 10
+    for i in range(MAX_DOC_REL):
+        slot = i + 1
+        if i < len(rows) and len(rows[i]) >= 3:
+            out[f"DOC_REL_{slot}_CODIGO"]  = rows[i][0]
+            out[f"DOC_REL_{slot}_TITULO"]  = rows[i][1]
+            out[f"DOC_REL_{slot}_RELACAO"] = rows[i][2]
+        else:
+            out[f"DOC_REL_{slot}_CODIGO"]  = ""
+            out[f"DOC_REL_{slot}_TITULO"]  = ""
+            out[f"DOC_REL_{slot}_RELACAO"] = ""
 
     return out
 
@@ -579,7 +587,18 @@ def build_placeholders(data: dict, content_md) -> dict:
     nome_e, cargo_e = split_name_cargo(g.get("elaboradoPor", ""))
     nome_a, cargo_a = split_name_cargo(g.get("aprovadoPor", ""))
     nome_r, cargo_r = split_name_cargo(g.get("revisor", ""))
-    parent = g.get("parent") or {}
+
+    # v3.2.0 fix #4 — parent null fallback semântico
+    # Quando governance.parent é null OU dict sem 'code', renderiza "N/A · Política
+    # raiz da hierarquia normativa M7" em vez de "<span class='mono'></span> · " solto.
+    parent_raw = g.get("parent")
+    if parent_raw is None or (isinstance(parent_raw, dict) and not parent_raw.get("code")):
+        parent = {
+            "code": "N/A",
+            "title": "Política raiz da hierarquia normativa M7",
+        }
+    else:
+        parent = parent_raw if isinstance(parent_raw, dict) else {}
 
     cover_pieces = split_cover_title(p["title_full"]["parts"])
 
@@ -740,6 +759,79 @@ def inject_m7_classes(html: str) -> str:
     html = re.sub(r'<table(?![^>]*class=)', '<table class="doc-table"', html)
     html = re.sub(r'<h3(?![^>]*class=)', '<h3 class="sub"', html)
     html = re.sub(r'<h4(?![^>]*class=)', '<h4 class="subsub"', html)
+    return html
+
+
+def _strip_empty_slots(html: str) -> str:
+    """Remove blocos de slot vazios deixados pelo template HTML estático (v3.2+).
+
+    Anomalia #2: `<div class="principle">` com `<div class="pt"></div>` vazio.
+    Anomalia #3: `<tr>` em `<table data-table="papeis">` com `<strong></strong>` vazio.
+    Anomalia #5: `<tr>` em `<table data-table="doc-related">` com 3 cells vazias.
+
+    Quando a tabela `doc-related` fica com 0 linhas após cleanup, injeta um
+    fallback row "Nenhum documento subordinado vinculado nesta versão." em
+    cell única `<td colspan="3" class="muted-empty">`.
+
+    Idempotente: rodar 2x produz mesmo output. Regex permissivo (`\\s*`) lida
+    com whitespace/newlines variados deixados pelo template+substituição.
+    """
+    # 1. Remove .principle blocks com <div class="pt"> vazio (anomalia #2)
+    html = re.sub(
+        r'\s*<div class="principle">\s*<div class="pn">P\d+</div>\s*'
+        r'<div class="pt">\s*</div>\s*<div class="pd">\s*</div>\s*</div>',
+        '',
+        html,
+    )
+
+    # 2. Remove <tr> com <strong></strong> vazio em <table data-table="papeis"> (anomalia #3)
+    def _clean_papeis(m: "re.Match") -> str:
+        table = m.group(0)
+        table = re.sub(
+            r'\s*<tr>\s*<td>\s*<strong>\s*</strong>\s*</td>\s*'
+            r'<td>\s*(?:<span[^>]*>\s*</span>\s*)?</td>\s*'
+            r'<td>\s*</td>\s*</tr>',
+            '',
+            table,
+        )
+        return table
+    html = re.sub(
+        r'<table class="doc-table" data-table="papeis">.*?</table>',
+        _clean_papeis,
+        html,
+        flags=re.DOTALL,
+    )
+
+    # 3. Remove <tr> totalmente vazios em <table data-table="doc-related"> (anomalia #5)
+    #    Se zero <tr> sobrarem no <tbody>, injeta fallback row.
+    def _clean_doc_related(m: "re.Match") -> str:
+        table = m.group(0)
+        table = re.sub(
+            r'\s*<tr>\s*<td>\s*<span class="mono">\s*</span>\s*</td>\s*'
+            r'<td>\s*</td>\s*<td>\s*</td>\s*</tr>',
+            '',
+            table,
+        )
+        # Se zero tr's em tbody, injeta fallback informativo
+        tbody_match = re.search(r'<tbody>(.*?)</tbody>', table, re.DOTALL)
+        if tbody_match and not re.search(r'<tr\b', tbody_match.group(1)):
+            fallback = (
+                '\n            <tr><td colspan="3" class="muted-empty">'
+                'Nenhum documento subordinado vinculado nesta versão.'
+                '</td></tr>\n          '
+            )
+            table = table.replace(
+                tbody_match.group(0),
+                f'<tbody>{fallback}</tbody>',
+            )
+        return table
+    html = re.sub(
+        r'<table class="doc-table" data-table="doc-related">.*?</table>',
+        _clean_doc_related,
+        html,
+        flags=re.DOTALL,
+    )
+
     return html
 
 
@@ -973,6 +1065,11 @@ def main() -> int:
     html = inject_m7_classes(html)
     if content_md and content_md.exists():
         html = inline_external_images(html, content_md.parent)
+
+    # v3.2.0 — auto-cleanup de slots vazios (Princípios, Papéis, DOC_REL).
+    # Internaliza os workarounds que viviam em postprocess-{CODE}.py para que
+    # operadores remotos (Claude COWORK) recebam HTML correto no primeiro passe.
+    html = _strip_empty_slots(html)
 
     residuals = set(re.findall(r"\{\{([A-Z_0-9]+)\}\}", html))
     warnings: list = []

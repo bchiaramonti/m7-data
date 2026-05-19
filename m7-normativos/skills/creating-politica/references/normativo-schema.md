@@ -371,6 +371,29 @@ Convenção: co-localizado com .html e .yaml em `normativos/catalogo/`, basename
 
 Não consumido pela renderização do HTML — é metadata de catalogação consumida pelo cockpit. YAMLs sem `artifact_md` continuam válidos.
 
+## Auto-cleanup de slots vazios (v3.2+)
+
+O template oficial reserva slots fixos: **7 princípios** (P1-P7), **8 papéis** (PAPEL_1-PAPEL_8), **10 documentos relacionados** (DOC_REL_1-DOC_REL_10). O autor da política normalmente declara N < 7 princípios, M < 8 papéis e K < 10 docs relacionados. Antes da v3.2, slots não preenchidos renderizavam blocos vazios (indicador lateral lime sem texto; linhas em branco na tabela de papéis; linha vazia em "Documentos relacionados").
+
+A partir da v3.2, o script `generate-html-yaml.py` executa um **cleanup pass** (`_strip_empty_slots()`) após a substituição de placeholders e antes da validação de residuals. O cleanup pass:
+
+1. **Princípios** — remove `<div class="principle">` cujo `<div class="pt">` ficou vazio após substituição.
+2. **Papéis** — remove `<tr>` em `<table data-table="papeis">` cujo `<strong>` da primeira célula ficou vazio.
+3. **Documentos relacionados** — remove `<tr>` em `<table data-table="doc-related">` cujas 3 células ficaram vazias. **Se a tabela fica com zero linhas após cleanup**, o script injeta uma linha única:
+   ```html
+   <tr><td colspan="3" class="muted-empty">Nenhum documento subordinado vinculado nesta versão.</td></tr>
+   ```
+
+O cleanup pass é **idempotente** (executar 2x produz mesmo output) e opera com regex permissivo de whitespace. O autor não precisa preencher slots não usados nem ajustar nada no MD — basta declarar exatamente os N princípios, M papéis e K docs reais.
+
+**DOC_REL aceita até 10 entradas dinamicamente** — listar mais que 10 na tabela markdown da seção 8.2 deixa as extras de fora (do 11º em diante). Caso raríssimo em produção; se acontecer, editar o template para expandir slots.
+
+**`governance.parent: null`** (caso de política raiz da hierarquia) renderiza como:
+```
+Documento superior: N/A · Política raiz da hierarquia normativa M7
+```
+em vez do " · " solto que existia em v3.1. Funciona automaticamente — o script detecta `parent: null` ou `parent: {}` e aplica o fallback semântico.
+
 ## Namespaces CSS reservados pelo template (v3.0+)
 
 O template oficial define classes CSS com semântica específica. **Não sobrescreva** essas classes via `<style>` no MD — use prefixos próprios para custom styling (ex.: `.callout-*`, `.user-*`, `.note-*`).

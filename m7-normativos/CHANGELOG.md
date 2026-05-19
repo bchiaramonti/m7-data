@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-05-19
+
+Iteração baseada na revisão de `SKILL-v2.3.0-PATCH-PROPOSAL.md` que catalogou **6 anomalias residuais** (severidade B) descobertas no uso de v3.1.0 para gerar POL-GOV-001, POL-GOV-002 e POL-GOV-003 em produção. Motivação central: **operador da skill é o Claude COWORK** (Claude no claude.ai web, sem filesystem local) — workarounds em `postprocess-{CODE}.py` deixam de ser viáveis. v3.2 internaliza todos os 6 fixes no canonical script para que trio (`.html` + `.yaml` + `.md`) saia correto no primeiro passe.
+
+### Added (creating-politica)
+
+- **`_strip_empty_slots(html)`** — novo helper em `generate-html-yaml.py` que executa auto-cleanup pós-substituição de placeholders, removendo (a) blocos `<div class="principle">` com `<div class="pt"></div>` vazio (anomalia #2), (b) `<tr>` vazios em `<table data-table="papeis">` (anomalia #3), (c) `<tr>` vazios em `<table data-table="doc-related">` (anomalia #5). Idempotente — rodar 2x produz mesmo output. Chamado entre `inject_m7_classes()` e validação de placeholders residuais.
+- **10 slots dinâmicos para DOC_REL** (anomalia #5): template expande de 1 para 10 `<tr>` com placeholders `DOC_REL_{1..10}_*`. Script popula até 10 entradas a partir da tabela markdown da seção 8.2; slots não usados são removidos pelo cleanup pass. Quando ZERO documentos são declarados, o cleanup injeta uma linha única `<tr><td colspan="3" class="muted-empty">Nenhum documento subordinado vinculado nesta versão.</td></tr>` como fallback informativo (substituindo a tabela vazia sem mensagem que existia em v3.1).
+- **CSS `.muted-empty`** no template `<style>` block (font-style italic, color `var(--vc-400)`, centralizado, padding 14px 8px) — visual da fallback row de DOC_REL.
+- **Atributos `data-table="papeis"` e `data-table="doc-related"`** nas duas tabelas alvo do cleanup pass — seam HTML semântico para o regex localizar inequivocamente sem depender de posição ou cabeçalho.
+
+### Changed
+
+- **Tipografia h3.sub revisada (anomalia #6)**: `font-size: 12px → 14.5px`, `font-weight: 500 → 600`, `color: var(--vc-600) → var(--vc-900)`, `margin: 12px 0 6px → 18px 0 8px`, `letter-spacing: 0.02em → -0.005em`, gap 8 → 10. Decorative line `::before` `width: 12px → 18px, height: 1px → 2px`. Resolve hierarquia tipográfica indistinguível do body em capítulo 5 (Diretrizes), que afetava POL-GOV-001/002/003.
+- **Tipografia h4.subsub revisada (anomalia #6)**: `font-size: 11px → 12.5px`, `font-weight: 500 → 600`, `color: var(--vc-600) → var(--vc-700)`, `margin: 10px 0 4px → 14px 0 6px`, `letter-spacing: 0.02em → 0.005em`.
+- **`section-lede` aplicado aos 2 `<p>` do Objetivo** (anomalia #1): seção 01 agora usa a mesma classe tipográfica de Escopo/Princípios/Diretrizes/Papéis (11.5px verde-claro, max-width 70ch). Eliminava o descuido do template onde o Objetivo era exceção sem motivo aparente.
+- **Tratamento de `governance.parent: null`** em `build_placeholders()` (anomalia #4): quando `parent` é null ou dict sem `code`, fallback semântico `parent = {"code": "N/A", "title": "Política raiz da hierarquia normativa M7"}` evita o " · " solto que existia em POL-GOV-001 (Política raiz da hierarquia).
+- **DOC_REL builder** em `parse_content_md()`: loop `for i in range(MAX_DOC_REL=10)` substitui o handler de slot único.
+
+### Fixed
+
+- 6 anomalias residuais catalogadas em `SKILL-v2.3.0-PATCH-PROPOSAL.md` (revisão 2026-05-19), todas severidade B:
+  - **#1** `section-lede` ausente nos parágrafos do Objetivo
+  - **#2** Slot de Princípio vazio (P5-P7 quando autor declara só 4) renderizando indicador lateral lime e blocos em branco
+  - **#3** Linhas vazias na tabela de Papéis e Responsabilidades (PAPEL_4 a PAPEL_8 quando autor declara só 3)
+  - **#4** "Documento superior" renderizando `<span class="mono"></span> · ` solto quando `governance.parent: null` (caso raiz da hierarquia)
+  - **#5** Linha vazia em "Documentos relacionados" quando seção 8.2 do MD não declara nenhuma linha + limite hardcoded de 1 slot
+  - **#6** Hierarquia tipográfica fraca em h3.sub/h4.subsub no capítulo 5 (Diretrizes)
+
+### Notes
+
+- **Operação pelo Claude COWORK**: motivação central da iteração. v3.2 elimina necessidade de orquestrar `postprocess-{CODE}.py` externo — o trio sai correto direto do `generate-html-yaml.py`. A pasta `catalogo/_tools/` com postprocess scripts pode ser arquivada (mantida apenas para os 3 docs pré-v3.2 até regeneração futura).
+- **Fix forward apenas**: POL-GOV-001/002/003 publicados permanecem com CSS antigo até decisão explícita de regeneração pelo Bruno (regra "no regenerate published artifacts" preservada).
+- **Idempotência validada**: 7 smoke tests sintéticos em `/tmp/v3.2.0-smoke/test_strip_empty.py` cobrem (i) Princípios 4+3 vazios, (ii) Papéis 3+5 vazios, (iii) DOC_REL 3+7 vazios, (iv) DOC_REL 0 com fallback, (v) DOC_REL 7 cheios sem fallback, (vi) backwards compat 7 princípios full, (vii) idempotência (rodar 2x = output idêntico). Todos PASS.
+
 ## [3.1.0] - 2026-05-19
 
 Iteração baseada na versão atualizada de `SKILL-v2.3.0-PATCH-PROPOSAL.md`, que adicionou 3 anomalias residuais (#4, #5, #6) descobertas no uso de v3.0.0 com POL-GOV-002 final (com SVG inline da Cadeia de Valor M7 + tabela 5.2 adjacente a `<div class="inv-card">`).

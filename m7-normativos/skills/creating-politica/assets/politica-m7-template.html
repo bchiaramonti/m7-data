@@ -192,14 +192,18 @@
     font-size: 11.5px; color: var(--verde-claro);
     margin: 0 0 14px; max-width: 70ch;
   }
+  .doc .muted-empty {
+    font-style: italic; color: var(--vc-400);
+    text-align: center; padding: 14px 8px;
+  }
   .doc h3.sub {
-    font-size: 12px; font-weight: 500; color: var(--vc-600);
-    margin: 12px 0 6px;
-    letter-spacing: 0.02em;
-    display: flex; align-items: center; gap: 8px;
+    font-size: 14.5px; font-weight: 600; color: var(--vc-900);
+    margin: 18px 0 8px;
+    letter-spacing: -0.005em;
+    display: flex; align-items: center; gap: 10px;
   }
   .doc h3.sub::before {
-    content: ''; width: 12px; height: 1px; background: var(--lime);
+    content: ''; width: 18px; height: 2px; background: var(--lime);
   }
   .doc p, .doc li {
     font-size: 11px; color: var(--vc-600); line-height: 1.55;
@@ -430,9 +434,9 @@
 
   /* ───── h4 hierárquico (sub-subtítulo, ex.: 5.1.1, 5.1.2) (#12) ───── */
   .doc h4.subsub {
-    font-size: 11px; font-weight: 500; color: var(--vc-600);
-    margin: 10px 0 4px;
-    letter-spacing: 0.02em;
+    font-size: 12.5px; font-weight: 600; color: var(--vc-700);
+    margin: 14px 0 6px;
+    letter-spacing: 0.005em;
     display: flex; align-items: center; gap: 6px;
   }
   .doc h4.subsub::before {
@@ -755,8 +759,8 @@
 
       <div class="page-body">
         <h2 class="section"><span class="num">01</span> Objetivo</h2>
-        <p>{{TEXTO_OBJETIVO_P1}}</p>
-        <p>{{TEXTO_OBJETIVO_P2}}</p>
+        <p class="section-lede">{{TEXTO_OBJETIVO_P1}}</p>
+        <p class="section-lede">{{TEXTO_OBJETIVO_P2}}</p>
 
         <hr class="divider">
 
@@ -942,7 +946,7 @@
         <h2 class="section"><span class="num">06</span> Papéis e responsabilidades</h2>
         <p class="section-lede">{{LEDE_PAPEIS}}</p>
 
-        <table class="doc-table">
+        <table class="doc-table" data-table="papeis">
           <thead>
             <tr>
               <th style="width:24%">Papel</th>
@@ -1091,7 +1095,7 @@
         <p>{{TEXTO_VIGENCIA}}</p>
 
         <h3 class="sub">8.2 · Documentos relacionados</h3>
-        <table class="doc-table">
+        <table class="doc-table" data-table="doc-related">
           <thead>
             <tr>
               <th style="width:18%">Código</th>
@@ -1100,11 +1104,16 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td><span class="mono">{{DOC_REL_1_CODIGO}}</span></td>
-              <td>{{DOC_REL_1_TITULO}}</td>
-              <td>{{DOC_REL_1_RELACAO}}</td>
-            </tr>
+            <tr><td><span class="mono">{{DOC_REL_1_CODIGO}}</span></td><td>{{DOC_REL_1_TITULO}}</td><td>{{DOC_REL_1_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_2_CODIGO}}</span></td><td>{{DOC_REL_2_TITULO}}</td><td>{{DOC_REL_2_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_3_CODIGO}}</span></td><td>{{DOC_REL_3_TITULO}}</td><td>{{DOC_REL_3_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_4_CODIGO}}</span></td><td>{{DOC_REL_4_TITULO}}</td><td>{{DOC_REL_4_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_5_CODIGO}}</span></td><td>{{DOC_REL_5_TITULO}}</td><td>{{DOC_REL_5_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_6_CODIGO}}</span></td><td>{{DOC_REL_6_TITULO}}</td><td>{{DOC_REL_6_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_7_CODIGO}}</span></td><td>{{DOC_REL_7_TITULO}}</td><td>{{DOC_REL_7_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_8_CODIGO}}</span></td><td>{{DOC_REL_8_TITULO}}</td><td>{{DOC_REL_8_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_9_CODIGO}}</span></td><td>{{DOC_REL_9_TITULO}}</td><td>{{DOC_REL_9_RELACAO}}</td></tr>
+            <tr><td><span class="mono">{{DOC_REL_10_CODIGO}}</span></td><td>{{DOC_REL_10_TITULO}}</td><td>{{DOC_REL_10_RELACAO}}</td></tr>
           </tbody>
         </table>
 

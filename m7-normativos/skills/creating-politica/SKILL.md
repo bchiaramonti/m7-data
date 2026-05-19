@@ -291,12 +291,13 @@ Pergunte ao usuário onde salvar (sugestões abaixo) e passe via `--output-dir`.
 2. **Valida** contra `normativo.schema.yaml` (aborta com mensagem clara se faltar campo required, status inválido, código fora do padrão, etc.)
 3. Serializa o YAML canônico em `{slug}.yaml`
 4. Parseia `politica-{slug}.md` extraindo blocos das 8 seções para placeholders de conteúdo
-5. Constrói dicionário de **145 placeholders** → valores (identidade + datas + governança + cover título + 8 seções)
+5. Constrói dicionário de **145 placeholders** → valores (identidade + datas + governança + cover título + 8 seções). DOC_REL suporta até 10 entradas dinamicamente (v3.2+); `governance.parent: null` recebe fallback "N/A · Política raiz da hierarquia normativa M7" (v3.2+).
 6. Carrega `assets/politica-m7-template.html` (versão isolada, com `{{...}}` explícitos)
 7. **Inlinea CSS + 6 fonts + 3 logos** como base64 dentro do HTML
 8. Aplica `html.replace("{{KEY}}", value)` para cada um dos 145 placeholders
-9. Valida zero placeholders residuais e zero paths relativos
-10. Salva `{slug}.html` autocontido (~1.4MB)
+9. **Auto-cleanup de slots vazios (v3.2+)**: remove `<div class="principle">`, `<tr>` de Papéis e `<tr>` de DOC_REL que ficaram com placeholders vazios após substituição. Se DOC_REL fica com zero linhas, injeta fallback row informativa. Idempotente — autor não precisa se preocupar em preencher slots não usados.
+10. Valida zero placeholders residuais e zero paths relativos
+11. Salva `{slug}.html` autocontido (~1.4MB)
 
 **Locais sugeridos para output**:
 - `01-fundacao-2.1/normativos/catalogo/` (alinhado com Cockpit de Normativos)
