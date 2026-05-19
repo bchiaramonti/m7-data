@@ -533,6 +533,75 @@
     text-align: center;
   }
 
+  /* ───── Callout (3 variantes) — substitui .icp-* legacy ─────
+     Bloco de destaque para conceito-chave em qualquer seção.
+     Tag opcional curta + título + corpo. Tokens canônicos M7-2026
+     (zero hex literal). Usar via shortcode :::callout-{info|alerta|exemplo} */
+  .callout {
+    margin: 14px 0; padding: 12px 14px 10px;
+    border-left: 4px solid var(--lime);
+    background: rgba(238, 247, 124, 0.08);
+    border-radius: 0 6px 6px 0;
+    page-break-inside: avoid;
+  }
+  .callout + .callout { margin-top: 10px; }
+  .callout-title {
+    display: block; font-weight: 500;
+    font-size: 10.5px; color: var(--vc-500);
+    margin: 0 0 5px 0; letter-spacing: 0.01em;
+  }
+  .callout-title .callout-tag {
+    display: inline-block; padding: 1px 8px; margin-right: 8px;
+    background: var(--vc-500); color: var(--off-white);
+    border-radius: 3px; font-size: 9px; letter-spacing: 0.04em;
+    text-transform: uppercase; font-weight: 500;
+  }
+  .callout p {
+    margin: 0; font-size: 9.5px; line-height: 1.55;
+    color: var(--verde-medio);
+  }
+  .callout p + p { margin-top: 6px; }
+  /* Variante alerta — borda âmbar para chamar atenção */
+  .callout-alerta { border-left-color: #F59E0B; background: rgba(245, 158, 11, 0.06); }
+  .callout-alerta .callout-tag { background: #F59E0B; color: var(--off-white); }
+  /* Variante exemplo — sutil verde claro */
+  .callout-exemplo { border-left-color: var(--verde-claro); background: rgba(121, 117, 92, 0.06); }
+  .callout-exemplo .callout-tag { background: var(--verde-claro); }
+  /* Variante info (default) já coberta por .callout puro acima */
+
+  /* ───── Indicador (card) — substitui tabela genérica de indicadores ─────
+     Card único para um indicador de aderência (seção 7). Nome + fórmula
+     + frequência + meta. Visualmente análogo ao .inv-card mas com
+     metadata estruturada. */
+  .indicador-card {
+    margin: 8px 0;
+    padding: 8px 12px;
+    border: 1px solid var(--vc-100);
+    border-left: 3px solid var(--lime);
+    border-radius: 0 6px 6px 0;
+    background: var(--vc-50);
+    page-break-inside: avoid;
+  }
+  .indicador-card + .indicador-card { margin-top: 6px; }
+  .indicador-nome {
+    font-size: 11px; font-weight: 500;
+    color: var(--vc-700);
+    margin: 0 0 4px; letter-spacing: -0.05px;
+  }
+  .indicador-meta {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    font-size: 9px; color: var(--vc-400);
+  }
+  .indicador-meta dt {
+    display: inline-block; font-weight: 500;
+    color: var(--vc-500); letter-spacing: 0.04em;
+    text-transform: uppercase; margin-right: 4px;
+  }
+  .indicador-meta dd {
+    display: inline-block; margin: 0 8px 0 0;
+    color: var(--verde-medio);
+  }
+
   /* Sumário */
   .toc { margin-top: 6px; }
   .toc-item {

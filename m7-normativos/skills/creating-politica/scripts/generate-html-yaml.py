@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
 """
-generate-html-yaml.py — Pipeline da Fase 3 de creating-politica (v2.1).
+generate-html-yaml.py — Pipeline da Fase 3 de creating-politica (v4.0).
 
 Estratégia: o template oficial `politica-m7-template.html` (versão isolada)
 tem 145 placeholders `{{...}}` explícitos. O script:
 
 1. Parseia BRIEFING.md (YAML) e valida contra normativo.schema.yaml
-2. Opcionalmente parseia politica-{slug}.md para extrair conteúdo das 8 seções
+2. Opcionalmente parseia politica-{slug}.md — valida MD (sem <style>, sem
+   style="...", sem classes ad-hoc), expande shortcodes (:::papel-card,
+   :::callout, etc) e extrai conteúdo das 8 seções
 3. Constrói dicionário de 145 placeholders → valores
 4. INLINEIA CSS + fonts (base64) + logos (base64) no HTML — output autocontido
 5. Substitui todos os placeholders via str.replace
-6. Valida zero placeholders residuais e zero paths relativos
-7. Escreve par {slug}.html + {slug}.yaml
+6. Valida zero placeholders residuais, zero paths relativos, e zero classes
+   CSS fora da allowlist do component-catalog.md
+7. Escreve trio {slug}.html + {slug}.yaml + {slug}.review.md (stub)
 
-Output: HTML standalone (~1.4MB) que abre em qualquer browser sem precisar
-de HTTP server ou paths relativos.
+A v4.0 introduz **separação rígida entre conteúdo (MD canônico) e
+apresentação (template + shortcodes catalogados)**:
+
+- MD da Fase 2 aceita SOMENTE markdown padrão + shortcodes do catálogo
+  (component-catalog.md). HTML inline com classes ou <style> é rejeitado.
+- O HTML final tem allowlist de classes CSS — qualquer classe fora dela
+  aborta a geração.
+- O .review.md gerado é STUB; a skill orquestradora deve invocar o agente
+  `politica-design-reviewer` para preencher com o relatório real (gate
+  obrigatório Score >= B antes da entrega).
 
 CLI:
     python generate-html-yaml.py \\
@@ -54,6 +65,93 @@ ALLOWED_ESCOPO = {"holding", "transversal", "processo"}
 CODE_PATTERN = re.compile(r"^(POL|MAN|INS|ESP)-[A-Z]{2,4}-[0-9]{3}$")
 VERSION_PATTERN = re.compile(r"^v?[0-9]+\.[0-9]+$")
 PROC_PATTERN = re.compile(r"^(G[1-4]|P[1-9]|P1[0-2]|A[1-5])$")
+
+
+# =============================================================================
+# Shortcodes do Catálogo (component-catalog.md) e Allowlist de classes CSS
+# =============================================================================
+#
+# Princípio: o MD da Fase 2 é canônico de conteúdo. Toda apresentação visual
+# vem de classes CSS já declaradas no template. Quando o autor precisa de um
+# bloco visual especial, usa um shortcode `:::nome ... :::` listado abaixo.
+#
+# Para adicionar shortcode novo: ver "Como adicionar um shortcode novo" em
+# references/component-catalog.md. Não adicionar ad-hoc neste script.
+
+SHORTCODE_CATALOG = {
+    "papel-card",
+    "papel-card-separador",
+    "callout",
+    "callout-info",
+    "callout-alerta",
+    "callout-exemplo",
+    "indicador",
+    "diagrama",
+    "processo-grid",
+}
+
+# Classes CSS permitidas no HTML final. Validação pós-render rejeita qualquer
+# classe fora desta allowlist. Mantenha sincronizado com component-catalog.md.
+#
+# Reflete as classes que o template oficial `politica-m7-template.html`
+# emite + classes adicionadas pelos shortcodes.
+CSS_ALLOWLIST = {
+    # Documento e shell
+    "doc", "shell-main", "toolbar", "export", "navbtn",
+    # Página A4
+    "page", "page-head", "page-body", "page-foot",
+    "ph-left", "ph-sep", "ph-title", "ph-meta",
+    "pf-classif", "pf-page",
+    # Capa
+    "cover", "cover-head", "cover-body", "cover-foot",
+    "cover-eyebrow", "cover-grid", "cover-meta",
+    "cover-title", "cover-subtitle",
+    # Seção
+    "section", "section-lede", "section-title",
+    "section-eyebrow", "section-num",
+    # Tipografia auxiliar
+    "sub", "subsub", "muted", "muted-empty",
+    "chip", "mono", "tag", "hl",
+    "twocol", "label", "meta", "divider", "dot", "sep",
+    "v", "l", "num", "counter", "pg", "conf",
+    # Tabelas estruturadas
+    "kv-table", "doc-table", "cell",
+    # Princípios
+    "principles", "principle", "principle-card", "principle-row",
+    "pn", "pt", "pd",
+    # Aprovações / role
+    "approval-card", "approval-grid", "role", "sig-line",
+    # Sumário (TOC)
+    "toc", "toc-item", "toc-num", "toc-title", "toc-page",
+    "total-pg",
+    # Conteúdo: what/who/where (cards de identidade)
+    "what", "who",
+    # Tipografia (m7-tokens.css)
+    "text-display-1", "text-display-2",
+    "text-h1", "text-h2", "text-h3", "text-h4",
+    "text-body-1", "text-body-2", "text-body-3",
+    "text-button", "text-label", "text-muted", "text-mono",
+    "wcag-pass", "wcag-fail", "wcag-marg",
+    # Nav/Layout (m7-tokens.css)
+    "m7-nav", "m7-nav-inner", "m7-nav-logo", "m7-nav-links",
+    "ds-tag",
+    "m7-foot", "m7-foot-inner",
+    "container", "stack", "row", "grid", "active",
+    # Shortcode: papel-card (.inv-*)
+    "inv-card", "inv-title", "inv-owner", "inv-block",
+    "inv-sep", "inv-sep-title", "inv-sep-desc",
+    # Shortcode: callout
+    "callout", "callout-title", "callout-tag",
+    "callout-alerta", "callout-exemplo",
+    # Shortcode: indicador
+    "indicador-card", "indicador-nome", "indicador-meta",
+    # Shortcode: diagrama (.embed-svg)
+    "embed-svg", "embed-svg-caption",
+    # Shortcode: processo-grid (.skill-proc-*)
+    "skill-proc-block", "skill-proc-card",
+    "skill-proc-title", "skill-proc-owner",
+    "skill-camada-sep", "skill-camada-title",
+}
 
 
 def _err(path: str, msg: str) -> str:
@@ -158,6 +256,425 @@ def validate(data: dict) -> list:
 
 
 # =============================================================================
+# Shortcode parser + validador de MD (v4.0)
+# =============================================================================
+
+SHORTCODE_OPEN_RE = re.compile(r"^:::([a-z][a-z0-9-]*)\s*$", re.MULTILINE)
+SHORTCODE_BLOCK_RE = re.compile(
+    r"^:::([a-z][a-z0-9-]*)\s*\n(.*?)^:::\s*$",
+    re.MULTILINE | re.DOTALL,
+)
+
+
+def _parse_shortcode_attrs(body_text: str) -> tuple:
+    """Separa attrs `chave: valor` no topo do shortcode do corpo livre.
+
+    Convenção: attrs vão no topo, uma por linha, formato `chave: valor`.
+    A primeira linha em branco encerra a seção de attrs. Aceita chaves
+    com acento (título, descrição, fórmula, frequência) — normaliza para
+    sem acento internamente.
+    """
+    attrs: dict = {}
+    body_lines: list = []
+    body_started = False
+    lines = body_text.split("\n")
+
+    for line in lines:
+        if body_started:
+            body_lines.append(line)
+            continue
+        stripped = line.strip()
+        if not stripped:
+            body_started = True
+            continue
+        # Heurística: linha começa com letra minúscula/acento, tem ':', primeiro
+        # token sem espaços. Senão, é início do corpo livre.
+        m = re.match(r"^([a-zçãéíóúâêô-]+):\s*(.+)$", stripped, re.IGNORECASE)
+        if m and not stripped.startswith(("-", "*", "#", "|", "<", ">")):
+            key = _norm_attr_key(m.group(1))
+            attrs[key] = m.group(2).strip()
+        else:
+            body_started = True
+            body_lines.append(line)
+
+    # Remove trailing empty lines do corpo
+    while body_lines and not body_lines[-1].strip():
+        body_lines.pop()
+    return attrs, "\n".join(body_lines).strip()
+
+
+def _norm_attr_key(key: str) -> str:
+    """Normaliza chave de attr: lowercase + sem acento + sem espaço."""
+    key = key.lower().strip()
+    repl = {
+        "á": "a", "â": "a", "ã": "a",
+        "é": "e", "ê": "e",
+        "í": "i",
+        "ó": "o", "ô": "o", "õ": "o",
+        "ú": "u",
+        "ç": "c",
+    }
+    for src, dst in repl.items():
+        key = key.replace(src, dst)
+    return key
+
+
+def _attr(attrs: dict, *keys: str, default: str = "") -> str:
+    """Lookup multi-chave (aceita variações com/sem acento)."""
+    for k in keys:
+        if k in attrs:
+            return attrs[k]
+        nk = _norm_attr_key(k)
+        if nk in attrs:
+            return attrs[nk]
+    return default
+
+
+def render_shortcode(name: str, attrs: dict, body: str) -> str:
+    """Converte um shortcode parseado em HTML usando classes da allowlist."""
+
+    if name == "papel-card":
+        titulo = escape(_attr(attrs, "titulo", "título"))
+        owner = escape(_attr(attrs, "owner", "responsavel", "responsável"))
+        body_html = markdown_to_html(body) if body.strip() else ""
+        # Cada <p> do corpo vira <p class="inv-block">
+        body_html = re.sub(r"<p>", '<p class="inv-block">', body_html)
+        owner_html = f'\n  <p class="inv-owner">Owner: {owner}</p>' if owner else ""
+        return (
+            '<div class="inv-card">\n'
+            f'  <h4 class="inv-title">{titulo}</h4>{owner_html}\n'
+            f'  {body_html}\n'
+            '</div>'
+        )
+
+    if name == "papel-card-separador":
+        titulo = escape(_attr(attrs, "titulo", "título"))
+        descricao = escape(_attr(attrs, "descricao", "descrição"))
+        desc_html = f'\n  <p class="inv-sep-desc">{descricao}</p>' if descricao else ""
+        return (
+            '<div class="inv-sep">\n'
+            f'  <h4 class="inv-sep-title">{titulo}</h4>{desc_html}\n'
+            '</div>'
+        )
+
+    if name in {"callout", "callout-info", "callout-alerta", "callout-exemplo"}:
+        variant_class = ""
+        if name == "callout-alerta":
+            variant_class = " callout-alerta"
+        elif name == "callout-exemplo":
+            variant_class = " callout-exemplo"
+        tag = escape(_attr(attrs, "tag"))
+        titulo = escape(_attr(attrs, "titulo", "título"))
+        title_inner = ""
+        if tag:
+            title_inner += f'<span class="callout-tag">{tag}</span>'
+        if titulo:
+            title_inner += titulo
+        title_html = (
+            f'\n  <span class="callout-title">{title_inner}</span>'
+            if title_inner else ""
+        )
+        body_html = markdown_to_html(body) if body.strip() else ""
+        return (
+            f'<div class="callout{variant_class}">{title_html}\n'
+            f'  {body_html}\n'
+            '</div>'
+        )
+
+    if name == "indicador":
+        nome = escape(_attr(attrs, "nome"))
+        formula = escape(_attr(attrs, "formula", "fórmula"))
+        freq = escape(_attr(attrs, "frequencia", "frequência"))
+        meta = escape(_attr(attrs, "meta"))
+        meta_items = []
+        if formula:
+            meta_items.append(f"    <dt>Fórmula:</dt><dd>{formula}</dd>")
+        if freq:
+            meta_items.append(f"    <dt>Frequência:</dt><dd>{freq}</dd>")
+        if meta:
+            meta_items.append(f"    <dt>Meta:</dt><dd>{meta}</dd>")
+        meta_html = "\n".join(meta_items)
+        return (
+            '<div class="indicador-card">\n'
+            f'  <h4 class="indicador-nome">{nome}</h4>\n'
+            '  <dl class="indicador-meta">\n'
+            f'{meta_html}\n'
+            '  </dl>\n'
+            '</div>'
+        )
+
+    if name == "diagrama":
+        caption = escape(_attr(attrs, "caption"))
+        # Body aceita <svg>...</svg> OU <img src="...">
+        # SVG é preservado intacto; img é preservado com seus atributos
+        svg_match = re.search(r"<svg\b.*?</svg>", body, re.DOTALL | re.IGNORECASE)
+        img_match = re.search(r'<img\b[^>]*?/?>', body, re.IGNORECASE)
+        if svg_match:
+            content = svg_match.group(0)
+        elif img_match:
+            content = img_match.group(0)
+        else:
+            content = body.strip()
+        caption_html = (
+            f'\n<p class="embed-svg-caption">{caption}</p>'
+            if caption else ""
+        )
+        return (
+            '<div class="embed-svg">\n'
+            f'  {content}\n'
+            f'</div>{caption_html}'
+        )
+
+    if name == "processo-grid":
+        camada = escape(_attr(attrs, "camada"))
+        descricao = escape(_attr(attrs, "descricao", "descrição"))
+        cards: list = []
+        for line in body.split("\n"):
+            m = re.match(r"^\s*[-*]\s+(.+?)\s*\|\s*(.+)$", line)
+            if m:
+                titulo = escape(m.group(1).strip())
+                owner = escape(m.group(2).strip())
+                cards.append(
+                    '  <div class="skill-proc-card">\n'
+                    f'    <h4 class="skill-proc-title">{titulo}</h4>\n'
+                    f'    <p class="skill-proc-owner">{owner}</p>\n'
+                    '  </div>'
+                )
+        cards_html = "\n".join(cards)
+        sep_html = ""
+        if camada:
+            desc_html = f'\n  <p>{descricao}</p>' if descricao else ""
+            sep_html = (
+                '<div class="skill-camada-sep">\n'
+                f'  <h4 class="skill-camada-title">{camada}</h4>{desc_html}\n'
+                '</div>\n'
+            )
+        return f'{sep_html}<div class="skill-proc-block">\n{cards_html}\n</div>'
+
+    # Fallback: shortcode desconhecido (não deveria chegar aqui — validação
+    # roda antes da expansão).
+    return f"<!-- unknown shortcode: {escape(name)} -->"
+
+
+# Armazenamento global temporário dos blocos HTML expandidos a partir de
+# shortcodes. Usado por expand_shortcodes/restore_shortcodes para fazer
+# stash similar ao SVG — protege o HTML do shortcode contra a python-markdown
+# (que envolveria em <p> se visse o <div> no meio de texto). Reset a cada
+# `parse_content_md` para evitar vazamento entre execuções.
+_SC_BLOCKS: list = []
+
+
+def expand_shortcodes(text: str) -> str:
+    """Substitui blocos `:::nome\\n...\\n:::` por placeholders únicos.
+
+    Os HTMLs renderizados ficam armazenados em `_SC_BLOCKS`; o texto retornado
+    tem `@@SC_BLOCK_N@@` no lugar de cada shortcode. Após `markdown_to_html`
+    processar o texto, `restore_shortcodes(html)` substitui de volta.
+
+    Esse padrão (idêntico ao usado para SVG inline) evita que a python-markdown
+    serialize o HTML do shortcode como prosa.
+    """
+    _SC_BLOCKS.clear()
+
+    def repl(m: "re.Match") -> str:
+        name = m.group(1).strip()
+        body_text = m.group(2)
+        attrs, body = _parse_shortcode_attrs(body_text)
+        rendered = render_shortcode(name, attrs, body)
+        _SC_BLOCKS.append(rendered)
+        # Isolado por \n\n para que o placeholder fique em parágrafo próprio
+        return f"\n\n@@SC_BLOCK_{len(_SC_BLOCKS) - 1}@@\n\n"
+
+    return SHORTCODE_BLOCK_RE.sub(repl, text)
+
+
+def restore_shortcodes(html: str) -> str:
+    """Substitui placeholders `@@SC_BLOCK_N@@` pelos HTMLs originais.
+
+    Remove o wrap `<p>...</p>` que a markdown lib adiciona em torno do
+    placeholder (esperado: placeholder vira parágrafo solo após `\\n\\n`).
+    """
+    for i, block in enumerate(_SC_BLOCKS):
+        placeholder = f"@@SC_BLOCK_{i}@@"
+        html = html.replace(f"<p>{placeholder}</p>", block)
+        html = html.replace(placeholder, block)
+    return html
+
+
+def validate_md_content(md_text: str, md_path: Path) -> list:
+    """Valida o MD da Fase 2 (creating-politica v4.0).
+
+    Bloqueia:
+      - <style>...</style>           (design vem do template, não do MD)
+      - style="..." inline           (idem)
+      - <svg>...</svg> fora de :::diagrama  (forçar shortcode)
+      - <tag class="X"> com X fora da CSS_ALLOWLIST
+      - :::nome ... ::: com nome fora de SHORTCODE_CATALOG
+      - :::nome sem fechamento :::
+
+    Não bloqueia:
+      - Markdown padrão (h2, h3, listas, tabelas, **bold**, etc)
+      - Comentários HTML (<!-- ... -->)
+      - <br>, <hr>, <code> sem class
+      - <!-- /page-break --> (marker convencional da Fase 2)
+    """
+    errs: list = []
+    name = md_path.name
+
+    # 1. <style>...</style> proibido
+    for m in re.finditer(r"<style\b[^>]*>.*?</style>", md_text, re.DOTALL | re.IGNORECASE):
+        line_no = md_text[:m.start()].count("\n") + 1
+        snippet = re.sub(r"\s+", " ", m.group(0))[:80]
+        errs.append(_err(
+            f"{name}:linha {line_no}",
+            f"<style> block proibido — design vem do template/shortcodes. "
+            f"Trecho: '{snippet}…'"
+        ))
+
+    # 2. style="..." inline proibido
+    for m in re.finditer(r'\bstyle\s*=\s*"[^"]*"', md_text, re.IGNORECASE):
+        line_no = md_text[:m.start()].count("\n") + 1
+        errs.append(_err(
+            f"{name}:linha {line_no}",
+            f"style=\"...\" inline proibido — use classe do component-catalog."
+        ))
+
+    # 3. Stash shortcodes válidos para não checar conteúdo deles na validação
+    md_stripped = SHORTCODE_BLOCK_RE.sub("", md_text)
+
+    # 4. <svg> só dentro de :::diagrama (no md_stripped já não tem)
+    for m in re.finditer(r"<svg\b", md_stripped, re.IGNORECASE):
+        line_no = md_stripped[:m.start()].count("\n") + 1
+        errs.append(_err(
+            f"{name}:linha {line_no}",
+            "<svg> fora de shortcode :::diagrama. "
+            "Envolva o SVG com :::diagrama ... :::"
+        ))
+
+    # 5. Classes em elementos HTML do MD fora da allowlist
+    pattern = re.compile(
+        r'<(div|span|p|section|article|figure|aside|table|tr|td|th|h[1-6]|ul|ol|li|dl|dt|dd|header|footer|nav|main|button|a)\b[^>]*\bclass\s*=\s*"([^"]+)"',
+        re.IGNORECASE,
+    )
+    for m in pattern.finditer(md_stripped):
+        tag = m.group(1).lower()
+        classes_str = m.group(2)
+        line_no = md_stripped[:m.start()].count("\n") + 1
+        for cls in classes_str.split():
+            if cls and cls not in CSS_ALLOWLIST:
+                errs.append(_err(
+                    f"{name}:linha {line_no}",
+                    f"classe '{cls}' em <{tag}> fora da allowlist do "
+                    f"component-catalog. Use shortcode (:::papel-card, "
+                    f":::callout, :::indicador, :::diagrama, :::processo-grid) "
+                    f"ou markdown padrão."
+                ))
+
+    # 6. Shortcodes inválidos ou sem fechamento
+    open_names = [(m.group(1), m.start()) for m in SHORTCODE_OPEN_RE.finditer(md_text)]
+    closed_set = set()
+    for m in SHORTCODE_BLOCK_RE.finditer(md_text):
+        closed_set.add(m.start())
+
+    # Reconstrói posições de abertura que tiveram fechamento
+    closed_opens: set = set()
+    for m in SHORTCODE_BLOCK_RE.finditer(md_text):
+        closed_opens.add(m.start())
+
+    for name_sc, pos in open_names:
+        # É fechamento? `:::` puro também casa o regex de abertura (group 1 vazio)
+        if not name_sc:
+            continue
+        line_no = md_text[:pos].count("\n") + 1
+        if name_sc not in SHORTCODE_CATALOG:
+            errs.append(_err(
+                f"{name}:linha {line_no}",
+                f"shortcode ':::{name_sc}' inválido. "
+                f"Allowlist: {sorted(SHORTCODE_CATALOG)}"
+            ))
+        if pos not in closed_opens:
+            errs.append(_err(
+                f"{name}:linha {line_no}",
+                f"shortcode ':::{name_sc}' aberto sem fechamento ':::'."
+            ))
+
+    return errs
+
+
+def validate_html_classes(html: str) -> list:
+    """Valida que todas as classes CSS no HTML pertencem à CSS_ALLOWLIST.
+
+    Roda APÓS substituição de placeholders e inline_assets — pega:
+      - Hex literal CSS injetado por leak
+      - Shortcode renderizado com classe não-catalogada
+      - Classe ad-hoc no MD que escapou da validação prévia
+    """
+    errs: list = []
+    bad_classes: dict = {}  # cls -> contagem
+    for m in re.finditer(r'\bclass\s*=\s*"([^"]+)"', html):
+        for cls in m.group(1).split():
+            if not cls or cls in CSS_ALLOWLIST:
+                continue
+            bad_classes[cls] = bad_classes.get(cls, 0) + 1
+    for cls, count in sorted(bad_classes.items()):
+        errs.append(_err(
+            "HTML output",
+            f"classe '{cls}' (x{count}) fora da allowlist do component-catalog. "
+            f"Provável causa: hex literal CSS injetado, shortcode mal renderizado, "
+            f"ou classe ad-hoc no MD que escapou da validação."
+        ))
+    return errs
+
+
+def validate_html_no_inline_styles(html: str, template_html: str = "") -> list:
+    """Detecta `<style>` ou `style="..."` injetados além do baseline do template.
+
+    Baseline esperado:
+      - `<style>` blocks: 2 (1 do template + 1 do m7-tokens.css inlinado por
+        `inline_assets`). Se template_html for fornecido, usa contagem real.
+      - `style="..."` inline: conta no template (legítimos) e exige que o
+        HTML final tenha exatamente a mesma quantidade.
+
+    MD não pode introduzir nenhum dos dois — a validação prévia
+    (`validate_md_content`) já garante isso. Esta função é defesa em
+    profundidade contra leak via shortcode mal-renderizado ou edição
+    direta do template.
+    """
+    errs: list = []
+
+    expected_styles = 2  # default: 1 template + 1 css inlinado
+    expected_inline = 12  # default conhecido do template atual
+    if template_html:
+        # Conta no template e adiciona 1 pelo inline_assets (m7-tokens.css)
+        expected_styles = len(re.findall(
+            r"<style\b[^>]*>.*?</style>", template_html, re.DOTALL | re.IGNORECASE
+        )) + 1
+        expected_inline = len(re.findall(
+            r'\bstyle\s*=\s*"[^"]+"', template_html
+        ))
+
+    style_blocks = re.findall(r"<style\b[^>]*>.*?</style>", html, re.DOTALL | re.IGNORECASE)
+    if len(style_blocks) > expected_styles:
+        errs.append(_err(
+            "HTML output",
+            f"{len(style_blocks)} blocos <style> (esperado {expected_styles}: "
+            f"template + m7-tokens.css). Blocos extras indicam CSS injetado "
+            f"além do baseline."
+        ))
+
+    inline_styles = re.findall(r'\bstyle\s*=\s*"[^"]+"', html)
+    if len(inline_styles) > expected_inline:
+        diff = len(inline_styles) - expected_inline
+        errs.append(_err(
+            "HTML output",
+            f"{len(inline_styles)} atributos style=\"...\" inline (esperado "
+            f"{expected_inline} do template). {diff} adicionais sugerem leak."
+        ))
+
+    return errs
+
+
+# =============================================================================
 # Briefing & content MD parsers
 # =============================================================================
 
@@ -221,8 +738,22 @@ def extract_bullets(text: str) -> list:
 
 
 def parse_content_md(path: Path) -> dict:
-    """Lê politica-{slug}.md e extrai valores para os placeholders de conteúdo."""
+    """Lê politica-{slug}.md e extrai valores para os placeholders de conteúdo.
+
+    Em v4.0: o texto é validado (sem <style>, sem style="...", sem classes
+    ad-hoc, sem <svg> solto) e tem shortcodes expandidos ANTES de qualquer
+    parseamento de seções. Erros de validação são propagados via exceção
+    para abortar a Fase 3 com mensagem clara.
+    """
     text = path.read_text(encoding="utf-8")
+
+    # v4.0 — validação prévia + expansão de shortcodes
+    md_errs = validate_md_content(text, path)
+    if md_errs:
+        msg = "VALIDAÇÃO DO MD FALHOU:\n" + "\n".join(md_errs)
+        raise ValueError(msg)
+    text = expand_shortcodes(text)
+
     sections = split_by_h2(text)
     out: dict = {}
 
@@ -302,7 +833,7 @@ def parse_content_md(path: Path) -> dict:
     # build_extra_diretrizes_pages renderizar como <article> adicionais.
     raw_chunks = re.split(r"<!--\s*/?page-break\s*-->", after_sumario)
     raw_chunks = [c.strip() for c in raw_chunks if c.strip()]
-    out["CONTEUDO_DIRETRIZES"] = markdown_to_html(raw_chunks[0]) if raw_chunks else ""
+    out["CONTEUDO_DIRETRIZES"] = restore_shortcodes(markdown_to_html(raw_chunks[0])) if raw_chunks else ""
     out["_diretrizes_chunk0_md"] = raw_chunks[0] if raw_chunks else ""
     out["_diretrizes_extra_chunks_md"] = raw_chunks[1:] if len(raw_chunks) > 1 else []
 
@@ -510,7 +1041,11 @@ def markdown_to_html(text: str) -> str:
 
     try:
         import markdown as md_lib  # type: ignore
-        html_out = md_lib.markdown(text_safe, extensions=["tables", "fenced_code"])
+        # md_in_html: trata <div>...</div> como block-level (não envolve em <p>)
+        html_out = md_lib.markdown(
+            text_safe,
+            extensions=["tables", "fenced_code", "md_in_html"],
+        )
     except ImportError:
         html_out = _md_fallback(text_safe)
 
@@ -918,7 +1453,7 @@ def build_extra_diretrizes_pages(content_md, placeholders: dict) -> str:
 
     parts: list = []
     for chunk_md in chunks:
-        chunk_html = markdown_to_html(chunk_md)
+        chunk_html = restore_shortcodes(markdown_to_html(chunk_md))
         parts.append(
             '\n  <!-- ════════════════════════════════════════════════════════════\n'
             '       Diretrizes (continuação) — auto-paginação\n'
@@ -1037,7 +1572,16 @@ def main() -> int:
     )
 
     content_md = Path(args.content) if args.content else None
-    placeholders = build_placeholders(data, content_md)
+    try:
+        placeholders = build_placeholders(data, content_md)
+    except ValueError as ve:
+        sys.stderr.write(str(ve) + "\n")
+        sys.stderr.write(
+            "\nO MD da Fase 2 quebrou a separação design/conteúdo. Corrija os\n"
+            "itens acima e re-execute. Detalhes em "
+            "references/component-catalog.md\n"
+        )
+        return 1
 
     # Extra Diretrizes pages (#7): se MD tem <!-- /page-break --> na seção 5,
     # build_extra_diretrizes_pages retorna o HTML das páginas adicionais; o
@@ -1078,12 +1622,52 @@ def main() -> int:
     if not args.no_inline and re.search(r'(?:href|src)="(?:assets/|fonts/|m7-tokens\.css)', html):
         warnings.append("paths relativos restantes após inline")
 
+    # v4.0 — validação pós-render do HTML final
+    # Carrega template puro como baseline para contagem de style legítimos
+    template_baseline = template_path.read_text(encoding="utf-8")
+    html_class_errs = validate_html_classes(html)
+    html_style_errs = validate_html_no_inline_styles(html, template_baseline)
+    fatal_errs = html_class_errs + html_style_errs
+    if fatal_errs:
+        sys.stderr.write("VALIDAÇÃO DO HTML FINAL FALHOU:\n")
+        for e in fatal_errs:
+            sys.stderr.write(e + "\n")
+        sys.stderr.write(
+            "\nCausa provável: shortcode mal-renderizado, classe ad-hoc, ou\n"
+            "<style> injetado no MD que escapou da validação. Confira o MD\n"
+            "da Fase 2 contra references/component-catalog.md.\n"
+        )
+        return 1
+
     html_out.write_text(html, encoding="utf-8")
+
+    # v4.0 — stub do .review.md (gate de design review)
+    review_path = output_dir / f"{basename}.review.md"
+    code = data.get("identity", {}).get("code", "POL-UNKNOWN")
+    titulo = data.get("presentation", {}).get("title_short", "")
+    review_path.write_text(
+        f"# Design Review: {code} · {titulo}\n\n"
+        f"**Arquivo**: `{html_out}`\n"
+        f"**Status**: PENDING — invoque o agente `politica-design-reviewer`\n"
+        f"**Score esperado para entrega**: ≥ B\n\n"
+        "---\n\n"
+        "Este arquivo é um stub gerado pelo script `generate-html-yaml.py`.\n"
+        "O conteúdo real do design review é produzido pelo agente\n"
+        "`politica-design-reviewer` ao analisar o HTML acima.\n\n"
+        "Para preencher este review:\n\n"
+        "1. Invoque o agente: `Task(subagent_type='politica-design-reviewer', ...)`\n"
+        f"2. Forneça os caminhos do HTML, YAML, MD-fonte e code `{code}`\n"
+        "3. O agente sobrescreverá este arquivo com o relatório completo\n"
+        "   (Score A/B/C/D + issues categorizadas + Quick Fix CSS)\n"
+        "4. Score < B bloqueia a entrega — corrija o MD/BRIEFING e re-execute\n",
+        encoding="utf-8",
+    )
 
     size_kb = html_out.stat().st_size // 1024
     print("✓ Gerado:")
     print(f"   {yaml_out}")
     print(f"   {html_out}  ({size_kb} KB)")
+    print(f"   {review_path}  (stub — invoque politica-design-reviewer)")
     for w in warnings:
         sys.stderr.write(f"⚠  {w}\n")
     return 0 if not residuals else 3

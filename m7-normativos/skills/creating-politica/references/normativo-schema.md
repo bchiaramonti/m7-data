@@ -320,38 +320,31 @@ Renderiza como cartões `lime-bordered` 4 colunas com separadores discretos por 
 
 `<img src="path/relativo/img.svg">` (ou .png/.jpg/.webp) no MD é automaticamente inlinado como `data:image/...;base64`. Path é relativo ao diretório do MD. Imagens com `src="data:..."`, `http://`, `https://` são preservadas. Se o arquivo não existir, o script emite warning no stderr mas continua.
 
-## SVG inline preservado (v3.1+)
+## SVG inline via shortcode `:::diagrama` (v4.0)
 
-Você pode colar um `<svg viewBox="...">...</svg>` diretamente no MD da Fase 2 — comum para diagramas vetoriais autocontidos (cadeia de valor, fluxograma, etc.). O script faz **stash do SVG antes do parse markdown** e restaura intacto após. Sem essa proteção, a markdown lib processa o conteúdo do SVG como prosa (serializa `<text>`, descarta `<rect>`/`<path>`).
+A partir da v4.0, SVG inline **só é permitido dentro do shortcode `:::diagrama`**.
+SVG solto no MD é rejeitado pela validação da Fase 3.
 
-Combine com a classe `.embed-svg` para wrap visual:
-
-```html
-<div class="embed-svg">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
-    <!-- conteúdo do SVG -->
-  </svg>
-</div>
-<p class="embed-svg-caption">Fig 1 · Cadeia de Valor M7.</p>
-```
-
-Múltiplos SVGs no mesmo MD funcionam — cada um é stashed com placeholder numerado.
-
-## Tabela markdown adjacente a HTML é auto-isolada (v3.1+)
-
-Quando uma tabela markdown vem imediatamente após um bloco HTML (ex.: `<div class="inv-card">`, `<div class="embed-svg">`), a python-markdown precisa de uma linha em branco entre eles para reconhecer o fim do bloco HTML — sem ela, a tabela é tratada como continuação do HTML e renderiza como texto pipe.
-
-O script v3.1+ **injeta automaticamente** essa linha em branco entre `</div|p|table|figure|aside|section>` e o próximo elemento markdown (`#`, `|`, `-`, `*`). Autor não precisa adicionar manualmente. Exemplo que funciona sem fricção:
+Sintaxe correta:
 
 ```markdown
-<div class="inv-card">
-<h4 class="inv-title">Card X</h4>
-<p class="inv-block">Conteúdo do card.</p>
-</div>
-| Coluna A | Coluna B |
-|----------|----------|
-| valor 1  | valor 2  |
+:::diagrama
+caption: Fig 1 · Cadeia de Valor M7
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <!-- conteúdo do SVG -->
+</svg>
+:::
 ```
+
+O script:
+1. Valida que o SVG está dentro de `:::diagrama` (senão aborta)
+2. Faz **stash do SVG antes do parse markdown** e restaura intacto após
+3. Renderiza como `<div class="embed-svg">...</div>` + caption opcional
+
+Múltiplos SVGs no mesmo MD funcionam — cada um em seu próprio shortcode.
+
+Para detalhes do shortcode, ver [component-catalog.md](component-catalog.md#diagrama--svg-embebido).
 
 ## `links.artifact_md` — fonte editável (v3.1+)
 
@@ -394,77 +387,43 @@ Documento superior: N/A · Política raiz da hierarquia normativa M7
 ```
 em vez do " · " solto que existia em v3.1. Funciona automaticamente — o script detecta `parent: null` ou `parent: {}` e aplica o fallback semântico.
 
-## Namespaces CSS reservados pelo template (v3.0+)
+## Apresentação visual — shortcodes do catálogo (v4.0)
 
-O template oficial define classes CSS com semântica específica. **Não sobrescreva** essas classes via `<style>` no MD — use prefixos próprios para custom styling (ex.: `.callout-*`, `.user-*`, `.note-*`).
+A partir da v4.0, o **MD não escreve HTML inline com classes CSS**. Toda apresentação visual vem de **shortcodes semânticos pré-aprovados**, listados em [component-catalog.md](component-catalog.md).
 
-| Classe / Namespace | Semântica |
-|--------------------|-----------|
-| `.skill-proc-block`, `.skill-proc-card`, `.skill-proc-title`, `.skill-proc-owner` | Grid 4-col compacto de processos. Card mini com border lime. |
-| `.skill-camada-sep`, `.skill-camada-title` | Separadores das camadas G/P/A no grid compacto. |
-| `.inv-card`, `.inv-title`, `.inv-owner`, `.inv-block`, `.inv-sep`, `.inv-sep-title`, `.inv-sep-desc` | Cards verticais narrativos. Body com `<p class="inv-block">`. Border-left lime. |
-| `.embed-svg`, `.embed-svg-caption` | Wrapper para SVG inline (cadeia de valor, fluxogramas). |
-| `.approval-card`, `.approval-grid`, `.kv-table`, `.doc-table`, `.principles`, `.principle-card`, `.sub`, `.subsub`, `.section`, `.section-lede` | Estrutura do template — nunca redefinir. |
+**Por que mudamos**: até a v3.x, o SKILL.md autorizava `<div class="inv-card">...</div>` direto no MD ("namespaces reservados"). Isso levou cada autor a improvisar — POL-GOV-002 adicionou `<style>` redefinindo `.inv-*` com hex literal; POL-GOV-003 inventou `.icp-*` ad-hoc. O resultado foi despadronização visual entre políticas que deveriam ser idênticas em estrutura.
 
-### Padrão A — Grid compacto (`.skill-proc-*`)
+**A regra agora**: o MD tem apenas duas saídas para apresentação:
 
-Quando: o documento lista muitos processos (10+) e cada um cabe em ~80 chars.
+1. **Markdown padrão**: h2 numerados, h3, listas, tabelas, **bold**, *italic*, `code`, [links](#), código em fence ` ``` `.
+2. **Shortcodes do catálogo** (sintaxe pandoc fenced divs):
 
-```html
-<div class="skill-camada-sep">
-  <h4 class="skill-camada-title">Camada Primária</h4>
-  <p>Doze processos que geram receita direta.</p>
-</div>
+```markdown
+:::papel-card
+título: P1 · Geração de Demanda
+owner: Head de Marketing
 
-<div class="skill-proc-block">
-  <div class="skill-proc-card">
-    <h4 class="skill-proc-title">P1 · Geração de Demanda</h4>
-    <p class="skill-proc-owner">Head de Marketing</p>
-  </div>
-  <div class="skill-proc-card">
-    <h4 class="skill-proc-title">P2 · Qualificação</h4>
-    <p class="skill-proc-owner">Head de Vendas</p>
-  </div>
-  <!-- ... até P12 ... -->
-</div>
+**Por que existe**: ativar pipeline de leads qualificados.
+:::
 ```
 
-Renderiza em grid 4-col responsivo, ~25% de largura por card.
+Os 5 shortcodes disponíveis hoje são `:::papel-card`, `:::callout` (com variantes `-info` / `-alerta` / `-exemplo`), `:::indicador`, `:::diagrama`, `:::processo-grid`. Cada um mapeia para um conjunto de classes CSS já no template.
 
-### Padrão B — Cards verticais narrativos (`.inv-*`)
+**Para detalhes completos** (sintaxe, atributos, HTML gerado, classes utilizadas): ver [component-catalog.md](component-catalog.md).
 
-Quando: cada processo precisa de explicação ("Por que existe / O que transforma / Alimenta") — o card vira um bloco vertical.
+**Para adicionar shortcode novo**: ver "Como adicionar um shortcode novo" em [component-catalog.md](component-catalog.md#como-adicionar-um-shortcode-novo-processo-formal) — exige bump de versão, não pode ser ad-hoc.
 
-```html
-<div class="inv-sep">
-  <h4 class="inv-sep-title">Camada Primária</h4>
-  <p class="inv-sep-desc">Doze processos que geram receita direta.</p>
-</div>
+### Allowlist de classes CSS no HTML final
 
-<div class="inv-card">
-  <h4 class="inv-title">P1 · Geração de Demanda</h4>
-  <p class="inv-owner">Owner: Head de Marketing</p>
-  <p class="inv-block"><strong>Por que existe:</strong> ativar pipeline de leads qualificados.</p>
-  <p class="inv-block"><strong>O que transforma:</strong> demanda latente em oportunidade quente.</p>
-  <p class="inv-block"><strong>Alimenta:</strong> P2 (Qualificação) com leads scored.</p>
-</div>
-<!-- ...repetir por processo -->
-```
+Após renderização, **toda classe CSS no HTML deve pertencer à allowlist** definida em [component-catalog.md](component-catalog.md#allowlist-de-classes-css-no-html-final). O script valida pós-render e aborta a Fase 3 se encontrar classe fora da allowlist.
 
-Renderiza vertical 1-col com border-left lime e tipografia leve.
+Exemplos do que **é rejeitado**:
 
-### Padrão C — Embed SVG (`.embed-svg`)
-
-```html
-<div class="embed-svg">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
-    <!-- ... -->
-  </svg>
-</div>
-<p class="embed-svg-caption">Fig 1 · Cadeia de Valor M7-2026.</p>
-```
-
-SVG ocupa 100% da largura do page-body; caption discreta abaixo.
+| Classe ad-hoc | Por que rejeitado | Substituir por |
+|---------------|-------------------|----------------|
+| `.icp-card`, `.icp-tag` | Não catalogadas | `:::callout` |
+| `.cadeia-img`, `.cadeia-caption` | Não catalogadas | `:::diagrama` ou `<img>` simples |
+| `.user-*`, `.note-*`, `.my-*` | Prefixos "customizados" da v3.x — acabou | Shortcode correspondente |
 
 ## Page-break com alerta de altura (v3.0+)
 
@@ -489,24 +448,30 @@ Heurística de altura (px por elemento):
 
 O warning não bloqueia a geração — só alerta. O autor decide se adiciona o page-break ou se aceita o risco de overflow.
 
-## CSS customizado no MD do autor
+## CSS customizado no MD — PROIBIDO (v4.0)
 
-Você pode injetar `<style>` no MD para classes próprias. **Cuidados:**
+> **Histórico**: a v3.x autorizava injeção de `<style>` no MD com prefixos
+> "customizados". O resultado foi POL-GOV-002 redefinindo `.inv-*` com hex
+> literal e POL-GOV-003 criando `.icp-*` ad-hoc. **Acabou.**
 
-1. **Use prefixos exclusivos** — não sobrescreva os namespaces da tabela acima. Bons prefixos: `.callout-*`, `.user-*`, `.note-*`, `.diagram-*`.
+Em v4.0 o script rejeita o MD se encontrar:
 
-2. **O `<style>` injetado é global** ao HTML inteiro (vaza para outras seções). Para escopar, use seletor descendente:
+- `<style>...</style>` em qualquer lugar do MD
+- `style="..."` inline em qualquer tag
+- `<div class="X">`, `<span class="X">` etc com `X` fora da allowlist
+- `<svg>` solto (precisa estar dentro de `:::diagrama`)
 
-   ```css
-   .my-namespace .card { font-size: 11px; }
-   ```
+**Quando você precisa de algo que não está no catálogo**:
 
-   E envolva o conteúdo:
+1. **Avalie se markdown padrão resolve** — uma tabela 4-col, uma lista, um
+   bloco de código, h3+h4 hierárquicos. 90% dos casos resolvem sem shortcode.
+2. **Avalie se um shortcode existente serve com leve adaptação** — `:::callout`
+   tem 3 variantes, `:::papel-card` aceita corpo livre em markdown rico.
+3. **Se nenhum serve**: abra issue + siga o processo formal em
+   [component-catalog.md](component-catalog.md#como-adicionar-um-shortcode-novo-processo-formal).
+   Bump de versão menor + atualização do catálogo + classes no template +
+   parser no script + exemplo no gold reference. Não há atalho.
 
-   ```html
-   <div class="my-namespace">
-     <div class="card">...</div>
-   </div>
-   ```
-
-3. **Especificidade**: regras do template e do autor têm a mesma especificidade quando ambas usam classes simples. Em caso de empate, a regra que vem **depois** no DOM vence. Como o `<style>` do MD aparece após o `<style>` inline do template no `<head>`, o autor geralmente vence. Mesmo assim, prefira prefixos próprios — é mais previsível.
+**Por quê é assim**: a despadronização visual entre as 3 primeiras POLs
+(POL-GOV-001/002/003) veio exatamente da falta dessa regra. Política M7 deve
+parecer Política M7 — não cada autor inventando seu mini-design system.

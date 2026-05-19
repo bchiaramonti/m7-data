@@ -66,7 +66,10 @@ creating-politica/
 │   ├── normative-standards.md                  ← hierarquia normativa, codificação, ciclo de vida
 │   ├── normativo-schema.md                     ← guia do schema YAML + tabela placeholder→campo
 │   ├── normativo.schema.yaml                   ← schema canônico do sidecar
-│   └── normativo.exemplo-pol-gov-002.yaml      ← exemplo preenchido (POL-GOV-002)
+│   ├── normativo.exemplo-pol-gov-002.yaml      ← exemplo preenchido (POL-GOV-002 — legacy)
+│   ├── component-catalog.md                    ← shortcodes do MD + allowlist de classes CSS
+│   ├── policy-design-rules.md                  ← 8 dimensões de revisão (usado pelo agente)
+│   └── reference-output/                       ← gold reference (POL-GOV-001-gold.{html,yaml,md})
 ├── assets/
 │   ├── politica-m7-template.html               ← template oficial (145 placeholders {{...}})
 │   ├── m7-tokens.css                           ← design tokens M7-2026 (inlinado pelo script)
@@ -78,14 +81,28 @@ creating-politica/
     └── generate-html-yaml.py                   ← pipeline da Fase 3 (validação + inline + render)
 ```
 
+Agente associado (no plugin):
+
+```
+m7-normativos/agents/
+├── governance-writer.md                        ← assistente de redação (compartilhado)
+└── politica-design-reviewer.md                 ← gate obrigatório de design review (v4.0)
+```
+
 **REGRA CRÍTICA**: NUNCA recrie o template do zero. SEMPRE use `politica-m7-template.html`
 como base — ele tem 145 placeholders `{{...}}` explícitos cobrindo identidade + conteúdo.
 A estrutura (16 páginas A4 — Capa, Controle, 8 seções, versões, aprovações), classes CSS
 e tags semânticas são INVARIANTES.
 
-**Geração autocontida** (v2.1): o script inlina CSS, fonts (base64) e logos (base64) no
+**Geração autocontida** (v2.1+): o script inlina CSS, fonts (base64) e logos (base64) no
 HTML, produzindo arquivo único de ~1.4MB que funciona em `file://`, HTTP e anexo de email
 sem dependência de paths relativos.
+
+**Separação rígida design × conteúdo** (v4.0+): o MD da Fase 2 é canônico de
+**conteúdo**, nunca de design. Toda apresentação visual vem do template e dos
+shortcodes pré-aprovados em [component-catalog.md](references/component-catalog.md).
+O MD **não pode** conter `<style>`, `style="..."` inline, nem classes CSS ad-hoc —
+o script rejeita esses casos antes de renderizar.
 
 ---
 
@@ -137,23 +154,82 @@ mapeia 1:1 para os ~110 placeholders de conteúdo do template.
 **Input**: `BRIEFING-{CODE}.md`
 **Output persistido**: `politica-{slug}.md` (editável, parser-friendly).
 
-O MD segue **estrutura estrita** — h2 numerados, blocos específicos por seção. A partir da v2.3 o parser aceita variações lenientes (vide [normativo-schema.md → Marcação leniente](references/normativo-schema.md#marcação-leniente-no-md-v23)):
+O MD segue **estrutura estrita** — h2 numerados, blocos específicos por seção. O parser aceita variações lenientes (vide [normativo-schema.md → Marcação leniente](references/normativo-schema.md#marcação-leniente-no-md)):
 
 - `**Aplica-se a:**` (bold) OU `### Aplica-se a` (h3) — ambos casam para Escopo
 - `### 7.1 · Revisão periódica` (com prefixo) OU `### Revisão periódica` — idem para Vigência
-- `**bold**`, `*itálico*`, `` `code` ``, `[texto](url)` funcionam em **todos** os campos de texto, não só Diretrizes
+- `**bold**`, `*itálico*`, `` `code` ``, `[texto](url)` funcionam em **todos** os campos de texto
 - `<!-- /page-break -->` na seção 5 quebra Diretrizes em múltiplas páginas A4
 
-A partir da v3.0:
+#### MD é canônico de conteúdo, não de design (v4.0)
 
-- **Namespaces CSS reservados**: `.skill-proc-*` (grid compacto), `.inv-*` (cards verticais narrativos), `.embed-svg` (wrappers de SVG), além de `.approval-card`/`.kv-table`/`.doc-table`/`.sub`/`.subsub`. **Não sobrescreva**. Para custom CSS use prefixos próprios. Detalhes e exemplos HTML em [normativo-schema.md → Namespaces CSS reservados](references/normativo-schema.md#namespaces-css-reservados-pelo-template-v30).
-- **Page-break com alerta**: o script estima a altura de cada chunk de Diretrizes e avisa no stderr quando excede ~900px (margem de segurança), indicando onde adicionar `<!-- /page-break -->` extras.
+A partir da v4.0 a skill aplica **separação rígida** entre conteúdo (MD) e
+apresentação (template + shortcodes). O script valida o MD ANTES de gerar e
+rejeita:
 
-A partir da v3.1:
+| Bloqueado no MD | Por quê | Use no lugar |
+|-----------------|---------|--------------|
+| `<style>...</style>` | Design vem do template/tokens, não do MD | Shortcode do catálogo |
+| `style="..."` inline | Idem — apresentação é classe CSS | Shortcode ou markdown padrão |
+| `<svg>...</svg>` solto | SVG precisa de wrapper canônico | `:::diagrama ... :::` |
+| `<div class="X">` com `X` fora da allowlist | Cada classe deve ter semântica catalogada | Shortcode correspondente |
+| `:::nome` fora do catálogo | Só shortcodes pré-aprovados | Ver `component-catalog.md` |
 
-- **SVG inline preservado**: cole `<svg viewBox="..." xmlns="...">...</svg>` no MD livremente — o parser faz stash/restore para evitar que a markdown lib serialize o conteúdo do SVG como prosa. Combine com `.embed-svg` para wrap visual.
-- **Tabela markdown após bloco HTML é auto-isolada**: você pode escrever `<div class="inv-card">...</div>` imediatamente seguido de uma tabela markdown — o script injeta a linha em branco que a python-markdown precisa para reconhecer o limite. Sem ajuste manual.
-- **`links.artifact_md`** opcional: aponta para o MD da Fase 2 (fonte editável). Convenção: `{basename}.md` no mesmo dir que `.html` + `.yaml`. Útil pro cockpit oferecer "abrir fonte".
+#### Shortcodes semânticos do MD (5 disponíveis)
+
+Para blocos visuais especiais, use os shortcodes pandoc-fenced abaixo. Cada um
+mapeia para um conjunto de classes CSS já presentes no template. Para
+sintaxe completa de cada um, ver [component-catalog.md](references/component-catalog.md).
+
+| Shortcode | Quando usar | Output (classes) |
+|-----------|-------------|------------------|
+| `:::papel-card` | Seção 6 · cards narrativos de papéis com sub-tópicos | `.inv-card`, `.inv-title`, `.inv-owner`, `.inv-block` |
+| `:::papel-card-separador` | Separador de camada antes de grupo de cards | `.inv-sep`, `.inv-sep-title`, `.inv-sep-desc` |
+| `:::callout` (`-info` / `-alerta` / `-exemplo`) | Destaque visual de conceito-chave | `.callout`, `.callout-title`, `.callout-tag` |
+| `:::indicador` | Seção 7 · card alternativo à tabela 4-col | `.indicador-card`, `.indicador-nome`, `.indicador-meta` |
+| `:::diagrama` | Embedding de SVG inline (cadeia, fluxograma) | `.embed-svg`, `.embed-svg-caption` |
+| `:::processo-grid` | Grid compacto 4-col de processos com camada | `.skill-proc-*`, `.skill-camada-*` |
+
+Sintaxe geral (pandoc fenced divs):
+
+```markdown
+:::nome-do-shortcode
+chave: valor opcional
+outra-chave: outro valor
+
+Corpo em markdown padrão (parágrafos, listas, bold, italic, code, links).
+:::
+```
+
+Exemplo prático — card de papel na seção 6:
+
+```markdown
+:::papel-card
+título: P1 · Geração de Demanda
+owner: Head de Marketing
+
+**Por que existe**: ativar pipeline de leads qualificados.
+
+**O que transforma**: demanda latente em oportunidade quente.
+
+**Alimenta**: P2 (Qualificação) com leads scored.
+:::
+```
+
+**Para adicionar shortcode novo**: processo formal em
+[component-catalog.md](references/component-catalog.md#como-adicionar-um-shortcode-novo-processo-formal) —
+nunca em ad-hoc no MD.
+
+#### Outras facilidades preservadas
+
+- **Imagens externas referenciadas em MD**: `<img src="caminho/relativo.png">`
+  é inlinada como `data:image/...;base64` automaticamente pelo script.
+- **`links.artifact_md`** opcional: aponta para o MD da Fase 2 (fonte editável).
+  Convenção: `{basename}.md` no mesmo dir que `.html` + `.yaml`. Útil pro
+  cockpit oferecer "abrir fonte".
+- **Page-break com alerta**: o script estima a altura de cada chunk de
+  Diretrizes e avisa no stderr quando excede ~900px (margem de segurança),
+  indicando onde adicionar `<!-- /page-break -->` extras.
 
 Estrutura canônica:
 
@@ -267,13 +343,16 @@ Descrição... → PRINCIPIO_1_TITULO + PRINCIPIO_1_DESCRICAO
 - Estrutura conforme — h2 numerados, blocos identificáveis
 - `identity.pages` no BRIEFING atualizado (16 default)
 
-### Fase 3 — Produção HTML + YAML
+### Fase 3 — Produção HTML + YAML + Review
 
-**Objetivo**: emitir o par .html + .yaml final.
+**Objetivo**: emitir o **trio** `.html` + `.yaml` + `.review.md` final.
 **Input**: BRIEFING-{CODE}.md (+ opcional politica-{slug}.md)
-**Output**: par `{slug}.html` + `{slug}.yaml` (basename idêntico).
+**Output**: trio com basename idêntico — HTML autocontido, YAML sidecar,
+e relatório de design review (preenchido pelo agente).
 
-**Execução**: invocação única do script:
+**Execução em 2 passos**:
+
+**Passo 1 — Rodar o script** (geração mecânica determinística):
 
 ```bash
 python scripts/generate-html-yaml.py \
@@ -283,21 +362,53 @@ python scripts/generate-html-yaml.py \
   [--basename politica-foo]
 ```
 
-Pergunte ao usuário onde salvar (sugestões abaixo) e passe via `--output-dir`.
-
-**O que o script faz** (determinístico — mesmo input ⇒ mesmo output):
+O script faz (determinístico — mesmo input ⇒ mesmo output):
 
 1. Parseia o BRIEFING como YAML
-2. **Valida** contra `normativo.schema.yaml` (aborta com mensagem clara se faltar campo required, status inválido, código fora do padrão, etc.)
+2. **Valida YAML** contra `normativo.schema.yaml` (aborta com mensagem clara
+   se faltar campo required, status inválido, código fora do padrão, etc.)
 3. Serializa o YAML canônico em `{slug}.yaml`
-4. Parseia `politica-{slug}.md` extraindo blocos das 8 seções para placeholders de conteúdo
-5. Constrói dicionário de **145 placeholders** → valores (identidade + datas + governança + cover título + 8 seções). DOC_REL suporta até 10 entradas dinamicamente (v3.2+); `governance.parent: null` recebe fallback "N/A · Política raiz da hierarquia normativa M7" (v3.2+).
-6. Carrega `assets/politica-m7-template.html` (versão isolada, com `{{...}}` explícitos)
-7. **Inlinea CSS + 6 fonts + 3 logos** como base64 dentro do HTML
-8. Aplica `html.replace("{{KEY}}", value)` para cada um dos 145 placeholders
-9. **Auto-cleanup de slots vazios (v3.2+)**: remove `<div class="principle">`, `<tr>` de Papéis e `<tr>` de DOC_REL que ficaram com placeholders vazios após substituição. Se DOC_REL fica com zero linhas, injeta fallback row informativa. Idempotente — autor não precisa se preocupar em preencher slots não usados.
-10. Valida zero placeholders residuais e zero paths relativos
-11. Salva `{slug}.html` autocontido (~1.4MB)
+4. **Valida MD** (v4.0): rejeita `<style>`, `style="..."`, `<svg>` solto,
+   classes ad-hoc fora do component-catalog, shortcodes inválidos
+5. **Expande shortcodes** (v4.0): `:::papel-card`, `:::callout`, `:::indicador`,
+   `:::diagrama`, `:::processo-grid` viram HTML usando classes da allowlist
+6. Parseia `politica-{slug}.md` extraindo blocos das 8 seções para placeholders
+7. Constrói dicionário de **145 placeholders** → valores
+8. Carrega `assets/politica-m7-template.html`
+9. **Inlinea CSS + 6 fonts + 3 logos** como base64 dentro do HTML
+10. Aplica `html.replace("{{KEY}}", value)` para cada um dos 145 placeholders
+11. **Auto-cleanup de slots vazios**: remove `<div class="principle">`,
+    `<tr>` de Papéis e DOC_REL com placeholders vazios. Fallback row em
+    DOC_REL se zero linhas.
+12. **Valida HTML final** (v4.0): zero `{{}}` residuais, zero paths relativos,
+    **zero classes fora da allowlist**, **no máximo 1 `<style>` block**, **zero
+    `style="..."` inline**
+13. Salva `{slug}.html` autocontido (~1.4MB) + `{slug}.yaml` + `{slug}.review.md` (stub)
+
+**Passo 2 — Invocar o agente `politica-design-reviewer`** (gate obrigatório):
+
+Imediatamente após o script rodar com sucesso, invoque o agente via Task tool:
+
+```
+Task(
+  subagent_type="politica-design-reviewer",
+  prompt="""Revise o HTML da política {CODE}.
+
+  HTML:        {output-dir}/{basename}.html
+  YAML:        {output-dir}/{basename}.yaml
+  MD-fonte:    {path do MD da Fase 2, se houver}
+  Code:        {CODE}
+
+  Compare contra references/reference-output/POL-GOV-001-gold.html e
+  policy-design-rules.md (8 dimensões). Produza relatório markdown e
+  persista em {output-dir}/{basename}.review.md (sobrescreve o stub).
+
+  Score >= B aprova entrega. Score < B bloqueia."""
+)
+```
+
+O agente leva ~1-2 minutos, lê os arquivos relevantes, gera o relatório
+sobrescrevendo o `.review.md` e retorna o veredito (Score + lista de issues).
 
 **Locais sugeridos para output**:
 - `01-fundacao-2.1/normativos/catalogo/` (alinhado com Cockpit de Normativos)
@@ -306,32 +417,45 @@ Pergunte ao usuário onde salvar (sugestões abaixo) e passe via `--output-dir`.
 
 ---
 
-# Validações da Fase 3 (automáticas)
+# Validações da Fase 3
+
+## Validações automáticas (mecânicas — script)
 
 O script aborta com erro se:
 
-- [ ] Faltar qualquer campo `required` do schema
+- [ ] Faltar qualquer campo `required` do schema YAML
 - [ ] `identity.code` não casa `^(POL|MAN|INS|ESP)-[A-Z]{2,4}-[0-9]{3}$`
-- [ ] `identity.tipo` ≠ POL/MAN/INS/ESP
-- [ ] `identity.area` fora do enum
-- [ ] `identity.status` fora do enum
-- [ ] `identity.classif` fora do enum
-- [ ] `identity.version` não casa `v?\d+\.\d+`
-- [ ] `lifecycle.revisaoFreq` fora do enum
+- [ ] `identity.tipo` ≠ POL/MAN/INS/ESP, `area`/`status`/`classif`/`version` fora do enum
 - [ ] Status ∈ {vigente, revisao, vencido} sem `lifecycle.date` ou `nextReview`
-- [ ] `governance.parent.code` (se objeto) inválido
-- [ ] Item de `governance.processos` fora do padrão `G1-G4 | P1-P12 | A1-A5`
-- [ ] Anchor não encontrado no template (sinaliza divergência template × script)
+- [ ] `governance.parent.code` (se objeto) ou `processos[]` inválidos
+- [ ] **MD da Fase 2** contém `<style>`, `style="..."` inline, `<svg>` solto,
+      classes ad-hoc fora do component-catalog, ou shortcode `:::nome` inválido
+- [ ] **HTML final** tem placeholders residuais, paths relativos, classes
+      CSS fora da allowlist, mais de um `<style>` block, ou `style="..."` inline
 
-# Validações manuais antes de entregar
+## Validação visual (gate de design — agente obrigatório)
 
-Após o script rodar:
+Após o script gerar com sucesso, o gate de Score >= B é **obrigatório**:
 
-- [ ] Abrir o HTML no browser e validar visualmente (capa, controle, 8 seções)
+- [ ] **Invocar `politica-design-reviewer`** com caminho do HTML, YAML, MD e code
+- [ ] Agente produz `.review.md` com:
+  - Conformidade base (M7-2026 conforme / parcial / fora)
+  - Score A / B / C / D
+  - Veredito (APROVADO / APROVADO COM RESSALVAS / REPROVADO)
+  - Issues categorizadas (CRITICO / ATENCAO / SUGESTAO)
+  - Quick Fix CSS (se aplicável)
+- [ ] **Score < B bloqueia entrega** — corrija o MD/BRIEFING conforme issues
+      CRITICO e re-execute o script
+- [ ] Score ≥ B entrega o trio completo
+
+## Conferência final pelo autor
+
+Após Score ≥ B:
+
+- [ ] Abrir o HTML no browser e revisar visualmente (capa, controle, 8 seções)
 - [ ] Conferir que `identity.code` aparece corretamente em todos os anchors
 - [ ] Conferir que aprovador é Diretoria
 - [ ] Conferir que revisaoFreq = Anual
-- [ ] Editar conteúdo narrativo das páginas 3-15 (limitação atual)
 - [ ] Validar que o cockpit reconhece o par (se aplicável)
 
 # Regras Importantes
@@ -341,7 +465,12 @@ Após o script rodar:
 3. **Revisão Anual** — `lifecycle.revisaoFreq` = Anual SEMPRE
 4. **Referências por código** — em `parent.code`, em "Documentos relacionados", em texto narrativo: usar `POL-XXX-NNN`, nunca "Política de X"
 5. **Estrutura invariante** — não altere ordem de páginas, classes CSS, tags. Só preencha valores.
-6. **YAML é canônico** — em conflito YAML×HTML, regere o HTML rodando o script
+6. **YAML é canônico de identidade, MD é canônico de conteúdo, template é canônico de design** — três fontes separadas; em conflito YAML×HTML, regere o HTML
+7. **Design não vive no MD** (v4.0) — toda apresentação visual vem do template
+   + shortcodes do `component-catalog.md`. Nunca injete `<style>`, `style="..."`
+   ou classes ad-hoc no MD da Fase 2.
+8. **Gate de design review obrigatório** (v4.0) — sem Score ≥ B do agente
+   `politica-design-reviewer`, a política não está entregue.
 
 # Anti-Patterns
 
@@ -352,3 +481,6 @@ Após o script rodar:
 - **Nunca pular o gate de Fase 1** — Fase 2 não inicia sem BRIEFING confirmado
 - **Nunca alterar o template oficial** — Para mudar a forma, abra uma issue/iteração separada
 - **Nunca editar o YAML para "combinar" com edição manual no HTML** — vence o YAML, regere o HTML
+- **Nunca injetar CSS no MD** (v4.0) — `<style>`, `style="..."`, `<div class="...">` ad-hoc são rejeitados. Use shortcodes do catálogo.
+- **Nunca pular o agente de design review** (v4.0) — Score < B = bloqueio. Corrija e regere.
+- **Nunca adicionar shortcode ad-hoc** — para novo bloco visual, siga o processo formal em `component-catalog.md` (catálogo + template + script + bump de versão).

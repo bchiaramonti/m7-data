@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-05-19
+
+**BREAKING** — refatoração completa do contrato MD ↔ template em `creating-politica` para resolver a despadronização visual observada em POL-GOV-001/002/003. O diagnóstico foi que o MD da Fase 2 acumulou responsabilidade de design (via `<style>` blocks, `style="..."` inline e classes ad-hoc), permitindo que cada autor improvisasse seu mini-design system. Esta release isola design (template + tokens + shortcodes catalogados) de conteúdo (MD canônico, semântico) e introduz **gate obrigatório de Score ≥ B** via agente revisor.
+
+### Added (creating-politica)
+
+- **5 shortcodes semânticos pandoc-fenced** no MD da Fase 2: `:::papel-card`, `:::papel-card-separador`, `:::callout` (variantes `-info` / `-alerta` / `-exemplo`), `:::indicador`, `:::diagrama` (aceita `<svg>` ou `<img>`), `:::processo-grid`. Cada um mapeia para classes CSS já catalogadas no template — autor não precisa escrever HTML inline com classes nunca mais.
+- **`references/component-catalog.md`** (novo) — catálogo único de shortcodes + allowlist exaustiva de classes CSS permitidas no HTML final. Inclui processo formal para adicionar shortcode novo (`Como adicionar um shortcode novo`).
+- **`references/policy-design-rules.md`** (novo) — 8 dimensões de revisão específicas de política (6 do design-reviewer genérico + 2 específicas: Paginação A4 + Estrutura 8 seções). Usado como gabarito pelo agente revisor.
+- **`references/reference-output/`** (novo) — diretório com trio canônico `POL-GOV-001-gold.{html,yaml,md}` que serve como ponto de calibração visual. Agente compara cada HTML em revisão contra esse gold.
+- **`agents/politica-design-reviewer.md`** (novo) — agente read-only (Read/Grep/Glob, opus) que produz relatório markdown com Score A/B/C/D, issues categorizadas (CRITICO / ATENCAO / SUGESTAO) e Quick Fix CSS pronto para aplicar. Gate obrigatório no final da Fase 3 — Score < B bloqueia entrega.
+- **`SHORTCODE_CATALOG` e `CSS_ALLOWLIST`** em `generate-html-yaml.py` — fontes de verdade compartilhadas para validação. CSS_ALLOWLIST reflete o template oficial completo (104 classes estruturais + tipográficas + nav + shortcodes).
+- **`validate_md_content()`** — valida o MD da Fase 2 ANTES de qualquer renderização. Rejeita: `<style>`, `style="..."`, `<svg>` solto, `<div class="X">` com X fora da allowlist, shortcodes inválidos ou sem fechamento. Mensagens com linha + trecho para localização rápida.
+- **`expand_shortcodes()` + `restore_shortcodes()`** — pipeline de stash (similar ao SVG) que substitui `:::nome ... :::` por placeholders `@@SC_BLOCK_N@@` antes do markdown parser e restaura HTML após. Evita que python-markdown serialize HTML de shortcode como prosa.
+- **`render_shortcode()`** — renderizadores específicos por shortcode, usando apenas classes da allowlist e tokens canônicos (zero hex literal).
+- **`validate_html_classes()`** — pós-render: extrai todas as classes do HTML final e rejeita as que não estão na allowlist. Defesa em profundidade contra leak via shortcode mal-renderizado ou edição direta do template.
+- **`validate_html_no_inline_styles()`** — pós-render: conta `<style>` blocks e `style="..."` inline; compara contra baseline do template (1 style block + 12 inline esperados). Excesso indica leak.
+- **`.callout`, `.callout-title`, `.callout-tag`, `.callout-alerta`, `.callout-exemplo`** — novas classes no template para shortcode `:::callout`. Tokens canônicos (lime, âmbar para alerta, verde claro para exemplo).
+- **`.indicador-card`, `.indicador-nome`, `.indicador-meta`** — novas classes no template para shortcode `:::indicador`.
+- **Stub `{slug}.review.md`** gerado pelo script — placeholder que o agente `politica-design-reviewer` sobrescreve com o relatório completo. Trio final é `.html` + `.yaml` + `.review.md`.
+
+### Changed
+
+- **MD da Fase 2 é canônico de conteúdo, não de design**. Toda apresentação visual vem de shortcodes catalogados + template. Esta separação fica explícita no SKILL.md (Regras Importantes #6/7/8, Anti-Patterns reformulados) e no `normativo-schema.md` (seção "CSS customizado no MD — PROIBIDO").
+- **Fase 3 da pipeline** ganha 2 fases adicionais: (a) validação técnica do MD ANTES de expandir shortcodes; (b) validação técnica do HTML APÓS render; (c) invocação do agente como gate de Score ≥ B.
+- **`markdown_to_html`** agora usa extensão `md_in_html` da python-markdown — necessário para que tags `<div>` block-level (vindas dos shortcodes) não sejam envolvidas em `<p>`.
+- **`:::diagrama` aceita tanto `<svg>` quanto `<img>`** — útil para SVGs já encodados em data URI (caso POL-GOV-002).
+- **CHANGELOG** documenta a refatoração como motivação histórica do diagnóstico nos 3 primeiros POLs.
+
+### Removed
+
+- **Permissão de `<style>` no MD** — `normativo-schema.md` seção "CSS customizado no MD do autor" foi reescrita como "PROIBIDO (v4.0)". Status anterior ("use prefixos exclusivos") era a raiz da despadronização.
+- **Permissão de `style="..."` inline** — idem.
+- **Permissão de HTML inline com classes ad-hoc** — só shortcodes do catálogo ou classes da allowlist do template são aceitos.
+- **Auto-isolation `_md_isolate_html_blocks`** continua existindo mas é redundante para shortcodes (que agora têm stash próprio). Mantido para compatibilidade com SVG.
+- **Seção "Namespaces CSS reservados pelo template (v3.0+)"** do `normativo-schema.md` — substituída por "Apresentação visual — shortcodes do catálogo (v4.0)".
+
+### Fixed
+
+- **Despadronização visual entre POL-GOV-001/002/003**: a regeração com a skill v4.0 produz HTMLs visualmente consistentes — POL-GOV-001 byte-idêntico ao gold (Score A); POL-GOV-002 após migração do MD (Score B, 4 ATENCAO sugerindo refinar com `:::papel-card` futuramente); POL-GOV-003 com **zero ocorrências de `.icp-*`** (eliminadas pelo gate).
+- **Leak de hex literal em POL-GOV-003**: `.icp-card-title { color: #424135 }` virava parte do HTML final via `<style>` injetado. Agora bloqueado na validação.
+- **Leak de redefinição em POL-GOV-002**: `.inv-card` redefinido com hex `#1a1d22` via `<style>`. Agora bloqueado.
+- **Classes ad-hoc `.cadeia-img`/`.cadeia-caption`** em POL-GOV-002: substituídas pelo shortcode `:::diagrama` (que aceita `<img>` para SVGs embedded em data URI).
+
+### Migration guide (v3.x → v4.0)
+
+POLs criadas em v3.x continuam vigentes — mas qualquer **regeração** com a skill v4.0 exige migrar o MD-fonte se ele contiver:
+
+1. **`<style>` block**: remova. Se o block redefinia classes do template (`.inv-*`, `.skill-proc-*`, `.embed-svg`), o resultado fica visualmente igual sem ele (template já tem as regras). Se definia classes ad-hoc (`.icp-*`, `.cadeia-*`), substitua pelo shortcode correspondente.
+2. **`<div class="X">` HTML inline**: se X está na allowlist (ex.: `.inv-card`), pode ficar como está — mas a forma idiomática v4.0 é usar `:::papel-card` (mesmo output, MD mais limpo).
+3. **`<svg>` solto**: envolva em `:::diagrama caption: ...`.
+4. **`<img class="X">`**: se X é classe ad-hoc, remova ou envolva em `:::diagrama` (que aceita `<img>` desde v4.0).
+5. **`style="..."` inline**: remova; use shortcode correspondente.
+
+Após migrar o MD, rode `python scripts/generate-html-yaml.py ...`. Se script aborta, leia a mensagem (sempre indica linha + trecho).
+
 ## [3.2.0] - 2026-05-19
 
 Iteração baseada na revisão de `SKILL-v2.3.0-PATCH-PROPOSAL.md` que catalogou **6 anomalias residuais** (severidade B) descobertas no uso de v3.1.0 para gerar POL-GOV-001, POL-GOV-002 e POL-GOV-003 em produção. Motivação central: **operador da skill é o Claude COWORK** (Claude no claude.ai web, sem filesystem local) — workarounds em `postprocess-{CODE}.py` deixam de ser viáveis. v3.2 internaliza todos os 6 fixes no canonical script para que trio (`.html` + `.yaml` + `.md`) saia correto no primeiro passe.
