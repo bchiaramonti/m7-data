@@ -1,0 +1,80 @@
+# =============================================================================
+# Gold Reference YAML — MAN-PERF-003 · Rituais de Gestão
+# =============================================================================
+# Starter sidecar derivado por engenharia reversa do MAN-PERF-003-gold.html.
+# Não é byte-exato — usar como ponto de partida para validar pipeline.
+# =============================================================================
+
+schema_version: "1.0"
+
+identity:
+  code: "MAN-PERF-003"
+  tipo: "MAN"
+  tipo_label: "Manual"
+  area: "PERF"
+  area_label: "Performance"
+  version: "v1.0"
+  version_label: "v1.0 · Mai / 2026"
+  status: "vigente"
+  pages: 11
+  classif: "Interno"
+  classif_label: "Uso interno · Confidencial"
+
+lifecycle:
+  date: "2026-05-19"
+  date_label: "19/05/2026"
+  nextReview: "2026-11-19"
+  nextReview_label: "19/11/2026"
+  revisaoFreq: "Semestral"
+
+governance:
+  escopo: "processo"
+  owner: "Head de Performance"
+  elaboradoPor: "Bruno Chiaramonti · Head de Desempenho · M7 Investimentos"
+  aprovadoPor: "Head de Performance · M7 Investimentos"
+  aprovador_role: "Head de área"
+  revisor: "Comitê de Performance"
+  parent:
+    code: "POL-PERF-001"
+    title: "Política de Performance"
+  processos: [G2]
+  process_owner: "Head de Performance · M7 Investimentos"
+  nome_processo: "Rituais de Gestão"
+  codigo_processo: "G2.3"
+
+presentation:
+  title_short: "Manual de Rituais de Gestão"
+  title_full:
+    parts:
+      - text: "Manual do processo"
+      - text: " de "
+      - text: "rituais de gestão"
+        accent: true
+      - text: " (G2.3)"
+  subtitle: >-
+    Operacionaliza a cadência estruturada de reuniões nos níveis tático (N2) e
+    operacional (N3) das quatro verticais de negócio da Holding M7, integrando
+    o macroprocesso G2 — Gestão de Performance & Rituais de Gestão.
+  lede: >-
+    Documento normativo MAN-PERF-003. Operacionaliza a cadência estruturada de
+    rituais N2/N3 nas verticais da Holding M7.
+  eyebrow_categoria: "Documento operacional · Manual"
+  page_label_section: "Performance"
+
+structure:
+  toc:
+    - {page: 1,  label: "Capa"}
+    - {page: 2,  label: "Controle & sumário"}
+    - {page: 3,  label: "Objetivo & Escopo",                section: "1. Objetivo"}
+    - {page: 4,  label: "Definições"}
+    - {page: 5,  label: "Visão geral do processo",          section: "4. Visão geral"}
+    - {page: 6,  label: "Fluxograma BPMN"}
+    - {page: 7,  label: "Regras de negócio",                section: "5. Regras de negócio"}
+    - {page: 8,  label: "Papéis & responsabilidades",       section: "6. Papéis"}
+    - {page: 9,  label: "Indicadores",                      section: "7. Indicadores"}
+    - {page: 10, label: "Cronograma & qualidade",           section: "8. Cronograma"}
+    - {page: 11, label: "Docs relacionados & aprovações"}
+
+links:
+  artifact_html: "MAN-PERF-003.html"
+  artifact_md:   "MAN-PERF-003.md"

@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-05-20
+
+**BREAKING** — refatoração completa de `creating-manual` para espelhar a arquitetura da `creating-politica` v4.0. A skill abandona o pipeline DOCX (python-docx clonando template Word) e adota o **trio canônico HTML+YAML+review.md** já usado pela política — agora todos os normativos M7 saem no mesmo formato, consumível pelo Cockpit de Normativos. Manuais ganham gate obrigatório de design review, separação rígida design × conteúdo, e validação automática contra schema e allowlist de classes.
+
+### Added (creating-manual)
+
+- **`scripts/generate-html-yaml.py`** (novo, ~1.860 linhas) — pipeline determinístico clonado de `creating-politica` e adaptado para manuais: validação de schema YAML, parser de 10 seções específicas de manual (Objetivo, Escopo, Definições, Visão Geral + SIPOC + Interfaces + BPMN, Regras de Negócio, Papéis + RACI 5×5, KPIs + PPIs, Cronograma, Critérios de Qualidade DTO, Documentos Relacionados), expansão de 7 shortcodes, inline de CSS+fontes+logos como base64, e validação pós-render contra allowlist.
+- **149 placeholders no template** (vs. 145 da política) cobrindo identidade + estruturas procedurais manual-específicas: SIPOC 5-col (3-3-4-3-3 itens), BPMN com 4 tasks + 1 gateway + 2 fins + 3 narrativas, RACI 5×5 (5 papéis × 5 atividades), 2 KPIs + 2 PPIs (5 campos cada), 5 cadências de cronograma (Diário/Semanal/Mensal/Trimestral/Semestral), 5 critérios DTO de qualidade, 4 docs relacionados.
+- **Novo shortcode `:::raci`** para matrizes RACI adicionais no corpo do MD (a RACI principal usa placeholders fixos do template). Sintaxe: tabela markdown 5×5 dentro do shortcode com células contendo R/A/C/I; o parser valida códigos válidos e renderiza com cores semânticas (`.raci-r`/`.raci-a`/`.raci-c`/`.raci-i`) preservando letra textual para acessibilidade P&B.
+- **`references/manual-schema.md`** (novo) — guia do schema YAML para autor de MAN, com defaults específicos (tipo=MAN, aprovador_role=Head de área, revisaoFreq=Semestral, pages=11) e mapeamento YAML → 149 placeholders.
+- **`references/manual-design-rules.md`** (novo) — 9 dimensões de revisão específicas de manual (8 herdadas de política + 1 nova: **conformidade procedural** que valida BPMN com viewBox, SIPOC ≥3 itens por bloco, RACI com exatamente 1 A por linha, KPI/PPI com fórmula executável e meta numérica, cronograma com outputs concretos, DTO mensurável).
+- **`references/component-catalog-manual.md`** (novo) — catálogo de 7 shortcodes (6 herdados + `:::raci`) e allowlist expandida com classes manual-específicas: BPMN (`.bpmn-task`, `.bpmn-gateway`, `.bpmn-flow`, etc.), SIPOC (`.sipoc`, `.col.is-process`), RACI (`.raci-table`, `.raci-cell`, `.raci-r/a/c/i`), Indicadores (`.kpi-card`, `.kpi-card.ppi`), Cronograma (`.timeline`, `.ritual`), Qualidade (`.dto-list`).
+- **`references/reference-output/MAN-PERF-003-gold.{html,yaml,md}`** (novo) — gold reference do manual de Rituais de Gestão. Agente compara cada HTML em revisão contra esse gold. YAML e MD são starters (engenharia reversa do HTML) — determinismo total byte-a-byte não é garantido nesta versão; ver README do diretório.
+- **`agents/manual-design-reviewer.md`** (novo) — agente irmão de `politica-design-reviewer`, read-only (Read/Grep/Glob, opus), produz relatório markdown com Score A/B/C/D, issues categorizadas (CRITICO / ATENCAO / SUGESTAO) em 9 dimensões e Quick Fix CSS. Gate obrigatório no final da Fase 3 — Score < B bloqueia entrega.
+- **`assets/manual-m7-template.html`** (novo) — template oficial com 149 placeholders, 11 páginas A4 (Capa, Controle+Sumário, Objetivo+Escopo, Definições, Visão Geral, Fluxograma BPMN, Regras, Papéis, Indicadores, Cronograma+Qualidade, Docs+Versões+Aprovações).
+- **Assets compartilhados** copiados de `creating-politica`: `m7-tokens.css`, `fonts/` com 6 TWK Everett OTF, `m7-logo-favicon.png`. Mantém autocontainment (~1.4-1.5 MB HTML standalone).
+- **Stub `{slug}.review.md`** gerado pelo script — placeholder que o agente `manual-design-reviewer` sobrescreve com o relatório completo.
+- **Validações soft (warnings)** para tipo=MAN: `lifecycle.revisaoFreq ≠ "Semestral"` e `governance.aprovador_role ≠ "Head de área"` emitem warning no stderr sem bloquear.
+- **Auto-cleanup `_strip_empty_slots()`** adaptado para manual: remove `<li>` vazios em SIPOC, `<tr>` totalmente vazios em docs relacionados, e cards KPI/PPI sem `.name` preenchido.
+
+### Changed (creating-manual)
+
+- **Output muda de DOCX para trio HTML+YAML+review.md** — `MAN-XXX-NNN.docx` substituído por `MAN-XXX-NNN.html` (autocontido ~1.5MB) + `MAN-XXX-NNN.yaml` (sidecar canônico) + `MAN-XXX-NNN.review.md` (relatório do agente). Cockpit de Normativos passa a consumir manuais com o mesmo contrato das políticas.
+- **Workflow muda de 5 fases informais para 3 fases formais com gates**: Discovery (Fase 1, BRIEFING.md + gate de confirmação) → Redação MD (Fase 2, manual-{slug}.md + validação) → Produção HTML+YAML+Review (Fase 3, script determinístico + gate do agente Score ≥ B).
+- **SKILL.md reescrita por completo** — espelha 100% a estrutura de `creating-politica/SKILL.md`: filosofia, princípio de geração (trio), contexto normativo, assets autocontidos, 3 fases com tabelas de mapeamento, validações automáticas + visuais, regras e anti-patterns.
+- **Schema YAML compartilhado** — `references/normativo.schema.yaml` é cópia da política (esquema já cobre POL/MAN/INS/ESP); defaults específicos de MAN são aplicados pela skill.
+- **`m7-normativos/.claude-plugin/plugin.json`** bumped 4.0.0 → 5.0.0 com descrição reescrita refletindo a paridade de output entre creating-politica e creating-manual.
+- **`m7-data/.claude-plugin/marketplace.json`** entrada de `m7-normativos` sincronizada para 5.0.0 com a mesma descrição.
+
+### Removed (creating-manual)
+
+- **`assets/TPL-MAN-Template-de-Manual.docx`** — template Word não é mais necessário; substituído por `manual-m7-template.html`.
+- **`scripts/generate-docx.py`** — pipeline DOCX baseada em python-docx removido; substituído por `generate-html-yaml.py`.
+- **`assets/m7-logo-dark.png.b64` e `m7-logo-offwhite.png.b64`** — arquivos base64 separados não são mais necessários; o script inlina logos diretamente dos PNGs durante a geração.
+
+### Migration Notes
+
+- Autores que tinham processos baseados no DOCX precisam migrar: Fase 1 agora produz BRIEFING.md (YAML), Fase 2 produz manual-{slug}.md (markdown estruturado), Fase 3 emite o trio. O `.docx` antigo não tem upgrade automático — manuais legados podem ser convertidos manualmente reescrevendo o conteúdo no formato MD canônico.
+- `INS` e `ESP` ainda saem em DOCX (migração futura). Apenas POL e MAN agora têm contrato HTML+YAML+review.md unificado.
+- Smoke test sintético `MAN-TEC-001` confirmou pipeline end-to-end: trio gerado (1.428 KB autocontido), zero placeholders residuais, YAML válido, teste negativo (MD com `<style>`) corretamente rejeitado pela validação.
+
+---
+
 ## [4.0.0] - 2026-05-19
 
 **BREAKING** — refatoração completa do contrato MD ↔ template em `creating-politica` para resolver a despadronização visual observada em POL-GOV-001/002/003. O diagnóstico foi que o MD da Fase 2 acumulou responsabilidade de design (via `<style>` blocks, `style="..."` inline e classes ad-hoc), permitindo que cada autor improvisasse seu mini-design system. Esta release isola design (template + tokens + shortcodes catalogados) de conteúdo (MD canônico, semântico) e introduz **gate obrigatório de Score ≥ B** via agente revisor.
