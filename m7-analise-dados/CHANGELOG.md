@@ -5,6 +5,37 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [3.0.0] - 2026-05-22
+
+### Breaking Changes
+- **Output path mudou** de `output/relatorio-*.md` para `output/ANL-{ÁREA}-{NNN}-briefing.md`. Qualquer script, automação ou CLAUDE.md de projeto que dependa do pattern antigo deixa de encontrar o artefato — atualize os globs e os checklists antes do upgrade
+- **A skill `generating-executive-reports` não gera mais o artefato final do relatório**. O passo 5 da Fase 2 agora produz um **briefing markdown** (`analytics-briefing.tmpl.md`) que serve de input para o **Claude Design**, onde o HTML do M7 Design System é preenchido e exportado em PDF. Workflows que esperavam um relatório executivo "pronto para entrega" diretamente da skill precisam adicionar o passo de Claude Design ao seu fluxo
+- **Template antigo `relatorio-executivo.tmpl.md` removido** — projetos que customizavam esse template precisam migrar para `analytics-briefing.tmpl.md` (estrutura completamente diferente, com §1–§9, tokens `{{PLACEHOLDERS}}` 1:1 com o HTML do DS)
+
+### Added
+- `templates/analytics-briefing.tmpl.md` — briefing canônico do Analytics Report do M7 Design System (513 linhas, fonte da verdade do conteúdo, transcrito 1:1 ao HTML via find & replace no Claude Design)
+- **Fase 5 (Handoff para Claude Design)** no pipeline da skill — instruções explícitas de transposição briefing → HTML → PDF, executadas fora da skill
+- Checklist de **conformidade do briefing M7** (espelha o "Checklist final" do template): código ANL-{ÁREA}-{NNN}, KPIs com referência obrigatória, findings com IMPACTO non-negotiable, 12 tipos canônicos de gráfico do DS, recomendações com dono/prazo/ICE
+- 4 anti-patterns: tokens literais não-resolvidos, blocos `>` (instrução do template) esquecidos, geração de HTML dentro da skill, gráfico fora dos 12 tipos canônicos sem justificativa
+
+### Changed
+- `skills/generating-executive-reports/SKILL.md`: Fase 2 renomeada `INTERPRET + BRIEF`; prompt do `executive-communicator` reescrito com regras duras do briefing (§1 Controle, §2 Capa, §3 TL;DR, §4 Scorecard, §5 Contexto, §6 Análises com 12 tipos de gráfico, §7 Insights narrados com IMPACTO, §8 Recomendações com ICE, §9 Anexos); critérios de saída exigem "nenhum `{{TOKEN}}` restante"; Fase 4 dividida em integridade da análise + conformidade do briefing M7
+- `commands/status.md`: path do artefato de Fase 3 atualizado para `./output/ANL-*-briefing.md`
+- `commands/review.md`: rastreabilidade da Fase 3 agora valida números contra `output/ANL-*-briefing.md`
+- `skills/initializing-analysis/templates/CLAUDE.tmpl.md`: tabela de fases, descrição da Fase 3 (Exit criteria inclui handoff ao Claude Design), regras do agente `executive-communicator` ("não gera HTML/PDF — isso é Claude Design") e árvore de arquivos do projeto atualizados para a nova nomenclatura
+- `skills/initializing-analysis/templates/README.tmpl.md`: checklist passa a incluir "Briefing gerado" e "Handoff para Claude Design"
+
+### Removed
+- `skills/generating-executive-reports/templates/relatorio-executivo.tmpl.md` — substituído pelo briefing canônico do M7 Design System
+
+### Migration
+
+Para projetos de análise **já scaffoldados** com versões anteriores:
+
+1. **Output do `executive-communicator` é manual**: a skill nova vai salvar em `output/ANL-{ÁREA}-{NNN}-briefing.md`, mas o `CLAUDE.md` do seu projeto ainda referencia `output/relatorio-*.md` em vários pontos. Decida: (a) regenerar o `CLAUDE.md` via `/m7-analise-dados:initializing-analysis` ou (b) atualizar manualmente as 4 ocorrências (tabela de fases, Fase 3 "O que faz" + "Exit criteria", regras do executive-communicator, árvore de arquivos)
+2. **Pipeline não fecha mais no markdown**: depois da Fase 4, abra o briefing no Claude Design, duplique `templates/template-analytics.html` do M7 Design System, faça find & replace dos `{{TOKENS}}`, copie os SVGs do `graficos.html` (12 tipos canônicos) e exporte PDF via Chrome/Edge (Safari quebra fontes)
+3. **Briefing exige código documental** (`ANL-{ÁREA}-{NNN}`) na §1 Controle — defina a numeração da sua área antes de rodar a skill (`ANL-COM-001`, `ANL-FIN-001`, etc.) para evitar colisões
+
 ## [2.0.1] - 2026-05-06
 
 ### Removed
