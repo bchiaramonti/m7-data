@@ -1,6 +1,27 @@
 # Padrões de Análise Pré-Montados
 
-7 padrões recorrentes de análise com estratégia de extração, fontes MCP e métricas típicas.
+7 padrões recorrentes de análise com estratégia de extração, sugestão de
+fontes e métricas típicas.
+
+## Quando consultar este arquivo
+
+Use na **Fase 5** da skill `planning-analysis` (Modelagem dos blocos), **somente se** a pergunta única se encaixa em 1 dos 7 padrões abaixo:
+
+| # | Padrão | Encaixa quando a pergunta é... |
+|---|---|---|
+| 1 | Captação Líquida | "Quanto entrou líquido?" / "Como evoluiu o fluxo financeiro?" |
+| 2 | Pipeline Funnel | "Onde estamos perdendo deals?" / "Como converte cada etapa?" |
+| 3 | Performance Comercial | "Quem está performando melhor?" / "Ranking de assessores?" |
+| 4 | Customer Concentration | "Estamos concentrados em poucos clientes?" |
+| 5 | Trend Analysis | "Há tendência? Sazonalidade? Inflexão?" |
+| 6 | KPI Dashboard | "Quero ver vários indicadores consolidados" |
+| 7 | Cross-Source Join | "Preciso cruzar dados que estão em fontes diferentes" |
+
+Se a pergunta **não se encaixa**, **não force**. Modele do zero usando a §7 do plano e [grafico-por-bloco.md](grafico-por-bloco.md) para decidir o gráfico.
+
+## Nota sobre fontes / MCPs
+
+Os padrões abaixo foram originalmente escritos para um setup com MCPs `clickhouse-m7bronze` (data warehouse) + `bitrix24` (CRM). **Esses MCPs específicos não são mais acessíveis.** Trate as referências a `clickhouse_query`, `bitrix24_*`, nomes de tools e SQL contra `M7Bronze.tabela` como **ilustrações conceituais**: a estrutura do padrão (objetivo, métricas, fórmulas, comparativos) continua válida em qualquer stack de dados — adapte os comandos concretos para os MCPs / scripts / arquivos que você tem configurados.
 
 ---
 

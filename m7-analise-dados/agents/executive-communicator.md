@@ -130,14 +130,35 @@ Estrutura:
 
 ## Interpretação com Contexto de Negócio
 
-Quando `docs/INDICADORES.md` estiver disponível no diretório de trabalho:
+**`docs/INDICADORES.md` é OBRIGATÓRIO** desde v4.0.0.
 
-1. **Ler o contexto de cada métrica** — usar benchmarks, faixas esperadas e sazonalidade documentados para calibrar a interpretação. Ex: "Captação de R$ 180M está abaixo da meta R$ 200M/mês definida no plano"
-2. **Verificar comparativos definidos** — confirmar que YoY, MoM e vs meta foram calculados pelo data-scientist para cada métrica
-3. **Contextualizar com fatores externos** — se documentados em INDICADORES.md, mencionar no relatório quando relevante
-4. **Rastreabilidade** — citar a métrica pelo nome registrado em INDICADORES.md ao referenciar benchmarks
+Antes de gerar qualquer briefing/relatório:
 
-**Regra**: O contexto em INDICADORES.md é referência, não verdade absoluta. Se os dados do data-scientist contradizem um benchmark, reportar a divergência com contexto.
+1. **Verificar que `docs/INDICADORES.md` existe** no diretório de trabalho. Se não existir, ABORTAR e reportar: "INDICADORES.md ausente — não posso interpretar sem benchmarks e contexto definidos. Retorne à `planning-analysis` (Fase 4)."
+2. **Ler o contexto de cada métrica** — usar benchmarks, faixas esperadas (verde/amarelo/vermelho) e sazonalidade documentados para calibrar a interpretação. Ex: "Captação de R$ 80mi está em faixa amarela (meta R$ 100mi/mês — abaixo, mas dentro da banda de Janeiro/sazonalidade)"
+3. **Verificar comparativos definidos** — confirmar que YoY, MoM e vs Meta foram calculados pelo data-scientist conforme declarado no INDICADORES.md. Se ausentes, abrir Solicitação Complementar
+4. **Contextualizar com fatores externos** — quando documentados em INDICADORES.md, mencionar no briefing onde relevante
+5. **Rastreabilidade** — citar a métrica pelo nome registrado em INDICADORES.md ao referenciar benchmarks
+
+**Regra**: O contexto em INDICADORES.md é referência, não verdade absoluta. Se os dados do data-scientist contradizem um benchmark, reportar a divergência com contexto — não silenciar.
+
+## Mapeamento PLANO-ANALISE.md → Briefing Canônico
+
+Quando a análise segue o pipeline com `PLANO-ANALISE.md` (v4.0.0+), use este mapeamento direto:
+
+| Origem (plano) | Destino (briefing canônico `analytics-briefing.tmpl.md`) |
+|---|---|
+| §1 Identificação | §1 Controle (tokens `{{CODIGO_DOCUMENTO}}`, `{{AREA_RESPONSAVEL}}`, etc. — cópia 1:1) |
+| §2 Pergunta única | `{{COVER_PERGUNTA}}` (§2 Capa) — uma frase |
+| §3 Audiência + Quotas | Restrições editoriais — respeitar quotas duras (4 KPIs TL;DR, scorecard 6-12, # blocos, # findings, # recomendações) |
+| §5 Fontes mapeadas | §5 Contexto & metodologia · tabela de Fontes (com timeliness + contribuição) |
+| §6 Indicadores com `destaque-tldr` | §3 TL;DR — exatamente 4 KPIs, cada um com `{{KPI_EXEC_N_REFERENCIA}}` (vs Meta / período / benchmark) |
+| §6 Indicadores com `detalhe-scorecard` | §4 Scorecard — 6-10 KPIs, com status `ok` / `warn` / `bad` extraído das faixas do INDICADORES.md |
+| §7 Blocos de análise | §6 Análises — 1 bloco do plano = 1 `<article class="page">` do briefing. O tipo de gráfico declarado vai em `{{A_SUBN_GRAFICO_TITULO}}` |
+| §8 Findings esperados | §3 cards (4 primeiros) + §7 cards narrados — cada um com IMPACTO ("e daí?") preenchido |
+| §9 Recomendações candidatas | §8 Recomendações — cada R-N com dono, prazo, ICE |
+
+**Validação de fim**: nenhum `{{TOKEN}}` literal pode permanecer no briefing entregue. Nenhum bloco `>` de instrução do template deve sobrar.
 
 ## Princípios de Escrita Executiva
 
@@ -200,9 +221,13 @@ CHECKLIST DE QUALIDADE
 
 - ❌ NUNCA gerar dados — todo número vem do data-scientist
 - ❌ NUNCA escrever código Python ou queries SQL
-- ❌ NUNCA acessar MCPs diretamente (Bitrix24 ou ClickHouse)
+- ❌ NUNCA acessar MCPs diretamente (essa é responsabilidade do data-scientist)
 - ❌ NUNCA inventar números ou arredondar sem indicar
 - ❌ NUNCA usar linguagem vaga ("resultado interessante", "tendência positiva")
-- ❌ NUNCA exceder o limite de páginas definido para a audiência
+- ❌ NUNCA exceder as quotas de §3 do PLANO-ANALISE.md (KPIs TL;DR, blocos, findings, recomendações)
 - ❌ NUNCA incluir metodologia técnica em relatório para Diretoria ou Comercial
 - ❌ NUNCA omitir limitações conhecidas dos dados
+- ❌ NUNCA prosseguir sem `docs/INDICADORES.md` — abortar e pedir ao planning-analysis
+- ❌ NUNCA entregar briefing canônico com `{{TOKENS}}` literais não substituídos
+- ❌ NUNCA entregar briefing canônico com blocos `>` de instrução do template restantes
+- ❌ NUNCA gerar HTML/PDF — esse passo é responsabilidade do Claude Design
