@@ -29,7 +29,7 @@ Ler todos os artefatos produzidos até a fase sendo revisada:
 - `PLANO-ANALISE.md` — se Fase 2 concluída
 - `docs/INDICADORES.md` — métricas definidas
 - `output/data-scientist/*.md` — se Fase 3 em andamento/concluída
-- `output/relatorio-*.md` — relatório final
+- `output/ANL-*-briefing.md` — briefing canônico do Analytics Report (input p/ Claude Design)
 
 ### 4. Executar verificações por fase
 
@@ -89,12 +89,12 @@ Este é o review mais importante porque valida os **dados que serão comunicados
 
 ##### A. Rastreabilidade
 
-Para cada número/métrica no relatório final (`output/relatorio-*.md`):
+Para cada número/métrica no briefing (`output/ANL-*-briefing.md`):
 - [ ] O número existe em algum output de `output/data-scientist/`
 - [ ] A fonte específica (arquivo, tabela, linha) é identificável
 - [ ] Se o número é derivado (calculado a partir de outros), os componentes existem
 
-**Formato do check**: Listar as 5 métricas principais do relatório com seu valor e a fonte rastreada.
+**Formato do check**: Listar as 5 métricas principais do briefing com seu valor e a fonte rastreada.
 
 ##### B. Consistência Aritmética
 

@@ -24,7 +24,7 @@ Este arquivo orquestra o pipeline de análise de dados. Leia-o ao iniciar qualqu
 | 0 | Setup | `initializing-analysis` | ✅ Completa | CLAUDE.md, BRIEFING.md |
 | 1 | Discovery | `exploring-data-sources` | ⬜ Pendente | DATA-PROFILE.md |
 | 2 | Planejamento | `planning-analysis` | ⬜ Pendente | PLANO-ANALISE.md, docs/INDICADORES.md |
-| 3 | Execução | `generating-executive-reports` | ⬜ Pendente | output/relatorio-*.md |
+| 3 | Execução | `generating-executive-reports` | ⬜ Pendente | output/ANL-*-briefing.md (input p/ Claude Design) |
 
 **Regra**: Avançar uma fase de cada vez. Cada fase tem entry/exit criteria. Ao concluir, atualizar a tabela acima.
 
@@ -103,15 +103,17 @@ Use estes comandos para navegar o pipeline:
 
 **O que faz**:
 1. **data-scientist** extrai dados conforme PLANO-ANALISE.md → salva em `output/data-scientist/`
-2. **executive-communicator** interpreta dados → gera relatório em `output/relatorio-*.md`
+2. **executive-communicator** preenche o briefing canônico do Analytics Report M7 → gera `output/ANL-{ÁREA}-{NNN}-briefing.md`
 3. Itera até 3 ciclos se dados insuficientes
-4. Valida qualidade final do relatório
+4. Valida o briefing contra os checklists de integridade da análise + conformidade do briefing M7
+5. Apresenta instruções de handoff para Claude Design (transposição briefing → HTML → PDF)
 
 **Exit criteria**:
 - [ ] Todas as métricas do plano foram extraídas
-- [ ] Relatório executivo gerado em `output/`
+- [ ] Briefing gerado em `output/ANL-{ÁREA}-{NNN}-briefing.md` com todos os `{{TOKENS}}` resolvidos
 - [ ] Todos os números rastreáveis aos outputs do data-scientist
 - [ ] Linguagem adequada à audiência: {{audiencia}}
+- [ ] Briefing pronto para handoff ao Claude Design (geração do HTML/PDF acontece lá, fora desta skill)
 
 **Ao concluir**: Atualizar tabela de status → ✅.
 
@@ -126,9 +128,9 @@ Use estes comandos para navegar o pipeline:
 - **Ferramentas**: Read, Write, Edit, Bash, Grep, Glob + MCPs (ClickHouse, Bitrix24)
 
 ### executive-communicator
-- **Faz**: Interpreta dados, gera relatórios adaptados à audiência, escreve insights acionáveis
-- **NÃO faz**: Acessa MCPs, extrai dados, escreve código, inventa números
-- **Salva em**: `output/relatorio-*.md`
+- **Faz**: Interpreta dados, preenche o briefing canônico do Analytics Report M7 adaptado à audiência, escreve insights acionáveis com IMPACTO
+- **NÃO faz**: Acessa MCPs, extrai dados, escreve código, inventa números, gera HTML/PDF (isso é Claude Design)
+- **Salva em**: `output/ANL-*-briefing.md`
 - **Ferramentas**: Read, Write, Grep, Glob (sem MCPs)
 
 **Separação é inegociável** — misturar responsabilidades degrada a qualidade dos outputs.
@@ -152,7 +154,7 @@ Use estes comandos para navegar o pipeline:
 ├── src/                         # Scripts Python auxiliares
 └── output/
     ├── data-scientist/          # Outputs do agente (tabelas, métricas)
-    └── relatorio-*.md           # Relatório executivo final
+    └── ANL-*-briefing.md        # Briefing canônico — input para Claude Design
 ```
 
 ## Checklist Final de Qualidade

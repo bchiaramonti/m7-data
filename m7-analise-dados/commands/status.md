@@ -33,7 +33,7 @@ Confirmar existência real dos artefatos (não confiar apenas na tabela):
 | 1 | DATA-PROFILE.md | `./DATA-PROFILE.md` |
 | 2 | PLANO-ANALISE.md | `./PLANO-ANALISE.md` |
 | 2 | INDICADORES.md | `./docs/INDICADORES.md` |
-| 3 | Relatório | `./output/relatorio-*.md` |
+| 3 | Briefing | `./output/ANL-*-briefing.md` |
 | 3 | Outputs data-scientist | `./output/data-scientist/*.md` |
 
 Se houver divergência entre tabela e arquivos físicos (ex: tabela diz ⬜ mas artefato existe), sinalizar.

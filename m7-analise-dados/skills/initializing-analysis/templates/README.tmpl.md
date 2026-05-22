@@ -8,8 +8,9 @@
 - [ ] Discovery completa (DATA-PROFILE.md)
 - [ ] Planejamento completo (PLANO-ANALISE.md)
 - [ ] Dados extraídos (output/data-scientist/)
-- [ ] Relatório gerado (output/relatorio-*.md)
+- [ ] Briefing gerado (output/ANL-*-briefing.md)
 - [ ] Revisão concluída
+- [ ] Handoff para Claude Design (geração do HTML/PDF)
 
 ## Metadata
 
