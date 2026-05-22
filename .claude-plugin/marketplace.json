@@ -10,8 +10,8 @@
   "plugins": [
     {
       "name": "m7-analise-dados",
-      "description": "Análise de dados e geração de relatórios executivos para M7 Investimentos. Integra Bitrix24 (CRM) e ClickHouse (data warehouse) via MCP, com pipeline Plan-Extract-Analyze-Interpret-Report e separação rigorosa entre agentes de dados e comunicação executiva. Adapta relatórios a 4 audiências (Diretoria, Gerentes, Técnico, Comercial) com framework de 6 dimensões de calibração.",
-      "version": "3.0.0",
+      "description": "Análise de dados e geração de relatórios executivos para M7 Investimentos. Pipeline Plan-Extract-Analyze-Interpret-Report MCP-agnostic, com separação rigorosa entre agentes de dados e comunicação executiva. O plano é desenhado como blueprint do briefing canônico do M7 Design System (analytics-briefing.tmpl.md), adaptado a 4 audiências (Diretoria, Gerentes, Técnico, Comercial) com quotas duras e 12 tipos canônicos de gráfico.",
+      "version": "4.0.0",
       "author": {
         "name": "Bruno Chiaramonti"
       },

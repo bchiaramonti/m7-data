@@ -5,6 +5,46 @@ Todas as mudanças notáveis deste plugin serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [4.0.0] - 2026-05-22
+
+### Breaking Changes
+
+- **`docs/INDICADORES.md` agora é OBRIGATÓRIO**. Os agentes `data-scientist` e `executive-communicator` abortam se o arquivo não existir. Antes era tratado como opcional (com fallback "se existir"), o que levava a improviso de fórmulas e perda de consistência entre execuções
+- **`PLANO-ANALISE.md` foi reescrito** para espelhar 1:1 o briefing canônico `analytics-briefing.tmpl.md` (introduzido na v3.0.0). Projetos com plano antigo (formato 6 seções genéricas) precisam migrar para o novo formato (11 seções com `Identificação`, `Pergunta Única`, `Audiência + Profundidade`, etc.)
+- **MCPs `clickhouse-m7bronze` e `bitrix24` não são mais assumidos como acessíveis**. A skill `planning-analysis` e o agent `data-scientist` foram desacoplados de qualquer MCP específico. O `data-scientist` agora exige que o `PLANO-ANALISE.md` declare as fontes reais que o usuário tem configuradas (qualquer stack — MCP, script Python, arquivo CSV)
+- **Diretório de trabalho relativo (`./analise/`, `analise-q1`) é rejeitado**. A Fase 8 da skill exige path absoluto explícito para evitar ambiguidade na criação da estrutura de pastas
+- **Quotas duras aplicadas no PLANO-ANALISE.md**: exatamente 4 KPIs marcados `destaque-tldr`, 6-12 métricas totais sem overlap entre TL;DR e scorecard, cada bloco com tipo de gráfico canônico declarado, cada finding com hipótese de IMPACTO, cada recomendação com dono + prazo + ICE. Planos antigos sem essas marcações são incompatíveis
+
+### Added
+
+- `skills/planning-analysis/templates/indicadores.tmpl.md` — template canônico do `docs/INDICADORES.md` com 10 campos por métrica (nome, papel `destaque-tldr`/`detalhe-scorecard`, unidade, granularidade, fonte, fórmula, comparativos, benchmark, faixas, contexto, fatores externos, limitações). Inclui exemplo real preenchido (Captação Líquida)
+- `skills/planning-analysis/references/audiencia-profundidade.md` — matriz canônica 4 audiências × 11 dimensões de profundidade (KPIs TL;DR, KPIs scorecard, blocos, subseções, findings, recomendações, páginas-alvo, tipos de gráfico permitidos, dados brutos, linguagem técnica, comparativos exigidos). Define **quotas duras** consultadas na Fase 2 da skill
+- `skills/planning-analysis/references/grafico-por-bloco.md` — guia de decisão dos 12 tipos canônicos do M7 Design System por (a) pergunta da subseção, (b) intenção editorial, (c) restrição da audiência. Inclui anti-padrões cromáticos e regra para combinação de tipos
+- Skill `planning-analysis` ganhou **2 novas fases** (de 6 para 8): Fase 1 agora inclui Identificação + Pergunta Única (código `ANL-{ÁREA}-{NNN}` + frase única), Fase 6 agora inclui Findings + Recomendações candidatas como hipóteses prévias à extração
+- Agent `executive-communicator` ganhou seção "Mapeamento PLANO-ANALISE.md → Briefing Canônico" com tabela 1:1 (§1 plano → §1 briefing, métricas `destaque-tldr` → §3 TL;DR, etc.) eliminando a improvisação na geração do briefing
+
+### Changed
+
+- `skills/planning-analysis/SKILL.md` reescrito do zero. Fluxo de 8 fases: Identificação & Pergunta Única → Audiência & Profundidade → Período & Fontes → Indicadores (obrigatório) → Modelagem de Blocos → Findings + Recomendações → Gerar Plano + Validar → Estrutura de Pastas. Anti-patterns expandidos de 7 para 11
+- `skills/planning-analysis/templates/plano-analise.tmpl.md` reescrito do zero. 11 seções espelhando o briefing canônico, com instruções estruturadas para ambos os agentes e checklist final de 13 itens
+- `skills/planning-analysis/references/analysis-patterns.md` ganhou seção introdutória "Quando consultar este arquivo" com gate de 7 padrões + nota desacoplando os exemplos de tools concretas (clickhouse_query, bitrix24_*) — os padrões continuam válidos conceitualmente, mas as tool calls são agora ilustrativas
+- `agents/data-scientist.md` reescrito. Tabelas hardcoded de tools Bitrix24/ClickHouse substituídas por tabela genérica de capabilities (data warehouse, CRM operacional, sistemas transacionais, arquivos locais). Adicionado gate "INDICADORES.md ausente → abortar". Formato de output inclui agora coluna "Status (faixas INDICADORES)"
+- `agents/executive-communicator.md`: seção "Interpretação com Contexto de Negócio" agora declara INDICADORES.md como obrigatório com gate de abortar. Anti-patterns ampliados para incluir tokens literais, blocos `>` esquecidos e geração de HTML (responsabilidade do Claude Design)
+
+### Removed
+
+- Nenhuma remoção de arquivo nesta release (todas as mudanças são substituições in-place ou adições)
+
+### Migration
+
+Para projetos de análise **já scaffoldados** com versões anteriores:
+
+1. **Verificar existência de `docs/INDICADORES.md`**: se ausente, os agentes vão abortar. Use o novo template em `skills/planning-analysis/templates/indicadores.tmpl.md` como base e preencha cada métrica do plano
+2. **Migrar o `PLANO-ANALISE.md`**: o formato novo tem 11 seções vs. as 6 antigas. Regerar via `/m7-analise-dados:planning-analysis` é mais rápido que adaptar manualmente. Alternativa: copiar o template novo e mover conteúdo do plano antigo para as seções equivalentes
+3. **Declarar fontes reais**: se o plano antigo referencia genericamente "Bitrix24" ou "ClickHouse", substituir pelos MCPs/scripts/arquivos que você efetivamente tem configurados (Fase 3 da skill nova)
+4. **Marcar papel das métricas**: cada indicador no `INDICADORES.md` precisa de campo `Papel no briefing` = `destaque-tldr` (4 máx) ou `detalhe-scorecard` (resto)
+5. **Diretório de trabalho absoluto**: se o plano antigo tem path relativo, substituir por absoluto antes de rodar a Fase 3
+
 ## [3.0.0] - 2026-05-22
 
 ### Breaking Changes
