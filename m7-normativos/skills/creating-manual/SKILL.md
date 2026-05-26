@@ -191,7 +191,8 @@ A v1.0 aplica **separação rígida** entre conteúdo (MD) e apresentação
 | `:::indicador` | Seção 7 · card alternativo à tabela para KPI/PPI complexo | `.indicador-card`, `.indicador-nome`, `.indicador-meta` |
 | `:::diagrama` | Embedding de SVG inline (BPMN auxiliar, fluxograma) | `.embed-svg`, `.embed-svg-caption` |
 | `:::processo-grid` | Grid compacto 4-col de processos com camada | `.skill-proc-*`, `.skill-camada-*` |
-| `:::raci` | Matriz RACI 5×5 adicional (a RACI principal usa placeholders do template) | `.raci-table`, `.raci-cell`, `.raci-r/a/c/i` |
+| `:::raci` | Matriz RACI N×M adicional (v6.0: a RACI principal §6.1 agora também é gerada N×M dinâmico via tbody injection) | `.raci-table`, `.raci-cell`, `.raci-r/a/c/i`, `.raci-ra` (compound) |
+| `:::ficha-icp` (v6.0) | Capítulo §11 Anexos · ficha de persona/ICP com 7-8 blocos canônicos | `.ficha-icp`, `.ficha-cabecalho`, `.ficha-arquetipo`, `.ficha-bloco-*` |
 
 Detalhes completos em [component-catalog-manual.md](references/component-catalog-manual.md).
 
@@ -362,7 +363,8 @@ caption: Fig 1 · Fluxograma BPMN
 **Gate de saída (Fase 2 → Fase 3)**:
 - MD revisado pelo usuário
 - Estrutura conforme — h2 numerados, blocos identificáveis
-- `identity.pages` no BRIEFING confirmado (11 default)
+- `identity.pages` (v6.0): **deprecated** — derivado pelo script (`11` sem
+  anexos, `12` com §11 Anexos). Valor declarado no YAML é ignorado.
 
 ### Fase 3 — Produção HTML + YAML + Review
 

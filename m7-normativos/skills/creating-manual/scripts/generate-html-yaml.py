@@ -92,6 +92,7 @@ SHORTCODE_CATALOG = {
     "diagrama",
     "processo-grid",
     "raci",
+    "ficha-icp",  # BUG #2 fix (v6.0): persona/ICP card no capítulo de Anexos
 }
 
 # Classes CSS permitidas no HTML final. Validação pós-render rejeita qualquer
@@ -184,6 +185,11 @@ CSS_ALLOWLIST = {
     "h", "navbtn", "twocol", "col", "h2",
     # Sub-componentes do template (v5.1 — fix dos inline styles)
     "narrative-list", "section-foot-note",
+    # BUG #2 fix (v6.0): shortcode ficha-icp (persona/ICP card)
+    "ficha-icp", "ficha-cabecalho", "ficha-arquetipo", "ficha-icp-chip",
+    "ficha-titulo", "ficha-bloco", "ficha-bloco-titulo", "ficha-bloco-corpo",
+    # BUG #2 fix (v6.0): capítulo de Anexos (página opcional)
+    "anexos-page", "anexos-intro", "anexo-titulo",
 }
 
 
@@ -365,6 +371,133 @@ def _attr(attrs: dict, *keys: str, default: str = "") -> str:
 
 _RACI_SINGLE_RE = re.compile(r"^[RACI]$")
 _RACI_COMPOUND_RE = re.compile(r"^[RACI](\s*,\s*[RACI])+$")
+
+# BUG #11 fix: tbody default usado quando o MD não declara matriz RACI em
+# §6.1. Preserva o layout do gold MAN-PERF-003 para backward compat —
+# manuais sem RACI no MD continuam renderizando o mesmo layout 5x5.
+_DEFAULT_RACI_THEAD = (
+    '<thead><tr>'
+    '<th class="activity-h">Atividade</th>'
+    '<th>{{RACI_PAPEL_1}}</th>'
+    '<th>{{RACI_PAPEL_2}}</th>'
+    '<th>{{RACI_PAPEL_3}}</th>'
+    '<th>{{RACI_PAPEL_4}}</th>'
+    '<th>{{RACI_PAPEL_5}}</th>'
+    '</tr></thead>'
+)
+_DEFAULT_RACI_TBODY = (
+    '<tbody>'
+    '<tr><td class="activity"><span class="step">A1</span>{{RACI_ATIV_1}}</td>'
+    '<td><span class="raci-cell raci-r">R</span></td>'
+    '<td><span class="raci-cell raci-a">A</span></td>'
+    '<td><span class="raci-cell raci-c">C</span></td>'
+    '<td><span class="raci-cell raci-i">I</span></td>'
+    '<td>—</td></tr>'
+    '<tr><td class="activity"><span class="step">A2</span>{{RACI_ATIV_2}}</td>'
+    '<td>—</td>'
+    '<td><span class="raci-cell raci-a">A</span></td>'
+    '<td><span class="raci-cell raci-r">R</span></td>'
+    '<td><span class="raci-cell raci-c">C</span></td>'
+    '<td><span class="raci-cell raci-i">I</span></td></tr>'
+    '<tr><td class="activity"><span class="step">A3</span>{{RACI_ATIV_3}}</td>'
+    '<td><span class="raci-cell raci-c">C</span></td>'
+    '<td><span class="raci-cell raci-a">A</span></td>'
+    '<td><span class="raci-cell raci-r">R</span></td>'
+    '<td>—</td>'
+    '<td><span class="raci-cell raci-i">I</span></td></tr>'
+    '<tr><td class="activity"><span class="step">A4</span>{{RACI_ATIV_4}}</td>'
+    '<td>—</td>'
+    '<td><span class="raci-cell raci-r">R</span></td>'
+    '<td><span class="raci-cell raci-a">A</span></td>'
+    '<td><span class="raci-cell raci-c">C</span></td>'
+    '<td><span class="raci-cell raci-i">I</span></td></tr>'
+    '<tr><td class="activity"><span class="step">A5</span>{{RACI_ATIV_5}}</td>'
+    '<td>—</td>'
+    '<td><span class="raci-cell raci-i">I</span></td>'
+    '<td><span class="raci-cell raci-a">A</span></td>'
+    '<td><span class="raci-cell raci-r">R</span></td>'
+    '<td><span class="raci-cell raci-c">C</span></td></tr>'
+    '</tbody>'
+)
+
+
+def render_raci_table(header_cells: list, rows: list) -> tuple:
+    """Renderiza <thead> e <tbody> da matriz RACI a partir do MD parseado.
+
+    BUG #11 fix: o template tinha 25 células hardcoded (5×5) sem
+    placeholders — o script ignorava o conteúdo da tabela do MD,
+    mantendo defaults independente do que o autor declarava. Agora
+    geramos thead + tbody dinamicamente N×M a partir do MD.
+
+    Validação semântica (emite warnings, NÃO aborta):
+    - Cada linha deve ter exatamente 1 A (Accountable)
+    - Cada linha deve ter pelo menos 1 R (Responsible)
+    - Compound `R, A` conta como ambos (R e A) para a validação
+
+    Args:
+      header_cells: lista de strings — primeira deve ser "Atividade",
+                    demais são os papéis (N papéis suportados, não fixo em 5)
+      rows: lista de listas — cada linha é [atividade, code1, code2, ...]
+
+    Returns:
+      (thead_html, tbody_html) — strings prontas para injeção no template.
+    """
+    # Header: "Atividade" + N papel columns
+    if not header_cells or not rows:
+        return _DEFAULT_RACI_THEAD, _DEFAULT_RACI_TBODY
+
+    thead_parts = ['<thead><tr><th class="activity-h">Atividade</th>']
+    for h in header_cells[1:]:
+        thead_parts.append(f'<th>{escape(h)}</th>')
+    thead_parts.append('</tr></thead>')
+    thead_html = "".join(thead_parts)
+
+    tbody_parts = ['<tbody>']
+    for i, row in enumerate(rows):
+        if not row:
+            continue
+        ativ_raw = row[0]
+        # Detect "E1 · descrição" / "A1 · descrição" / "A1 descrição" prefix
+        m = re.match(r"^([EA]\d+)\s*[·\-]?\s*(.+)$", ativ_raw)
+        if m:
+            step = m.group(1)
+            ativ_text = m.group(2).strip()
+        else:
+            step = f"A{i+1}"
+            ativ_text = ativ_raw.strip()
+
+        cell_parts = [
+            f'<tr><td class="activity">'
+            f'<span class="step">{escape(step)}</span>{escape(ativ_text)}</td>'
+        ]
+        r_count = 0
+        a_count = 0
+        for cell in row[1:]:
+            code = cell.upper().strip()
+            cell_parts.append(_render_raci_cell(code))
+            if "R" in code:
+                r_count += 1
+            if "A" in code:
+                a_count += 1
+        cell_parts.append('</tr>')
+        tbody_parts.append("".join(cell_parts))
+
+        # Validação semântica
+        label = f"{step} · {ativ_text}"
+        if a_count != 1:
+            sys.stderr.write(
+                f"⚠  RACI linha '{label}': {a_count} Accountable "
+                f"(esperado exatamente 1). Verifique semântica.\n"
+            )
+        if r_count < 1:
+            sys.stderr.write(
+                f"⚠  RACI linha '{label}': 0 Responsible "
+                f"(esperado pelo menos 1). Verifique semântica.\n"
+            )
+
+    tbody_parts.append('</tbody>')
+    tbody_html = "".join(tbody_parts)
+    return thead_html, tbody_html
 
 
 def _render_raci_cell(code: str) -> str:
@@ -562,6 +695,58 @@ def render_shortcode(name: str, attrs: dict, body: str) -> str:
             f'    {tbody}\n'
             '  </table>\n'
             '</div>'
+        )
+
+    if name == "ficha-icp":
+        # BUG #2 fix (v6.0): card de persona/ICP usado no capítulo Anexos.
+        # Estrutura canônica espelha ICP.xlsx — 8 blocos nomeados (negrito) +
+        # 3 attrs (titulo, icp, arquetipo). Arquetipo controla a cor do
+        # cabeçalho via data-arquetipo (decisor=verde-medio, gate=lime).
+        titulo = escape(_attr(attrs, "titulo", "título"))
+        icp = escape(_attr(attrs, "icp"))
+        arquetipo = escape(_attr(attrs, "arquetipo", "arquétipo"))
+        arquetipo_label = {
+            "persona-decisor": "Persona-decisor",
+            "persona-gate": "Persona-gate",
+            "decisor": "Persona-decisor",
+            "gate": "Persona-gate",
+        }.get(arquetipo.lower(), arquetipo or "Persona")
+
+        # Parse body em blocos: cada `**Título do bloco**\n...` vira um .ficha-bloco
+        blocks_html: list = []
+        block_pattern = re.compile(
+            r"^\*\*([^\*]+?)\*\*\s*\n(.*?)(?=^\*\*[^\*]+?\*\*|\Z)",
+            re.DOTALL | re.MULTILINE,
+        )
+        for m in block_pattern.finditer(body.strip()):
+            block_title = escape(m.group(1).strip())
+            block_body = m.group(2).strip()
+            block_body_html = markdown_to_html(block_body) if block_body else ""
+            blocks_html.append(
+                f'  <div class="ficha-bloco">\n'
+                f'    <div class="ficha-bloco-titulo">{block_title}</div>\n'
+                f'    <div class="ficha-bloco-corpo">{block_body_html}</div>\n'
+                f'  </div>'
+            )
+
+        if not blocks_html:
+            # Sem blocos estruturados — renderiza body como markdown puro
+            blocks_html.append(
+                f'  <div class="ficha-bloco">\n'
+                f'    <div class="ficha-bloco-corpo">{markdown_to_html(body.strip())}</div>\n'
+                f'  </div>'
+            )
+
+        icp_chip = f'<span class="ficha-icp-chip">{icp}</span>' if icp else ""
+        return (
+            f'<div class="ficha-icp" data-arquetipo="{arquetipo.lower()}">\n'
+            f'  <div class="ficha-cabecalho">\n'
+            f'    <span class="ficha-arquetipo">{arquetipo_label}</span>'
+            f'{icp_chip}\n'
+            f'    <h4 class="ficha-titulo">{titulo}</h4>\n'
+            f'  </div>\n'
+            + "\n".join(blocks_html) + "\n"
+            f'</div>'
         )
 
     # Fallback: shortcode desconhecido (não deveria chegar aqui — validação
@@ -1068,23 +1253,36 @@ def parse_content_md(path: Path) -> dict:
 
     # RACI table — primeira tabela na seção 6
     raci_rows = extract_md_table(body)
-    # Header da tabela RACI vira RACI_PAPEL_1..5 (extrai do MD diretamente)
-    # Parse manual do header
+    # Header da tabela RACI vira RACI_PAPEL_1..5 (legacy compat — usado por
+    # _DEFAULT_RACI_THEAD quando MD não tem RACI; quando tem, RACI_THEAD é
+    # gerado dinamicamente e os PAPEL_N viram redundantes).
     header_m = re.search(r"^\|\s*Atividade\s*\|(.+?)\|$", body, re.MULTILINE | re.IGNORECASE)
     if header_m:
         papel_cells = [c.strip() for c in header_m.group(1).split("|")]
         for n in range(5):
             out[f"RACI_PAPEL_{n+1}"] = papel_cells[n] if n < len(papel_cells) else ""
     else:
+        papel_cells = []
         for n in range(5):
             out[f"RACI_PAPEL_{n+1}"] = ""
 
-    # Atividades = primeira coluna de cada linha
+    # Atividades = primeira coluna de cada linha (legacy compat)
     for n in range(5):
         if n < len(raci_rows) and len(raci_rows[n]) >= 1:
             out[f"RACI_ATIV_{n+1}"] = raci_rows[n][0]
         else:
             out[f"RACI_ATIV_{n+1}"] = ""
+
+    # BUG #11 fix: gera thead + tbody completos com cells R/A/C/I do MD.
+    # Suporta N atividades × M papéis (não trava em 5×5) e células
+    # compostas (R, A) via _render_raci_cell. Quando MD não tem RACI,
+    # mantém defaults (_DEFAULT_RACI_THEAD/_TBODY) que usam os
+    # placeholders legacy RACI_PAPEL_N e RACI_ATIV_N.
+    if header_m and raci_rows:
+        full_header = ["Atividade"] + papel_cells
+        thead_html, tbody_html = render_raci_table(full_header, raci_rows)
+        out["RACI_THEAD"] = thead_html
+        out["RACI_TBODY"] = tbody_html
 
     # 7. Indicadores — LEDE + 2 KPIs (tabela 7.1) + 2 PPIs (tabela 7.2)
     body = sections.get("7.", "")
@@ -1230,6 +1428,46 @@ def parse_content_md(path: Path) -> dict:
         cv_rows = extract_md_table(cv_m.group(1))
         if cv_rows and len(cv_rows[0]) >= 4:
             out["ALTERACOES_VERSAO"] = cv_rows[0][3]
+
+    # BUG #2 fix (v6.0): §11 Anexos opcional. Captura o conteúdo da seção
+    # 11 (se existir), renderiza como HTML rico (markdown + shortcodes
+    # incluindo :::ficha-icp) e produz um <article class="page"> completo
+    # que será injetado em {{ANEXOS_BLOCK}} no template.
+    anexos_body = sections.get("11.", "").strip()
+    if anexos_body:
+        # Lede = texto antes do primeiro ### (sub-anexo) ou primeiro shortcode
+        h3_m = re.search(r"^###\s+", anexos_body, re.MULTILINE)
+        sc_m = re.search(r"^:::", anexos_body, re.MULTILINE)
+        intro_end = min(
+            [m.start() for m in [h3_m, sc_m] if m] or [len(anexos_body)]
+        )
+        anexos_intro = anexos_body[:intro_end].strip()
+        anexos_rest = anexos_body[intro_end:].strip()
+
+        intro_html = (
+            f'<p class="anexos-intro">{_md_inline_lite(escape(anexos_intro))}</p>\n'
+            if anexos_intro else ""
+        )
+
+        # Sub-anexos: cada ### A./### B. vira <h3 class="anexo-titulo">
+        # com corpo renderizado por markdown_to_html. Shortcodes
+        # (:::ficha-icp etc) continuam stashed e restaurados globalmente.
+        if anexos_rest:
+            # Pre-processa: converte `### A. Texto` em `### <h3>A. Texto</h3>`
+            # Mantém estrutura — markdown_to_html lida com ### como h3.
+            rest_html = markdown_to_html(anexos_rest)
+            # Pós-processa: trocar <h3>...</h3> por <h3 class="anexo-titulo">...</h3>
+            rest_html = re.sub(
+                r'<h3(?![^>]*class=)>',
+                '<h3 class="anexo-titulo">',
+                rest_html,
+            )
+        else:
+            rest_html = ""
+
+        out["_HAS_ANEXOS"] = "1"  # internal flag (não vai pro substitute loop)
+        out["_ANEXOS_INTRO_HTML"] = intro_html
+        out["_ANEXOS_REST_HTML"] = rest_html
 
     return out
 
@@ -1403,6 +1641,65 @@ def split_name_cargo(s: str) -> tuple:
         first, rest = s.split(" · ", 1)
         return first.strip(), rest.strip()
     return s.strip(), ""
+
+
+# BUG #2 fix (v6.0): template do article de Anexos. Substituído com os
+# valores: TITULO, CODIGO, VERSAO, INTRO_HTML, REST_HTML, PAGE_NUM, TOTAL.
+# Inserido no template via placeholder {{ANEXOS_BLOCK}} (vazio quando MD
+# não tem §11). O logo é base64 inlined pelo inline_assets() depois.
+# BUG #1 fix: TOTAL_PAGINAS é substituído inline na render_anexos_block
+# (não depende da ordem de substituição do loop principal).
+_ANEXOS_ARTICLE_TEMPLATE = """
+    <!-- ════════════════════════════════════════════════════════════
+         PÁGINA __PAGE_NUM__ — 11. Anexos (opcional)
+         ════════════════════════════════════════════════════════════ -->
+    <article class="page anexos-page" data-page-label="Anexos">
+      <header class="page-head">
+        <div class="ph-left">
+          <img src="assets/m7-logo-dark.png" alt="M7">
+          <div class="ph-sep"></div>
+          <span class="ph-title">__TITULO__</span>
+        </div>
+        <span class="ph-meta">__CODIGO__ · __VERSAO__</span>
+      </header>
+      <div class="page-body">
+        <h2 class="section"><span class="num">11</span> Anexos</h2>
+__INTRO_HTML____REST_HTML__
+      </div>
+      <footer class="page-foot">
+        <span class="pf-classif">Uso interno · Confidencial</span>
+        <span class="pf-page">Página <strong>__PAGE_NUM__</strong> de <span class="total-pg">__TOTAL__</span></span>
+      </footer>
+    </article>"""
+
+
+def render_anexos_block(
+    parsed_content: dict, code: str, titulo: str, versao: str, total_paginas: int
+) -> tuple:
+    """Renderiza o <article> da §11 Anexos (ou string vazia se ausente).
+
+    BUG #2 fix (v6.0): permite §11 opcional. Retorna (anexos_html, num_pages)
+    onde num_pages é o número de páginas adicionais (0 se sem anexos, 1 se
+    com anexos numa página única — paginação multi-página é v7.0).
+    """
+    if not parsed_content.get("_HAS_ANEXOS"):
+        return "", 0
+
+    intro_html = parsed_content.get("_ANEXOS_INTRO_HTML", "")
+    rest_html = parsed_content.get("_ANEXOS_REST_HTML", "")
+    page_num = "12"  # v6.0: anexos sempre = página 12. v7.0: dinâmico.
+
+    block = (
+        _ANEXOS_ARTICLE_TEMPLATE
+        .replace("__PAGE_NUM__", page_num)
+        .replace("__TITULO__", escape(titulo))
+        .replace("__CODIGO__", escape(code))
+        .replace("__VERSAO__", escape(versao))
+        .replace("__INTRO_HTML__", intro_html)
+        .replace("__REST_HTML__", rest_html)
+        .replace("__TOTAL__", str(total_paginas))
+    )
+    return block, 1
 
 
 # BUG #3 fix: SVG BPMN default — usado quando o MD não declara :::diagrama
@@ -1668,6 +1965,8 @@ def build_placeholders(data: dict, content_md) -> dict:
         + ["LEDE_PAPEIS"]
         + [f"RACI_PAPEL_{n}" for n in range(1, 6)]
         + [f"RACI_ATIV_{n}" for n in range(1, 6)]
+        + ["RACI_THEAD", "RACI_TBODY"]  # BUG #11 fix: thead+tbody dinâmicos
+        + ["ANEXOS_BLOCK"]  # BUG #2 fix (v6.0): §11 opcional
         + ["LEDE_INDICADORES"]
         + [f"KPI_{n}_{fld}" for n in range(1, 3)
            for fld in ("NOME", "FORMULA", "META", "FREQ", "FONTE")]
@@ -1699,8 +1998,30 @@ def build_placeholders(data: dict, content_md) -> dict:
         "BPMN_EVT_FIM_2": "",
     })
 
+    # BUG #11 fix: defaults para RACI thead/tbody — usam os placeholders
+    # legacy RACI_PAPEL_N e RACI_ATIV_N internamente. parse_content_md
+    # sobrescreve quando MD declara matriz RACI em §6.1 (com geração N×M
+    # dinâmica e suporte a células compostas).
+    out["RACI_THEAD"] = _DEFAULT_RACI_THEAD
+    out["RACI_TBODY"] = _DEFAULT_RACI_TBODY
+
+    # BUG #2 fix (v6.0): default vazio para ANEXOS_BLOCK (§11 opcional)
+    out["ANEXOS_BLOCK"] = ""
+
     if content_md and content_md.exists():
         out.update(parse_content_md(content_md))
+
+    # BUG #2 fix (v6.0): se MD trouxe §11 Anexos, renderiza o article.
+    # BUG #1 fix (v6.0): TOTAL_PAGINAS calculado dinamicamente (11 + N
+    # páginas de anexos). identity.pages do YAML é IGNORADO — pages é
+    # derivado, não declarado.
+    has_anexos = bool(out.get("_HAS_ANEXOS"))
+    total_paginas = 11 + (1 if has_anexos else 0)
+    anexos_html, _anexos_pages = render_anexos_block(
+        out, i["code"], p["title_short"], i["version"], total_paginas
+    )
+    out["ANEXOS_BLOCK"] = anexos_html
+    out["TOTAL_PAGINAS"] = str(total_paginas)
 
     # Aplicar markdown inline (bold/italic/link) nos campos de texto puro
     inline_md_fields = (

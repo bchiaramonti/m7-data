@@ -131,9 +131,15 @@ properties:
       pages:
         type: integer
         minimum: 0
+        deprecated: true
         description: |
-          Total de páginas A4 do documento renderizado.
-          Pode ser 0 para status=rascunho/pendente sem HTML produzido.
+          DEPRECATED (v6.0): identity.pages é DERIVADO do conteúdo, não
+          declarado. Valor é ignorado pelo script — `TOTAL_PAGINAS` no
+          HTML final é calculado como `11 + 1` quando o MD tem §11
+          Anexos (ou `11` quando ausente). Para Cockpit de Normativos, o
+          campo permanece no YAML para retrocompatibilidade, mas o
+          autor deve omiti-lo ou aceitar que o valor real diverge se
+          declarado.
         html_anchors:
           - "shell.strip.paginas"
           - "page-foot.total-pg"

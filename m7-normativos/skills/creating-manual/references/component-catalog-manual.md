@@ -200,12 +200,64 @@ título: RACI · Sub-processo de exceções (5.3)
 - `.raci-i` — Informed: cinza neutro (`var(--vc-100)`)
 
 **Regras de validação**:
-1. Apenas valores `R`, `A`, `C`, `I` (case-insensitive) nas células.
-2. Exatamente 1 `A` por linha (Accountability é única por atividade).
-3. Pelo menos 1 `R` por linha (todo trabalho tem responsável).
-4. Tabela deve ter pelo menos 2 papéis (colunas) e 2 atividades (linhas).
+1. Valores `R`, `A`, `C`, `I` (case-insensitive) nas células.
+2. **Células compostas** `R, A` (ou `A, R`) — quando o mesmo papel é
+   Responsible **E** Accountable pela atividade. Renderizadas com classe
+   `.raci-cell.raci-ra` (R em cima, A embaixo).
+3. Exatamente 1 `A` por linha (Accountability é única por atividade).
+   Compound `R, A` conta como ambos para validação semântica.
+4. Pelo menos 1 `R` por linha (todo trabalho tem responsável).
+5. Tabela deve ter pelo menos 2 papéis (colunas) e 2 atividades (linhas).
 
-Violações abortam a Fase 3 com mensagem clara.
+Violações geram **warnings** (não abortam) — autor revisa antes de
+publicar. A v5.0.0 abortava; a v5.1+ é mais permissiva para suportar
+matrizes em transição.
+
+### `:::ficha-icp` — Ficha de persona/ICP (v6.0, capítulo Anexos)
+
+Card estruturado para documentar personas ICP no capítulo §11 Anexos.
+Espelha a estrutura canônica de 7 blocos da `ICP.xlsx`.
+
+**Sintaxe**:
+```markdown
+:::ficha-icp
+titulo: Empresário Middle Market — Persona-decisor
+icp: ICP1
+arquetipo: persona-decisor
+
+**Características da Pessoa**
+- 40-55 anos, fundador ou herdeiro
+- ...
+
+**Dores Principais**
+1. Sucessão patrimonial
+2. ...
+
+**Resolução M7**
+- Plano patrimonial integrado PF/PJ
+- ...
+
+**Características da Negociação**
+- Ticket médio: R$ 5-15M
+- Ciclo: 3-6 meses
+:::
+```
+
+**Attrs**:
+- `titulo` — texto do cabeçalho (obrigatório)
+- `icp` — código do ICP (opcional, ex.: `ICP1`, `ICP2`)
+- `arquetipo` — `persona-decisor` ou `persona-gate` (default: genérico)
+
+**Body**: blocos nomeados via `**Título**\\n...`. Suporta listas
+markdown (`-`, `1.`), parágrafos e ênfase inline. Cada bloco vira
+`.ficha-bloco` com `.ficha-bloco-titulo` (uppercase) + `.ficha-bloco-corpo`.
+
+**Estilo**: cabeçalho com borda inferior em `var(--lime)`; arquétipo
+"decisor" tem chip escuro, "gate" tem chip claro (cores invertidas).
+`page-break-inside: avoid` para não quebrar entre páginas.
+
+**Uso típico**: apenas dentro de §11 Anexos. Para personas avulsas em
+seções operacionais, prefira `:::papel-card`.
 
 ---
 
