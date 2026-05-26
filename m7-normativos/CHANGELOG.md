@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2026-05-26
+
+**BREAKING** — fecha os 3 bugs arquiteturais remanescentes do `creating-manual` v5.0.0 (#1 `identity.pages` derivado, #2 §11 Anexos opcional com novo shortcode `:::ficha-icp`, #11 RACI tbody injection N×M dinâmico — **CRÍTICO**). Após v5.1 (9 fixes cirúrgicos) + v6.0 (3 fixes arquiteturais), os 12 bugs registrados em `2026-05-20_bug-creating-manual-pages-fixed.md` estão resolvidos — manuais não precisam mais de patches surgical pós-Fase 3.
+
+### Added (creating-manual)
+
+- **Novo shortcode `:::ficha-icp`** para fichas de persona/ICP no capítulo §11 Anexos. Espelha estrutura canônica de 7-8 blocos da `ICP.xlsx` (Características da Pessoa, Dores Principais/Secundárias, Implicações, Resolução M7, Objetivos, Claims, Características da Negociação). 3 attrs: `titulo`, `icp`, `arquetipo` (`persona-decisor` ou `persona-gate`). Cabeçalho com chip invertido por arquétipo. CSS dedicado em `.ficha-icp`/`.ficha-cabecalho`/`.ficha-arquetipo`/`.ficha-bloco-*`. Allowlist expandida.
+- **`{{ANEXOS_BLOCK}}` placeholder** no template (após página 11 Docs Relacionados). Quando MD declara `## 11. Anexos`, script gera article completo (`<article class="page anexos-page">`) com header/footer dinâmicos — sub-anexos `### A.`, `### B.` viram `<h3 class="anexo-titulo">`. Quando ausente, placeholder vira string vazia (zero impacto).
+- **`render_raci_table(header, rows)`** — gera `<thead>` e `<tbody>` da matriz RACI §6.1 dinamicamente a partir do MD. Suporta **N atividades × M papéis** (não trava em 5×5) e **células compostas** `R, A` via `_render_raci_cell()` (reuso do fix de v5.1 Bug #6). Validação semântica emite **warnings** (não aborta) quando linha tem ≠1 A ou 0 R — autor revisa antes de publicar.
+- **`render_anexos_block(parsed_content, code, titulo, versao, total_paginas)`** — renderiza o article de §11 Anexos com substituição inline de `__TOTAL__` (resolve ordem de substituição de placeholders).
+- **`_DEFAULT_RACI_THEAD`/`_DEFAULT_RACI_TBODY`** como constantes Python — usadas quando MD não tem RACI, preservando layout legacy via placeholders `RACI_PAPEL_N` + `RACI_ATIV_N` (backward compat).
+- **`_ANEXOS_ARTICLE_TEMPLATE`** como template string Python — `<article>` completo com header/footer, page 12, classe `.anexos-page`.
+
+### Changed (creating-manual)
+
+- **§6.1 Matriz RACI no template** colapsada de ~60 linhas hardcoded (5×5 com células default fixas) para `{{RACI_THEAD}}{{RACI_TBODY}}` (2 placeholders). Cells R/A/C/I do MD agora são honradas — não mais ignoradas silenciosamente.
+- **`identity.pages`** marcado como `deprecated: true` no schema. Script ignora valor declarado e calcula `TOTAL_PAGINAS` dinamicamente: `11 + (1 if has_anexos else 0)`. Campo permanece no YAML para retrocompat do Cockpit de Normativos, mas a documentação `manual-schema.md` orienta omiti-lo.
+- **Validação RACI semântica** de "abort" → "warning" — matrizes em transição (sub-processos novos, refactor em andamento) não bloqueiam mais a publicação. Autor revisa a Fase 3 antes de promover.
+- **`component-catalog-manual.md`** documenta `:::ficha-icp` (8º shortcode), regra de células compostas R,A, e mudança de validação RACI.
+- **SKILL.md** menciona v6.0: `:::ficha-icp` no quadro de shortcodes, `identity.pages` derivado no gate Fase 2 → Fase 3.
+- **`m7-normativos/.claude-plugin/plugin.json`** bumped 5.1.0 → 6.0.0 com descrição refletindo os 3 fixes arquiteturais.
+- **`m7-data/.claude-plugin/marketplace.json`** entrada sincronizada.
+
+### Fixed (creating-manual)
+
+- **BUG #11 (CRÍTICO)** — RACI cells R/A/C/I não eram parseadas do MD; template hardcodava 25 células sem placeholders → HTML distorcia accountability documentada. Fix: tbody injection com geração N×M dinâmica.
+- **BUG #2** — Falta de slot para conteúdo de referência denso (fichas ICP, tabelas taxonômicas, anexos). Fix: `{{ANEXOS_BLOCK}}` opcional + shortcode `:::ficha-icp`.
+- **BUG #1** — `identity.pages` tratado como fixo (=11) impedia manuais com anexos. Fix: derivado pelo script, ignora declaração do YAML.
+
+### Notes
+
+- Caminho **Composição Modular Full** (split do template em fragments) foi diferido para v7.0 — caminho A evolutivo (1 placeholder `ANEXOS_BLOCK` + article completo gerado pelo script) entrega o user-value com risco menor (-77 linhas no template, +327 no script).
+- Paginação multi-página de anexos é v7.0 (atual: 1 article = 1 página com `page-break-inside: avoid` nos cards).
+- Smoke tests aprovados: MAN-PERF-003 gold sem anexos (11 páginas, RACI compound `A,R` em E4 renderizado como `.raci-ra`, 0 residuais) + MAN-PERF-003 com §11 sintético (12 páginas, `:::ficha-icp` completo, 0 residuais).
+
+---
+
+## [5.1.0] - 2026-05-26
+
+Corrige 9 bugs cirúrgicos do `creating-manual` v5.0.0 descobertos durante geração de MAN-CRE-002, MAN-GOV-001 e MAN-TEC-001, eliminando ~10-15 min de patches surgical pós-Fase 3 por manual gerado.
+
+### Added (creating-manual)
+
+- **Placeholder `{{TOC_HTML}}` dinâmico** — sumário formal (página 2) gerado a partir de `structure.formal_toc[]` no YAML, ou de `DEFAULT_FORMAL_TOC` quando ausente. Regra estrita: `subsection: true` é o ÚNICO discriminador da classe `h2` no TOC.
+- **Placeholder `{{BPMN_SVG}}` único** em §4.4 — substitui o `<svg>` hardcoded com 8 sub-placeholders. Quando MD declara `:::diagrama` em §4.4, usa o SVG do autor (preservado via `@@SC_BLOCK_N@@`); senão renderiza SVG default via `render_default_bpmn_svg()`.
+- **Classes CSS `.narrative-list` e `.section-foot-note`** no template — substituem 2 inline `style="..."` de linhas 1411 (BPMN narrativa) e 1617 (§7 KPI footer).
+- **Classe `.raci-cell.raci-ra`** para células compostas R+A no shortcode `:::raci` (mesmo papel é Responsible E Accountable).
+- **Classe `.cover-suffix`** com CSS `:not(:empty)::before { content: ' '; }` — espaço entre `</em>` e sufixo só aparece quando há sufixo de fato (fix de espaço residual no `title_full`).
+- **`structure.formal_toc[]`** no `normativo.schema.yaml` — schema explícito com campos `num`, `label`, `pg`, `subsection: bool`. Validação: numeração toplevel `^\d+$` + `subsection: true` são mutuamente excludentes (emite warning).
+- **Função `_md_isolate_tables()`** — pre-processa o MD inserindo blank line entre conteúdo não-tabela e cabeçalho de tabela MD. Previne python-markdown de absorver tabelas em `</li>` adjacentes.
+- **Função `_render_raci_cell()`** — centraliza renderização de células RACI (single, compound R+A, vazio).
+- **Função `render_default_bpmn_svg(labels)`** — gera o SVG BPMN default a partir de um dict de labels.
+
+### Changed (creating-manual)
+
+- **§4.3 Interfaces** no template: `<p>{{TEXTO_INTERFACES}}</p>` → `{{TEXTO_INTERFACES}}` (sem wrapper) — permite shortcodes block-level. Script roteia conteúdo de §4.3 por `markdown_to_html()` (em vez de capturar só primeiro parágrafo via `.split("\n\n")[0]`), preservando `:::processo-grid` e outros shortcodes.
+- **TOC estático no template** substituído por `{{TOC_HTML}}`. Fix do bug onde §9 era erroneamente marcada com classe `h2`.
+- **`restore_shortcodes(html)` GLOBAL** no final de `main()` — defense-in-depth para qualquer `@@SC_BLOCK_N@@` que escape de qualquer caminho de extração (não só §4.3).
+- **DTO prefix stripping** — script remove `^\*\*DTO-\d{2}\*\*\s*[—·\-–]\s*` do conteúdo extraído do MD antes de atribuir ao placeholder, evitando duplicação com o `<strong>DTO-NN</strong> · ` hardcoded no template.
+- **Cronograma key lookup** com `_norm_cad()` — normaliza markdown bold (`**Diário**`), acentos (`á → a`) e case. Suporta variações pt/en (daily/weekly/monthly/quarterly/biannual/yearly).
+- **`split_cover_title()`** ganhou strip defensivo + uso de `.get("text", "")` para robustez contra parts malformadas.
+- **Allowlist CSS** adicionada com `narrative-list`, `section-foot-note`, `raci-ra`, `cover-suffix`.
+
+### Fixed (creating-manual)
+
+- **BUG #3** — `:::diagrama` ignorava SVG inline do autor (template tinha SVG default hardcoded). Fix: `{{BPMN_SVG}}` único.
+- **BUG #4** — Cronograma off-by-one (primeira cadência Diário vazia). Fix: normalização robusta de chave via `_norm_cad()`.
+- **BUG #5** — DTO duplicava prefixo `**DTO-NN**`. Fix: regex strip antes da substituição.
+- **BUG #6** — Células RACI compostas `R, A` silenciosamente ignoradas no shortcode `:::raci`. Fix: detecção via `_RACI_COMPOUND_RE` + classe `.raci-ra`.
+- **BUG #7** — Espaço residual entre `</em>` e `</h1>` no cover-title quando suffix vazio. Fix: `<span class="cover-suffix">` + CSS `:not(:empty)::before`.
+- **BUG #8** — TOC marcava toplevel (§9) com classe `h2` erroneamente. Fix: TOC dinâmico via `render_formal_toc()` com regra estrita.
+- **BUG #9** — Inline styles em narrative-list (§4.4) e section-foot-note (§7) violavam contrato "zero `style="..."` inline". Fix: 2 classes novas + substituição.
+- **BUG #10** — `:::processo-grid` declarado mas não expandido em §4.3 (script capturava só primeiro parágrafo). Fix: `markdown_to_html` em §4.3 + `restore_shortcodes` global.
+- **BUG #12** — Tabelas MD absorvidas em `</li>` adjacentes. Fix: `_md_isolate_tables()` pre-processor.
+
+### Notes
+
+- Smoke tests em `/tmp`: MAN-PERF-003 gold (com MD completo) — 0 placeholders residuais, BPMN SVG do autor preservado (viewBox 1000×320), TOC com apenas §4.1 como h2, DTO sem prefixo duplicado. MAN-PERF-003 sem MD — default BPMN SVG renderizado (viewBox 1000×360, labels "Tarefa 1"..."Decisão?"). `:::raci` compound — `R, A` e `A, R` viraram `<span class="raci-cell raci-ra">R<br>A</span>`.
+- Bugs #1, #2 e #11 (arquiteturais) ficam para v6.0.
+
+---
+
 ## [5.0.0] - 2026-05-20
 
 **BREAKING** — refatoração completa de `creating-manual` para espelhar a arquitetura da `creating-politica` v4.0. A skill abandona o pipeline DOCX (python-docx clonando template Word) e adota o **trio canônico HTML+YAML+review.md** já usado pela política — agora todos os normativos M7 saem no mesmo formato, consumível pelo Cockpit de Normativos. Manuais ganham gate obrigatório de design review, separação rígida design × conteúdo, e validação automática contra schema e allowlist de classes.
