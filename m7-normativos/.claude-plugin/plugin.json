@@ -1,6 +1,6 @@
 {
   "name": "m7-normativos",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Create and review M7 corporate normative documents (POL/MAN/INS/ESP) following POL-M7-001 standards. v5.0 BREAKING: creating-manual migrated from DOCX to the same HTML+YAML+review.md trio used by creating-politica — both skills now emit autocontido HTML (~1.4-1.5MB with CSS, TWK Everett fonts and logos inlined as base64) + YAML sidecar canônico for the M7 Cockpit de Normativos + review.md filled by their respective design-reviewer agents (mandatory Score >= B gate). creating-politica: 145 placeholders, 16 A4 pages, 8 sections, politica-design-reviewer agent with 8 review dimensions. creating-manual: 149 placeholders, 11 A4 pages, 10 sections (Objetivo, Escopo, Definições, Visão Geral + SIPOC + BPMN, Regras, Papéis + RACI 5x5, KPIs + PPIs, Cronograma, Qualidade, Docs), manual-design-reviewer agent with 9 review dimensions (adds 'conformidade procedural' for BPMN/SIPOC/RACI/KPI/PPI). Both follow the same 3-phase workflow: Discovery → Redação MD → Produção HTML+YAML+Review. Both apply rigid separation between content (canonical MD with shortcodes :::papel-card, :::callout, :::indicador, :::diagrama, :::processo-grid; creating-manual adds :::raci) and presentation (template + tokens). INS/ESP skills still emit DOCX (migration pending). Includes governance-writer agent.",
   "author": {
     "name": "Bruno Chiaramonti"

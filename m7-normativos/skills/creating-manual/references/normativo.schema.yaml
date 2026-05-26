@@ -432,6 +432,37 @@ properties:
               default: false
               description: "Quando true, é sub-item da seção corrente (estilo h2 no sumário)."
 
+      formal_toc:
+        type: array
+        description: |
+          Sumário formal (página 2) do manual. Quando ausente, usa o default
+          MAN-PERF-003 (1-10 + 4.1). Cada entrada gera uma `.toc-item` no HTML.
+
+          BUG #8 fix: `subsection: true` é o ÚNICO discriminador da classe `h2`.
+          Numeração toplevel (`^\d+$`) e `subsection: true` são mutuamente
+          excludentes — emite warning quando declarados juntos.
+        items:
+          type: object
+          required: [num, label]
+          properties:
+            num:
+              type: string
+              description: "Numeração da entrada (ex: '1', '4.1', '10')."
+            label:
+              type: string
+              description: "Texto da entrada (ex: 'Objetivo')."
+            pg:
+              type: integer
+              description: "Página onde a seção inicia (ex: 3, 7, 11)."
+            subsection:
+              type: boolean
+              default: false
+              description: |
+                Quando true, renderiza com classe `toc-item h2` (estilo h2
+                indentado, cor mais clara). Use apenas para sub-seções como
+                §4.1, §6.2 etc. Para §9 que está na mesma página de §8, NÃO
+                use subsection — §9 é toplevel.
+
   # ===========================================================================
   # 6. LINKS — vínculos com outros artefatos do projeto
   # ===========================================================================

@@ -961,6 +961,7 @@ img, svg { display: block; max-width: 100%; }
   .raci-a { background: var(--vc-700); color: var(--lime); }
   .raci-c { background: var(--vc-100); color: var(--vc-700); }
   .raci-i { background: transparent; color: var(--vc-400); border: 1px solid var(--vc-100); }
+  .raci-ra { width: 22px; height: 22px; background: var(--vc-700); color: var(--lime); flex-direction: column; gap: 1px; padding: 2px 0; line-height: 1; font-size: 8.5px; font-weight: 600; }
   .raci-legend { margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 9px; color: var(--vc-400); }
   .raci-legend .item { display: inline-flex; align-items: center; gap: 5px; }
 
@@ -985,6 +986,13 @@ img, svg { display: block; max-width: 100%; }
   .dto-list li { display: flex; gap: 8px; padding: 6px 10px; background: var(--vc-50); border: 1px solid var(--vc-100); border-radius: 4px; font-size: 10px; align-items: baseline; line-height: 1.45; }
   .dto-list li::before { content: '\2713'; color: var(--vc-700); background: var(--lime); width: 16px; height: 16px; flex-shrink: 0; border-radius: 3px; text-align: center; line-height: 16px; font-size: 10px; font-weight: 600; }
   .dto-list li strong { color: var(--vc-700); font-weight: 500; }
+
+  /* Narrativa em lista compacta (e.g. pos-BPMN) */
+  .narrative-list { font-size: 10.5px; color: var(--vc-600); padding-left: 18px; margin: 4px 0 0; }
+  /* Nota de rodapé semântica em sub-seção (e.g. §7 referência a ESP) */
+  .section-foot-note { font-size: 9.5px; color: var(--vc-400); margin-top: 10px; font-style: italic; }
+  /* Sufixo opcional do cover-title — só renderiza espaço se houver conteúdo */
+  .cover-suffix:not(:empty)::before { content: ' '; }
 </style>
 </head>
 
@@ -1016,7 +1024,7 @@ img, svg { display: block; max-width: 100%; }
             <span>·</span>
             <span class="v">{{CODIGO_DOCUMENTO}}</span>
           </div>
-          <h1 class="cover-title">{{COVER_TITULO_LINHA1}}<br>{{COVER_TITULO_PREFIXO}} <em>{{COVER_TITULO_ACENTO}}</em> {{COVER_TITULO_SUFIXO}}</h1>
+          <h1 class="cover-title">{{COVER_TITULO_LINHA1}}<br>{{COVER_TITULO_PREFIXO}} <em>{{COVER_TITULO_ACENTO}}</em><span class="cover-suffix">{{COVER_TITULO_SUFIXO}}</span></h1>
           <p class="cover-subtitle">{{COVER_SUBTITULO}}</p>
 
           <div class="cover-grid">
@@ -1082,17 +1090,7 @@ img, svg { display: block; max-width: 100%; }
 
         <h2 class="section"><span class="num">00</span> Sumário</h2>
         <div class="toc">
-          <div class="toc-item"><span class="num">1</span><span class="label">Objetivo</span><span class="pg">p. 3</span></div>
-          <div class="toc-item"><span class="num">2</span><span class="label">Escopo e aplicabilidade</span><span class="pg">p. 3</span></div>
-          <div class="toc-item"><span class="num">3</span><span class="label">Definições e glossário</span><span class="pg">p. 4</span></div>
-          <div class="toc-item"><span class="num">4</span><span class="label">Visão geral do processo</span><span class="pg">p. 5</span></div>
-          <div class="toc-item h2"><span class="num">4.1</span><span class="label">Fluxograma BPMN</span><span class="pg">p. 6</span></div>
-          <div class="toc-item"><span class="num">5</span><span class="label">Regras de negócio</span><span class="pg">p. 7</span></div>
-          <div class="toc-item"><span class="num">6</span><span class="label">Papéis e responsabilidades</span><span class="pg">p. 8</span></div>
-          <div class="toc-item"><span class="num">7</span><span class="label">Indicadores</span><span class="pg">p. 9</span></div>
-          <div class="toc-item"><span class="num">8</span><span class="label">Cronograma e frequência</span><span class="pg">p. 10</span></div>
-          <div class="toc-item h2"><span class="num">9</span><span class="label">Critérios de qualidade</span><span class="pg">p. 10</span></div>
-          <div class="toc-item"><span class="num">10</span><span class="label">Documentos relacionados</span><span class="pg">p. 11</span></div>
+          {{TOC_HTML}}
         </div>
       </div>
       <footer class="page-foot">
@@ -1262,7 +1260,7 @@ img, svg { display: block; max-width: 100%; }
         </div>
 
         <h3 class="sub">4.3 · Interfaces e dependências</h3>
-        <p>{{TEXTO_INTERFACES}}</p>
+        {{TEXTO_INTERFACES}}
       </div>
       <footer class="page-foot">
         <span class="pf-classif">Uso interno · Confidencial</span>
@@ -1292,95 +1290,7 @@ img, svg { display: block; max-width: 100%; }
             <span class="bpmn-head-code">BPMN · {{CODIGO_DOCUMENTO}}/{{CODIGO_PROCESSO}}</span>
           </div>
           <div class="bpmn-canvas">
-            <svg viewBox="0 0 1000 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Fluxograma BPMN do processo">
-  <defs>
-    <marker id="bpmn-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 Z" class="bpmn-arrow-fill"/>
-    </marker>
-  </defs>
-
-  <!-- Pool border -->
-  <rect class="bpmn-pool" x="0" y="0" width="1000" height="360" rx="3"/>
-
-  <!-- Lane strips (label column) -->
-  <rect class="bpmn-lane-strip" x="0" y="0" width="32" height="120"/>
-  <rect class="bpmn-lane-strip" x="0" y="120" width="32" height="240"/>
-  <text class="bpmn-lane-label" x="20" y="60" transform="rotate(-90, 20, 60)" text-anchor="middle">CLIENTE</text>
-  <text class="bpmn-lane-label" x="20" y="240" transform="rotate(-90, 20, 240)" text-anchor="middle">ATENDIMENTO</text>
-
-  <!-- Lane backgrounds -->
-  <rect class="bpmn-lane-bg" x="32" y="0" width="968" height="120"/>
-  <rect class="bpmn-lane-bg alt" x="32" y="120" width="968" height="240"/>
-  <!-- Lane divider -->
-  <line class="bpmn-lane-divider" x1="32" y1="120" x2="1000" y2="120"/>
-
-  <!-- ═══════ Lane 1: Cliente ═══════ -->
-  <!-- Start event -->
-  <circle class="bpmn-event-start" cx="85" cy="60" r="15"/>
-  <text class="bpmn-event-label" x="85" y="92">{{BPMN_EVT_INICIO}}</text>
-
-  <!-- Task: Cliente faz solicitação -->
-  <g>
-    <rect class="bpmn-task" x="135" y="42" width="150" height="36" rx="4"/>
-    <rect class="bpmn-task-header" x="135" y="42" width="4" height="36" rx="0"/>
-    <text class="bpmn-task-label" x="210" y="60">{{BPMN_TASK_1}}</text>
-  </g>
-
-  <!-- ═══════ Lane 2: Atendimento ═══════ -->
-  <!-- Task: Recebe demanda -->
-  <g>
-    <rect class="bpmn-task" x="135" y="180" width="150" height="36" rx="4"/>
-    <rect class="bpmn-task-header" x="135" y="180" width="4" height="36" rx="0"/>
-    <text class="bpmn-task-label" x="210" y="198">{{BPMN_TASK_2}}</text>
-  </g>
-
-  <!-- Gateway XOR (Elegível?) -->
-  <g>
-    <path class="bpmn-gateway" d="M 540,170 L 580,198 L 540,226 L 500,198 Z"/>
-    <path class="bpmn-gateway-mark" d="M 528,186 L 552,210 M 552,186 L 528,210"/>
-    <text class="bpmn-task-label" x="540" y="246">{{BPMN_GATEWAY_1}}</text>
-  </g>
-
-  <!-- Task: Processar -->
-  <g>
-    <rect class="bpmn-task" x="630" y="142" width="150" height="36" rx="4"/>
-    <rect class="bpmn-task-header" x="630" y="142" width="4" height="36" rx="0"/>
-    <text class="bpmn-task-label" x="705" y="160">{{BPMN_TASK_3}}</text>
-  </g>
-
-  <!-- Task: Devolver -->
-  <g>
-    <rect class="bpmn-task" x="630" y="236" width="150" height="36" rx="4"/>
-    <rect class="bpmn-task-header" x="630" y="236" width="4" height="36" rx="0"/>
-    <text class="bpmn-task-label" x="705" y="254">{{BPMN_TASK_4}}</text>
-  </g>
-
-  <!-- End events -->
-  <circle class="bpmn-event-end" cx="850" cy="160" r="17"/>
-  <text class="bpmn-event-label" x="850" y="194">{{BPMN_EVT_FIM_1}}</text>
-  <circle class="bpmn-event-end" cx="850" cy="254" r="17"/>
-  <text class="bpmn-event-label" x="850" y="288">{{BPMN_EVT_FIM_2}}</text>
-
-  <!-- ═══════ Sequence flows ═══════ -->
-  <!-- e1 → T1 -->
-  <path class="bpmn-flow" d="M 100,60 L 131,60"/>
-  <!-- T1 → T2 (cross lanes) -->
-  <path class="bpmn-flow" d="M 210,80 L 210,198 L 131,198"/>
-  <!-- T2 → G1 -->
-  <path class="bpmn-flow" d="M 285,198 L 496,198"/>
-  <!-- G1 (top) → T3 (with label "Sim") -->
-  <path class="bpmn-flow" d="M 540,170 L 540,160 L 626,160"/>
-  <rect class="bpmn-flow-label-bg" x="552" y="148" width="22" height="14"/>
-  <text class="bpmn-flow-label" x="563" y="158">Sim</text>
-  <!-- G1 (bottom) → T4 (with label "Não") -->
-  <path class="bpmn-flow" d="M 540,226 L 540,254 L 626,254"/>
-  <rect class="bpmn-flow-label-bg" x="552" y="244" width="22" height="14"/>
-  <text class="bpmn-flow-label" x="563" y="254">Não</text>
-  <!-- T3 → e2 -->
-  <path class="bpmn-flow" d="M 780,160 L 829,160"/>
-  <!-- T4 → e3 -->
-  <path class="bpmn-flow" d="M 780,254 L 829,254"/>
-</svg>
+            {{BPMN_SVG}}
           </div>
           <div class="bpmn-legend">
             <span class="item">
@@ -1408,7 +1318,7 @@ img, svg { display: block; max-width: 100%; }
         </figure>
 
         <h3 class="sub">Narrativa do fluxo</h3>
-        <ol style="font-size:10.5px; color:var(--vc-600); padding-left:18px; margin:4px 0 0;">
+        <ol class="narrative-list">
           <li>{{BPMN_NARRATIVA_1}}</li>
           <li>{{BPMN_NARRATIVA_2}}</li>
           <li>{{BPMN_NARRATIVA_3}}</li>
@@ -1614,7 +1524,7 @@ img, svg { display: block; max-width: 100%; }
           </div>
         </div>
 
-        <p style="font-size:9.5px; color:var(--vc-400); margin-top:10px; font-style:italic;">
+        <p class="section-foot-note">
           Especificação técnica completa (fórmulas, queries SQL, conectores) em <span class="mono">{{CODIGO_ESP}}</span>.
         </p>
       </div>

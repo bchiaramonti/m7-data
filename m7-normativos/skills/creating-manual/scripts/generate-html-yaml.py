@@ -109,7 +109,7 @@ CSS_ALLOWLIST = {
     # Capa
     "cover", "cover-head", "cover-body", "cover-foot",
     "cover-eyebrow", "cover-grid", "cover-meta",
-    "cover-title", "cover-subtitle",
+    "cover-title", "cover-subtitle", "cover-suffix",
     # Seção
     "section", "section-lede", "section-title",
     "section-eyebrow", "section-num",
@@ -171,7 +171,7 @@ CSS_ALLOWLIST = {
     "sipoc", "is-process",
     # Manual-specific: RACI 5×5 (template + shortcode)
     "raci-table", "raci-cell",
-    "raci-r", "raci-a", "raci-c", "raci-i",
+    "raci-r", "raci-a", "raci-c", "raci-i", "raci-ra",
     "raci-legend", "activity", "activity-h", "step",
     # Manual-specific: indicadores (KPI/PPI cards)
     "kpi-grid", "kpi-card", "ppi",
@@ -182,6 +182,8 @@ CSS_ALLOWLIST = {
     "dto-list", "item",
     # Misc Manual classes do template
     "h", "navbtn", "twocol", "col", "h2",
+    # Sub-componentes do template (v5.1 — fix dos inline styles)
+    "narrative-list", "section-foot-note",
 }
 
 
@@ -361,6 +363,37 @@ def _attr(attrs: dict, *keys: str, default: str = "") -> str:
     return default
 
 
+_RACI_SINGLE_RE = re.compile(r"^[RACI]$")
+_RACI_COMPOUND_RE = re.compile(r"^[RACI](\s*,\s*[RACI])+$")
+
+
+def _render_raci_cell(code: str) -> str:
+    """Renderiza uma célula RACI a partir do código (já uppercased + stripped).
+
+    - Código simples (`R`, `A`, `C`, `I`) → `<td><span class="raci-cell raci-X">X</span></td>`
+    - Código composto `R, A` ou `A, R` → célula com classe `.raci-ra` que
+      exibe ambas as letras empilhadas (fix do BUG #6). Outros pares (`R, C`,
+      `A, C` etc.) caem no fallback: primeira letra com classe correspondente
+      + texto completo escapado, para que o autor revise.
+    - Vazio (`""` ou `"—"` ou `"-"`) → `<td>—</td>`
+    - Qualquer outro texto → `<td>{escape(text)}</td>` (não bloqueante)
+    """
+    if not code or code in {"—", "-", "–"}:
+        return "<td>—</td>"
+    if _RACI_SINGLE_RE.match(code):
+        return f'<td><span class="raci-cell raci-{code.lower()}">{code}</span></td>'
+    if _RACI_COMPOUND_RE.match(code):
+        letters = [c.strip() for c in code.split(",")]
+        normalized = {l for l in letters}
+        # Caso canônico: R+A (mesmo papel é Responsible E Accountable)
+        if normalized == {"R", "A"}:
+            return '<td><span class="raci-cell raci-ra">R<br>A</span></td>'
+        # Outros pares compostos: render genérico com primeira letra + texto
+        first = letters[0]
+        return f'<td><span class="raci-cell raci-{first.lower()}">{escape(code)}</span></td>'
+    return f"<td>{escape(code)}</td>"
+
+
 def render_shortcode(name: str, attrs: dict, body: str) -> str:
     """Converte um shortcode parseado em HTML usando classes da allowlist."""
 
@@ -518,19 +551,7 @@ def render_shortcode(name: str, attrs: dict, body: str) -> str:
                     cells_out.append(f'<td class="activity">{_md_inline_lite(c)}</td>')
                 else:
                     code = c.upper().strip()
-                    if code in {"R", "A", "C", "I"}:
-                        cells_out.append(
-                            f'<td><span class="raci-cell raci-{code.lower()}">{code}</span></td>'
-                        )
-                    else:
-                        # múltiplos códigos (ex: "A,R") → mostra primeira letra
-                        first = code.split(",")[0].strip() if "," in code else code
-                        if first in {"R", "A", "C", "I"}:
-                            cells_out.append(
-                                f'<td><span class="raci-cell raci-{first.lower()}">{escape(code)}</span></td>'
-                            )
-                        else:
-                            cells_out.append(f'<td>{escape(c)}</td>')
+                    cells_out.append(_render_raci_cell(code))
             tr_html.append("<tr>" + "".join(cells_out) + "</tr>")
         tbody = "<tbody>" + "".join(tr_html) + "</tbody>"
         title_html = f'<h4 class="sub">{titulo}</h4>\n  ' if titulo else ""
@@ -931,12 +952,16 @@ def parse_content_md(path: Path) -> dict:
     for n in range(4):
         out[f"SIPOC_P_{n+1}"] = sipoc_rows[n][2] if n < len(sipoc_rows) and len(sipoc_rows[n]) >= 3 else ""
 
-    # 4.3 Interfaces e dependências
+    # 4.3 Interfaces e dependências — BUG #10 fix: captura o bloco inteiro
+    # (não só o primeiro parágrafo) e passa por markdown_to_html. Assim
+    # shortcodes como :::processo-grid sobrevivem como @@SC_BLOCK_N@@ até o
+    # restore_shortcodes global no final da pipeline.
     inter_m = re.search(
         r"###+\s*(?:\d+\.\d+\s*[·\-.]\s*)?Interfaces[^\n]*\n(.+?)(?=^###|\Z)",
         body, re.DOTALL | re.MULTILINE,
     )
-    out["TEXTO_INTERFACES"] = (inter_m.group(1).strip() if inter_m else "").split("\n\n")[0]
+    inter_body = inter_m.group(1).strip() if inter_m else ""
+    out["TEXTO_INTERFACES"] = markdown_to_html(inter_body) if inter_body else ""
 
     # 4.4 Fluxograma BPMN — extrai narrativa textual (3 parágrafos) e título/caption.
     # O diagrama SVG vem como :::diagrama (já expandido por expand_shortcodes
@@ -985,6 +1010,16 @@ def parse_content_md(path: Path) -> dict:
     }
     for k, v in bpmn_defaults.items():
         out.setdefault(k, v)
+
+    # BUG #3 fix: BPMN_SVG é renderizado dinamicamente. Se o MD declarou
+    # `:::diagrama` em §4.4, usa o SVG do autor (já stashed em _SC_BLOCKS
+    # como @@SC_BLOCK_N@@ — restaurado pelo restore_shortcodes global no
+    # final da pipeline). Senão, renderiza o SVG default com os 8 labels.
+    sc_in_bpmn = re.search(r"@@SC_BLOCK_\d+@@", bpmn_block)
+    if sc_in_bpmn:
+        out["BPMN_SVG"] = sc_in_bpmn.group(0)
+    else:
+        out["BPMN_SVG"] = render_default_bpmn_svg(bpmn_defaults)
 
     # 5. Regras de Negócio — LEDE + 2 temas + 6 regras + 2 exceções com aprovadores
     body = sections.get("5.", "")
@@ -1104,21 +1139,35 @@ def parse_content_md(path: Path) -> dict:
     )
 
     crono_rows = extract_md_table(body)
+    # BUG #4 fix: normalização robusta da chave de cadência — remove markdown
+    # (`**Diário**`), acentos (`á → a`), espaços e case. Suporta também
+    # variações em inglês ("daily", "weekly", "monthly") por defensividade.
     crono_map = {
-        "diari": "DIARIO", "diaria": "DIARIO",
-        "semanal": "SEMANAL",
-        "mensal": "MENSAL",
-        "trimestral": "TRIMESTRAL",
-        "semestral": "SEMESTRAL",
-        "anual": "ANUAL",
+        "diari": "DIARIO", "diaria": "DIARIO", "daily": "DIARIO",
+        "semanal": "SEMANAL", "weekly": "SEMANAL",
+        "mensal": "MENSAL", "monthly": "MENSAL",
+        "trimestral": "TRIMESTRAL", "quarterly": "TRIMESTRAL",
+        "semestral": "SEMESTRAL", "biannual": "SEMESTRAL",
+        "anual": "ANUAL", "annual": "ANUAL", "yearly": "ANUAL",
     }
+
+    def _norm_cad(raw: str) -> str:
+        # Remove markdown bold/italic, acentos e normaliza
+        import unicodedata
+        s = re.sub(r"[*_`]+", "", raw).strip().lower()
+        s = "".join(
+            c for c in unicodedata.normalize("NFKD", s)
+            if not unicodedata.combining(c)
+        )
+        return s
+
     # Default vazio
     for cad in ("DIARIO", "SEMANAL", "MENSAL", "TRIMESTRAL", "SEMESTRAL"):
         out[f"CRONO_{cad}_RITUAL"] = ""
         out[f"CRONO_{cad}_OUT"] = ""
     for row in crono_rows:
         if len(row) >= 3:
-            cad_key = row[0].lower().strip()
+            cad_key = _norm_cad(row[0])
             for key_pattern, cad in crono_map.items():
                 if cad_key.startswith(key_pattern):
                     out[f"CRONO_{cad}_RITUAL"] = row[1]
@@ -1141,9 +1190,17 @@ def parse_content_md(path: Path) -> dict:
         r"^\s*\d+\.\s+(.+?)(?=^\s*\d+\.|^###|^##|\Z)",
         body, re.DOTALL | re.MULTILINE,
     )
+    # BUG #5 fix: o template já hardcoda `<strong>DTO-NN</strong> · ` antes do
+    # placeholder, então removemos o prefixo do conteúdo extraído (MD canônico
+    # mantém `**DTO-NN** — texto` como gold pattern; só não duplica no HTML).
+    dto_prefix_re = re.compile(r"^\*{0,2}DTO-\d{2}\*{0,2}\s*[—·\-–]\s*", re.IGNORECASE)
     for n in range(5):
         slot = f"DTO_0{n+1}"
-        out[slot] = dto_matches[n].strip() if n < len(dto_matches) else ""
+        if n < len(dto_matches):
+            raw = dto_matches[n].strip()
+            out[slot] = dto_prefix_re.sub("", raw).strip()
+        else:
+            out[slot] = ""
 
     # 10. Documentos Relacionados — tabela 3 col (Código, Título, Tipo) — 4 slots
     body = sections.get("10.", "")
@@ -1198,6 +1255,40 @@ def _md_isolate_html_blocks(text: str) -> str:
         r"\1\n\n",
         text,
     )
+
+
+def _md_isolate_tables(text: str) -> str:
+    """BUG #12: garante que cada tabela markdown tenha 2+ linhas em branco
+    antes dela.
+
+    Defensivo contra python-markdown absorver a tabela como continuação
+    de um <li> da lista anterior. Detecta o cabeçalho de tabela MD via o
+    par `| header |` + `| --- |` e injeta blank line se a linha imediatamente
+    anterior é não-vazia.
+    """
+    lines = text.split("\n")
+    out: list = []
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        is_table_header = (
+            stripped.startswith("|") and stripped.endswith("|")
+            and i + 1 < len(lines)
+            and re.match(r"^\s*\|[\s\-:|]+\|\s*$", lines[i + 1])
+        )
+        if is_table_header and out:
+            # Conta linhas em branco contíguas no final de `out`
+            blank_count = 0
+            for j in range(len(out) - 1, -1, -1):
+                if out[j].strip() == "":
+                    blank_count += 1
+                else:
+                    break
+            # Se tem conteúdo não-vazio acima e <1 blank line, força 1 blank
+            has_prev = blank_count < len(out)
+            if has_prev and blank_count < 1:
+                out.append("")
+        out.append(line)
+    return "\n".join(out)
 
 
 def _md_fallback(text: str) -> str:
@@ -1279,6 +1370,8 @@ def markdown_to_html(text: str) -> str:
 
     # Patch #6 — garantir linha em branco entre HTML block e markdown
     text_safe = _md_isolate_html_blocks(text_safe)
+    # BUG #12 — garantir linha em branco entre lista/parágrafo e tabela MD
+    text_safe = _md_isolate_tables(text_safe)
 
     try:
         import markdown as md_lib  # type: ignore
@@ -1312,13 +1405,141 @@ def split_name_cargo(s: str) -> tuple:
     return s.strip(), ""
 
 
+# BUG #3 fix: SVG BPMN default — usado quando o MD não declara :::diagrama
+# em §4.4. Os 8 placeholders BPMN_EVT_*/TASK_*/GATEWAY_* são substituídos
+# inline antes da injeção no template via {{BPMN_SVG}}.
+_DEFAULT_BPMN_SVG = """<svg viewBox="0 0 1000 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Fluxograma BPMN do processo">
+  <defs>
+    <marker id="bpmn-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" class="bpmn-arrow-fill"/>
+    </marker>
+  </defs>
+  <rect class="bpmn-pool" x="0" y="0" width="1000" height="360" rx="3"/>
+  <rect class="bpmn-lane-strip" x="0" y="0" width="32" height="120"/>
+  <rect class="bpmn-lane-strip" x="0" y="120" width="32" height="240"/>
+  <text class="bpmn-lane-label" x="20" y="60" transform="rotate(-90, 20, 60)" text-anchor="middle">CLIENTE</text>
+  <text class="bpmn-lane-label" x="20" y="240" transform="rotate(-90, 20, 240)" text-anchor="middle">ATENDIMENTO</text>
+  <rect class="bpmn-lane-bg" x="32" y="0" width="968" height="120"/>
+  <rect class="bpmn-lane-bg alt" x="32" y="120" width="968" height="240"/>
+  <line class="bpmn-lane-divider" x1="32" y1="120" x2="1000" y2="120"/>
+  <circle class="bpmn-event-start" cx="85" cy="60" r="15"/>
+  <text class="bpmn-event-label" x="85" y="92">{{BPMN_EVT_INICIO}}</text>
+  <g>
+    <rect class="bpmn-task" x="135" y="42" width="150" height="36" rx="4"/>
+    <rect class="bpmn-task-header" x="135" y="42" width="4" height="36" rx="0"/>
+    <text class="bpmn-task-label" x="210" y="60">{{BPMN_TASK_1}}</text>
+  </g>
+  <g>
+    <rect class="bpmn-task" x="135" y="180" width="150" height="36" rx="4"/>
+    <rect class="bpmn-task-header" x="135" y="180" width="4" height="36" rx="0"/>
+    <text class="bpmn-task-label" x="210" y="198">{{BPMN_TASK_2}}</text>
+  </g>
+  <g>
+    <path class="bpmn-gateway" d="M 540,170 L 580,198 L 540,226 L 500,198 Z"/>
+    <path class="bpmn-gateway-mark" d="M 528,186 L 552,210 M 552,186 L 528,210"/>
+    <text class="bpmn-task-label" x="540" y="246">{{BPMN_GATEWAY_1}}</text>
+  </g>
+  <g>
+    <rect class="bpmn-task" x="630" y="142" width="150" height="36" rx="4"/>
+    <rect class="bpmn-task-header" x="630" y="142" width="4" height="36" rx="0"/>
+    <text class="bpmn-task-label" x="705" y="160">{{BPMN_TASK_3}}</text>
+  </g>
+  <g>
+    <rect class="bpmn-task" x="630" y="236" width="150" height="36" rx="4"/>
+    <rect class="bpmn-task-header" x="630" y="236" width="4" height="36" rx="0"/>
+    <text class="bpmn-task-label" x="705" y="254">{{BPMN_TASK_4}}</text>
+  </g>
+  <circle class="bpmn-event-end" cx="850" cy="160" r="17"/>
+  <text class="bpmn-event-label" x="850" y="194">{{BPMN_EVT_FIM_1}}</text>
+  <circle class="bpmn-event-end" cx="850" cy="254" r="17"/>
+  <text class="bpmn-event-label" x="850" y="288">{{BPMN_EVT_FIM_2}}</text>
+  <path class="bpmn-flow" d="M 100,60 L 131,60"/>
+  <path class="bpmn-flow" d="M 210,80 L 210,198 L 131,198"/>
+  <path class="bpmn-flow" d="M 285,198 L 496,198"/>
+  <path class="bpmn-flow" d="M 540,170 L 540,160 L 626,160"/>
+  <rect class="bpmn-flow-label-bg" x="552" y="148" width="22" height="14"/>
+  <text class="bpmn-flow-label" x="563" y="158">Sim</text>
+  <path class="bpmn-flow" d="M 540,226 L 540,254 L 626,254"/>
+  <rect class="bpmn-flow-label-bg" x="552" y="244" width="22" height="14"/>
+  <text class="bpmn-flow-label" x="563" y="254">Não</text>
+  <path class="bpmn-flow" d="M 780,160 L 829,160"/>
+  <path class="bpmn-flow" d="M 780,254 L 829,254"/>
+</svg>"""
+
+
+def render_default_bpmn_svg(labels: dict) -> str:
+    """Renderiza o SVG BPMN default com os labels substituídos.
+
+    BUG #3 fix: usado quando o MD não declara :::diagrama em §4.4. Quando
+    declara, o conteúdo do :::diagrama (já stashed como @@SC_BLOCK_N@@)
+    é injetado em {{BPMN_SVG}} no lugar do default.
+    """
+    svg = _DEFAULT_BPMN_SVG
+    for key, val in labels.items():
+        svg = svg.replace("{{" + key + "}}", val)
+    return svg
+
+
+# BUG #8 fix: default formal_toc para manuais com layout padrão MAN-PERF-003.
+# Quando YAML declara `structure.formal_toc`, ele sobrescreve este default.
+DEFAULT_FORMAL_TOC = [
+    {"num": "1", "label": "Objetivo", "pg": 3},
+    {"num": "2", "label": "Escopo e aplicabilidade", "pg": 3},
+    {"num": "3", "label": "Definições e glossário", "pg": 4},
+    {"num": "4", "label": "Visão geral do processo", "pg": 5},
+    {"num": "4.1", "label": "Fluxograma BPMN", "pg": 6, "subsection": True},
+    {"num": "5", "label": "Regras de negócio", "pg": 7},
+    {"num": "6", "label": "Papéis e responsabilidades", "pg": 8},
+    {"num": "7", "label": "Indicadores", "pg": 9},
+    {"num": "8", "label": "Cronograma e frequência", "pg": 10},
+    {"num": "9", "label": "Critérios de qualidade", "pg": 10},
+    {"num": "10", "label": "Documentos relacionados", "pg": 11},
+]
+
+
+def render_formal_toc(entries: list) -> str:
+    """Gera o HTML do sumário formal (página 2) a partir de `structure.formal_toc`.
+
+    BUG #8 fix: classe `h2` só é aplicada quando `subsection: true` está
+    explícito. Numeração toplevel (`^\\d+$`) é mutuamente excludente com
+    subsection — emite warning se o autor declarar ambos.
+    """
+    parts: list = []
+    for entry in entries:
+        num = str(entry.get("num", "")).strip()
+        label = str(entry.get("label", "")).strip()
+        pg = entry.get("pg", "")
+        is_subsection = bool(entry.get("subsection", False))
+
+        # Validação: numeração toplevel + subsection = inconsistente
+        if is_subsection and re.match(r"^\d+$", num):
+            sys.stderr.write(
+                f"⚠  formal_toc: entrada '{num}. {label}' tem numeração "
+                f"toplevel mas subsection=true. Verifique o YAML.\n"
+            )
+
+        cls = "toc-item h2" if is_subsection else "toc-item"
+        pg_html = f'<span class="pg">p. {escape(str(pg))}</span>' if pg != "" else ""
+        parts.append(
+            f'<div class="{cls}"><span class="num">{escape(num)}</span>'
+            f'<span class="label">{escape(label)}</span>{pg_html}</div>'
+        )
+    return "\n          ".join(parts)
+
+
 def split_cover_title(parts: list) -> dict:
-    """Decompõe title_full.parts em LINHA1/PREFIXO/ACENTO/SUFIXO."""
+    """Decompõe title_full.parts em LINHA1/PREFIXO/ACENTO/SUFIXO.
+
+    BUG #7 fix: garante strip em cada parte concatenada. O template usa
+    `<span class="cover-suffix">{{SUFIXO}}</span>` com CSS
+    `:not(:empty)::before { content: ' '; }` — assim o espaço entre
+    `</em>` e o sufixo só aparece quando há sufixo de fato.
+    """
     accent_idx = next((idx for idx, pt in enumerate(parts) if pt.get("accent")), -1)
     if accent_idx >= 0:
-        prefix_full = "".join(pt["text"] for pt in parts[:accent_idx])
-        accent = parts[accent_idx]["text"].strip()
-        suffix = "".join(pt["text"] for pt in parts[accent_idx + 1:]).strip()
+        prefix_full = "".join(pt.get("text", "") for pt in parts[:accent_idx])
+        accent = parts[accent_idx].get("text", "").strip()
+        suffix = "".join(pt.get("text", "") for pt in parts[accent_idx + 1:]).strip()
         m = re.match(r"^(\S+)\s+(.*)$", prefix_full.strip())
         if m and len(m.group(1)) <= 12:
             return {
@@ -1375,6 +1596,13 @@ def build_placeholders(data: dict, content_md) -> dict:
 
     cover_pieces = split_cover_title(p["title_full"]["parts"])
 
+    # BUG #8 fix: sumário formal (página 2) gerado dinamicamente a partir de
+    # `structure.formal_toc` (opcional). Se YAML não declarar, usa o default
+    # MAN-PERF-003. `subsection: true` é o ÚNICO discriminador de h2.
+    structure = data.get("structure", {}) or {}
+    formal_toc_entries = structure.get("formal_toc") or DEFAULT_FORMAL_TOC
+    toc_html = render_formal_toc(formal_toc_entries)
+
     # Processo macro — manual-específico
     process_owner_full = g.get("process_owner", g.get("aprovadoPor", ""))
     nome_po, cargo_po = split_name_cargo(process_owner_full)
@@ -1409,6 +1637,8 @@ def build_placeholders(data: dict, content_md) -> dict:
         "CODIGO_PROCESSO": codigo_processo,
         "PROCESS_OWNER": nome_po,
         "PROCESS_OWNER_CARGO": cargo_po,
+        # BUG #8 fix: sumário formal dinâmico (página 2)
+        "TOC_HTML": toc_html,
     }
     out.update(cover_pieces)
 
@@ -1427,6 +1657,7 @@ def build_placeholders(data: dict, content_md) -> dict:
         + [f"SIPOC_O_{n}" for n in range(1, 4)]
         + [f"SIPOC_C_{n}" for n in range(1, 4)]
         + ["BPMN_DIAGRAMA_TITULO", "BPMN_CAPTION",
+           "BPMN_SVG",  # BUG #3 fix: SVG completo (default ou :::diagrama)
            "BPMN_EVT_INICIO", "BPMN_EVT_FIM_1", "BPMN_EVT_FIM_2",
            "BPMN_TASK_1", "BPMN_TASK_2", "BPMN_TASK_3", "BPMN_TASK_4",
            "BPMN_GATEWAY_1",
@@ -1454,6 +1685,19 @@ def build_placeholders(data: dict, content_md) -> dict:
     )
     for k in content_keys:
         out.setdefault(k, "")
+
+    # BUG #3 fix: BPMN_SVG default é o SVG renderizado, não string vazia.
+    # `parse_content_md` sobrescreve se MD declarou :::diagrama em §4.4.
+    out["BPMN_SVG"] = render_default_bpmn_svg({
+        "BPMN_EVT_INICIO": "Início",
+        "BPMN_TASK_1": "E1 · Tarefa 1",
+        "BPMN_TASK_2": "E2 · Tarefa 2",
+        "BPMN_TASK_3": "E3 · Tarefa 3",
+        "BPMN_TASK_4": "E4 · Tarefa 4",
+        "BPMN_GATEWAY_1": "Decisão?",
+        "BPMN_EVT_FIM_1": "Concluído",
+        "BPMN_EVT_FIM_2": "",
+    })
 
     if content_md and content_md.exists():
         out.update(parse_content_md(content_md))
@@ -1837,6 +2081,11 @@ def main() -> int:
         if key.startswith("_") or not isinstance(val, str):
             continue
         html = html.replace("{{" + key + "}}", val)
+
+    # BUG #10 fix: defesa em profundidade — restaura globalmente qualquer
+    # `@@SC_BLOCK_N@@` que tenha sobrevivido (e.g. shortcodes em §4.3 que
+    # foram capturados por markdown_to_html e ainda estão como placeholder).
+    html = restore_shortcodes(html)
 
     # inline_assets DEPOIS da substituição
     if not args.no_inline:
